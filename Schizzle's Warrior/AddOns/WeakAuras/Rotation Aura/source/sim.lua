@@ -1,9 +1,9 @@
--- Offline test for "Schizzle's Warrior Rotation WeakAura": decodes the export exactly like WeakAuras' Transmission.lua,
+-- Offline test for "Schizzle's Warrior Rotation": decodes the export exactly like WeakAuras' Transmission.lua,
 -- compiles every custom function inside WeakAuras' real aura sandbox (AuraEnvironment.lua) and runs rotation scenarios
 -- against a mocked WoW API. Needs a WeakAuras2 checkout with tests/helpers.lua + tests/wow_stubs.lua (run from that tests dir).
 local WA_TESTS = os.getenv("WA_TESTS") or "/workspace/wa2/tests"
 local LIBDIR = os.getenv("WA_LIBS") or "/workspace"
-local EXPORT = os.getenv("WA_EXPORT") or "/workspace/warbuild/schizzles-warrior-rotation-weakaura.txt"
+local EXPORT = os.getenv("WA_EXPORT") or "/workspace/schizzles-warrior-rotation.txt"
 package.path = WA_TESTS .. "/?.lua;" .. package.path
 local LibSerialize = dofile(LIBDIR .. "/LibSerialize/LibSerialize.lua")
 local LibDeflate = dofile(LIBDIR .. "/LibDeflate/LibDeflate.lua")
@@ -45,6 +45,7 @@ for _, c in ipairs(t.c) do
 end
 check(not str:lower():find("peanut") and not decompressed:lower():find("peanut"), "no Peanut naming")
 check(data.uid == "SchizzleWarriorGroup", "group uid")
+check(data.id == "Schizzle's Warrior Rotation", "group name")
 WeakAuras.GetData = function(id) return byId[id] end
 Private.UIDtoID = function(uid) for id, d in pairs(byId) do if d.uid == uid then return id end end end
 

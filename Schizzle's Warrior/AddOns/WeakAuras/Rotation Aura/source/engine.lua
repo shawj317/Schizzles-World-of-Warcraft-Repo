@@ -1,4 +1,4 @@
--- Schizzle's Warrior Rotation engine (shared by every aura in the "Schizzle's Warrior Rotation WeakAura" group)
+-- Schizzle's Warrior Rotation engine (shared by every aura in the "Schizzle's Warrior Rotation" group)
 -- Arms + Fury (Titan's Grip / Single-Minded Fury) + Protection, MoP Classic 5.5.x.
 -- Every spell is gated by IsPlayerSpell, so talent tiers 4 (Bladestorm / Shockwave / Dragon Roar) and
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
