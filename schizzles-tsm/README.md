@@ -1,6 +1,6 @@
 # Schizzle's TSM
 
-TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own separate string.
+TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own strings in `groups/pets/`: one per subgroup, plus one for all pets.
 
 Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item, ItemSparse, SkillLineAbility, SpellEffect and SpellReagents, build 5.5.4.70631). The groups only contain items you can sell on the auction house. **No item appears in more than one group**, so the profession strings never conflict with each other.
 
@@ -24,7 +24,15 @@ Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item
 | First Aid | 25 | 2 | [`groups/professions/schizzles-tsm-first-aid.txt`](groups/professions/schizzles-tsm-first-aid.txt) | [docs/first-aid.md](docs/first-aid.md) | Bandages, anti-venoms |
 | Archaeology | 11 | 1 | [`groups/professions/schizzles-tsm-archaeology.txt`](groups/professions/schizzles-tsm-archaeology.txt) | [docs/archaeology.md](docs/archaeology.md) | Tradeable keystones only (see below) |
 | **All professions** | **5315** | 203 | [`groups/professions/schizzles-tsm-all-professions.txt`](groups/professions/schizzles-tsm-all-professions.txt) | (per-profession docs) | All 15 groups above, nested under one parent group **Schizzle's TSM** |
-| Battle Pets | 227 | 7 | [`groups/schizzles-tsm-battle-pets.txt`](groups/schizzles-tsm-battle-pets.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Cageable battle pets, imported as **Pets**. Not part of the all-professions string. |
+| Battle Pets: High Value | 45 | 1 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](groups/pets/schizzles-tsm-pets-high-value.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Hand-picked expensive pets: TCG pets, rare raid/world drops, Molten Front and Archaeology pets, MoP rares. Matched first, so these are never in another subgroup. |
+| Battle Pets: Vendor Pets | 100 | 1 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](groups/pets/schizzles-tsm-pets-vendor.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
+| Battle Pets: Profession Pets | 21 | 1 | [`groups/pets/schizzles-tsm-pets-profession.txt`](groups/pets/schizzles-tsm-pets-profession.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
+| Battle Pets: World Drops & Quests | 39 | 1 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](groups/pets/schizzles-tsm-pets-world-drops.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Old world through Cataclysm drops and quest rewards. |
+| Battle Pets: Raid & Dungeon Drops | 32 | 1 | [`groups/pets/schizzles-tsm-pets-raid-dungeon.txt`](groups/pets/schizzles-tsm-pets-raid-dungeon.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets from raid and dungeon bosses. |
+| Battle Pets: Pandaria Drops & Quests | 35 | 1 | [`groups/pets/schizzles-tsm-pets-pandaria.txt`](groups/pets/schizzles-tsm-pets-pandaria.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pandaria drops, rares and quest rewards. |
+| Battle Pets: Holiday & Events | 56 | 1 | [`groups/pets/schizzles-tsm-pets-holiday-events.txt`](groups/pets/schizzles-tsm-pets-holiday-events.txt) | [docs/battle-pets.md](docs/battle-pets.md) | World events (Hallow's End, Winter Veil, Lunar Festival, Noblegarden and others) and the Darkmoon Faire. |
+| Battle Pets: Pet Supplies | 1 | 1 | [`groups/pets/schizzles-tsm-pets-supplies.txt`](groups/pets/schizzles-tsm-pets-supplies.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Tradeable pet-battle supplies. Only the Flawless Battle-Stone qualifies: the typed/Polished/Perfect battle-stones, pet treats and pet bandages are all soulbound. |
+| **All battle pets** | **329** | 8 | [`groups/pets/schizzles-tsm-battle-pets-all.txt`](groups/pets/schizzles-tsm-battle-pets-all.txt) | [docs/battle-pets.md](docs/battle-pets.md) | 227 cageable species (p:) and 102 pet items (i:), nested under **Schizzle's TSM > Battle Pets**. It nests next to the professions when both are imported. |
 
 Most crafted gear and consumables are split into subgroups by expansion (Classic, Burning Crusade, Wrath, Cataclysm, Pandaria). That way you can attach different Auctioning operations to old-world and current-tier items.
 
@@ -37,7 +45,7 @@ Most crafted gear and consumables are split into subgroups by expansion (Classic
    - **Everything:** import `schizzles-tsm-all-professions.txt`. This creates one parent group **Schizzle's TSM** with all 15 professions under it. Attach your operation to the parent and every subgroup inherits it, or override it per profession.
 4. TSM won't take an item out of a group you already have unless you choose to move it. If you have older versions of these groups (e.g. the v1 **Mining**, **Herbalism**, **Cloth**, **Cooking**, **Trade Goods** or **Alchemy** groups), delete them first or let the import move the items.
 5. The all-professions string is about 52 KB. Pasting it can freeze the game client for a few seconds. That's normal.
-6. Optionally, import `schizzles-tsm-battle-pets.txt` as well. It doesn't overlap with any profession group.
+6. Optionally, import the battle pets: `groups/pets/schizzles-tsm-battle-pets-all.txt`, or just the per-subgroup files you want. The all string uses the same **Schizzle's TSM** parent as the all-professions string, so both nest together. No pets item overlaps with any profession group. See [docs/battle-pets.md](docs/battle-pets.md).
 
 ## Ownership rules (why an item is where it is)
 
@@ -56,7 +64,7 @@ Since an item can only be in one group, each item goes to exactly one profession
    - **Alchemy:** all other elementals (air, water, mana, shadow, etc.).
 2. **Crafted items go to the profession that makes them.** If more than one profession can craft an item, it goes to the profession with more recipes for it, then to this fixed priority: Alchemy, Blacksmithing, Leatherworking, Tailoring, Engineering, Jewelcrafting, Inscription, Enchanting, Cooking, First Aid. Enchant scrolls go to Enchanting.
 3. **Shared or bought reagents** that nobody crafts (e.g. vials, salt, Righteous Orbs, dyes, threads) go to the profession that uses them in the most recipes. They're in each profession's **Shared Reagents** subgroup, or **Other Ingredients** for Cooking. Some of these land in a surprising place: Righteous Orb ends up in Blacksmithing, for example, and some raid orbs in Leatherworking. If you'd rather keep them somewhere else, move them in TSM after you import.
-4. **Battle pets** that a profession crafts (e.g. Engineering mechanical pets) stay in their profession group only if they aren't already in the Battle Pets group. Pets are never duplicated.
+4. **Battle pets.** Crafted pet items (`i:`, e.g. the Engineering mechanical pets) stay in their profession group. Their caged versions (`p:`) and all other cageable species and tradeable pet items are in the Battle Pets groups. TSM treats `i:` and `p:` as different items, so nothing is duplicated.
 
 ## Not included
 
@@ -78,7 +86,9 @@ Since an item can only be in one group, each item goes to exactly one profession
 
 - **v1 (Nov 2026):** Trade Goods (Mining, Herbalism, Cloth, Cooking), Alchemy, Engineering Blasting Powders and Pets groups, built from the MoP Classic 5.5.4 client data.
 - **v1 rename (Nov 1 2026):** Files and docs renamed with the "Schizzle's" prefix.
-- **v2 (Nov 2026): all professions.** The folder was renamed `schizzles-tsm-groups` → `schizzles-tsm` and the project renamed to **Schizzle's TSM**. All 15 professions now have groups, including First Aid, Cooking, Fishing and Archaeology. Each profession has its own import string, plus one all-professions string. Every item belongs to exactly one profession using the ownership rules above. Changes from v1: raw fish moved from Cooking to Fishing, gems moved from Mining and Alchemy to Jewelcrafting, pigments and inks moved from Herbalism to Inscription, cloth now lives in Tailoring, and blasting powders are in Engineering. The v1 strings were replaced by the v2 files. Battle pets are unchanged and now live in `groups/schizzles-tsm-battle-pets.txt`.
+- **v2 (Nov 2026): all professions.** The folder was renamed `schizzles-tsm-groups` → `schizzles-tsm` and the project renamed to **Schizzle's TSM**. All 15 professions now have groups, including First Aid, Cooking, Fishing and Archaeology. Each profession has its own import string, plus one all-professions string. Every item belongs to exactly one profession using the ownership rules above. Changes from v1: raw fish moved from Cooking to Fishing, gems moved from Mining and Alchemy to Jewelcrafting, pigments and inks moved from Herbalism to Inscription, cloth now lives in Tailoring, and blasting powders are in Engineering. The v1 strings were replaced by the v2 files. Battle pets were unchanged in v2.
+
+- **v2.1 (Nov 2026): pets revised.** Battle pets moved to `groups/pets/`. The species audit against 5.5.4 data confirmed 227 cageable species. Added 102 tradeable pet items (101 companion items plus the Flawless Battle-Stone). Pets are reorganized into 8 subgroups, each with its own string, plus `schizzles-tsm-battle-pets-all.txt` nested under **Schizzle's TSM > Battle Pets**. Crafted pet items stay in their professions.
 
 ## License
 
