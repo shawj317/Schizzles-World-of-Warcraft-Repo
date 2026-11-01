@@ -23,7 +23,7 @@ The names matter: the switcher looks for these three profile names. If you'd rat
 **Font:** the profiles use **Fira Sans Condensed Medium**, which ships with WeakAuras. If WeakAuras isn't installed, Plater falls back to its default font; everything else works.
 
 ## Spec switching
-Plater doesn't have spec profiles. I checked the Plater source (current GitHub version, which is also the MoP Classic build, `Interface-Mists: 50504`):
+Plater doesn't have spec profiles. This was checked in the Plater source (current GitHub version, which is also the MoP Classic build, `Interface-Mists: 50504`):
 - It has no LibDualSpec, and its Profiles tab only creates, copies, imports and exports AceDB profiles. Nothing switches profiles on a spec change.
 - Profiles are chosen per character, as in any AceDB addon.
 
