@@ -12,13 +12,13 @@ Part of [Schizzle's TSM](../README.md).
 
 | Subgroup | Species | Items | Import string | What's in it |
 |---|---|---|---|---|
-| High Value | 40 | 5 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](../groups/pets/schizzles-tsm-pets-high-value.txt) | Hand-picked expensive pets: TCG pets, rare raid/world drops, Molten Front and Archaeology pets, MoP rares. Matched first, so these are never in another subgroup. |
-| Vendor Pets | 55 | 45 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](../groups/pets/schizzles-tsm-pets-vendor.txt) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
-| Profession Pets | 17 | 4 | [`groups/pets/schizzles-tsm-pets-profession.txt`](../groups/pets/schizzles-tsm-pets-profession.txt) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
-| World Drops & Quests | 19 | 20 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](../groups/pets/schizzles-tsm-pets-world-drops.txt) | Old world through Cataclysm drops and quest rewards. |
-| Raid & Dungeon Drops | 29 | 3 | [`groups/pets/schizzles-tsm-pets-raid-dungeon.txt`](../groups/pets/schizzles-tsm-pets-raid-dungeon.txt) | Pets from raid and dungeon bosses. |
-| Pandaria Drops & Quests | 30 | 5 | [`groups/pets/schizzles-tsm-pets-pandaria.txt`](../groups/pets/schizzles-tsm-pets-pandaria.txt) | Pandaria drops, rares and quest rewards. |
-| Holiday & Events | 37 | 19 | [`groups/pets/schizzles-tsm-pets-holiday-events.txt`](../groups/pets/schizzles-tsm-pets-holiday-events.txt) | World events (Hallow's End, Winter Veil, Lunar Festival, Noblegarden and others) and the Darkmoon Faire. |
+| High Value | 26 | 12 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](../groups/pets/schizzles-tsm-pets-high-value.txt) | Data-driven (v2.2): any pet whose realm value is at least 7,500g **and** whose region sale rate is at least 0.03, plus the TCG/promo pets (no other home). Realm value = realm market value, else realm historical, capped at 2x region market; pets with no realm price use 0.8x region market. Matched first, so these are never in another subgroup. |
+| Vendor Pets | 56 | 42 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](../groups/pets/schizzles-tsm-pets-vendor.txt) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
+| Profession Pets | 28 | 5 | [`groups/pets/schizzles-tsm-pets-profession.txt`](../groups/pets/schizzles-tsm-pets-profession.txt) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
+| World Drops & Quests | 21 | 16 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](../groups/pets/schizzles-tsm-pets-world-drops.txt) | Old world through Cataclysm drops and quest rewards. |
+| Raid & Dungeon Drops | 35 | 3 | [`groups/pets/schizzles-tsm-pets-raid-dungeon.txt`](../groups/pets/schizzles-tsm-pets-raid-dungeon.txt) | Pets from raid and dungeon bosses. |
+| Pandaria Drops & Quests | 29 | 6 | [`groups/pets/schizzles-tsm-pets-pandaria.txt`](../groups/pets/schizzles-tsm-pets-pandaria.txt) | Pandaria drops, rares and quest rewards. |
+| Holiday & Events | 32 | 17 | [`groups/pets/schizzles-tsm-pets-holiday-events.txt`](../groups/pets/schizzles-tsm-pets-holiday-events.txt) | World events (Hallow's End, Winter Veil, Lunar Festival, Noblegarden and others) and the Darkmoon Faire. |
 | Pet Supplies | 0 | 1 | [`groups/pets/schizzles-tsm-pets-supplies.txt`](../groups/pets/schizzles-tsm-pets-supplies.txt) | Tradeable pet-battle supplies. Only the Flawless Battle-Stone qualifies: the typed/Polished/Perfect battle-stones, pet treats and pet bandages are all soulbound. |
 | **All battle pets** | **227** | **102** | [`groups/pets/schizzles-tsm-battle-pets-all.txt`](../groups/pets/schizzles-tsm-battle-pets-all.txt) | Every subgroup above, nested under **Schizzle's TSM > Battle Pets** |
 
@@ -30,123 +30,75 @@ Part of [Schizzle's TSM](../README.md).
 4. Use either the all string or the per-subgroup strings, not both. Remove the old v1 **Pets** group first, or let the import move the pets.
 5. Attach your Auctioning operation to **Battle Pets**. The subgroups inherit it.
 
-## High Value (45)
+## High Value (38)
+
+Rule: realm value ≥ 7,500g and region sale rate ≥ 0.03, or a TCG/promo pet. `[home: …]` shows the subgroup the pet would otherwise be in. Values are AH price stats from the TSM AppData snapshot of Nov 1 2026 (they change daily).
+
+| Name | TSM ID | Source | Realm value | Region sale rate |
+|---|---|---|---|---|
+| Ashleaf Spriteling | p:1323 | Drop: Leafmender / Zone: Timeless Isle [home: Pandaria Drops & Quests] | 23,431g | 0.500 |
+| Bananas | p:156 | Trading Card Game: Through the Dark Portal | TCG/promo rule |  |
+| Captured Firefly | i:29960 | companion item (teaches Firefly) [home: World Drops & Quests] | 23,584g | 0.037 |
+| Cat Carrier (Black Tabby) | i:8491 | companion item (teaches Black Tabby Cat) [home: World Drops & Quests] | 11,268g | 0.142 |
+| Clockwork Gnome | p:277 | Profession: Archaeology [home: Profession Pets] | 8,577g | 0.285 |
+| Darkmoon Eye | p:1063 | Drop: Darkmoon Pet Supplies [home: Holiday & Events] | 13,719g | 0.071 |
+| Darkmoon Rabbit | p:848 | Drop: Darkmoon Rabbit / Zone: Darkmoon Island [home: Holiday & Events] | 17,275g | 0.260 |
+| Eye of the Legion | p:348 | Trading Card Game: Timewalkers: War of the Anicents | TCG/promo rule |  |
+| Feline Familiar | i:70908 | companion item (teaches Feline Familiar) [home: Holiday & Events] | 8,485g | 0.054 |
+| Feline Familiar | p:319 | World Event: Hallow's End / Vendor: Chub / Zone: Tirisfal Glades / Cost: 150 / / Vendor: Dorothy / Zone: Stormwind City / Cost: 150 [home: Holiday & Events] | 8,002g | 0.272 |
+| Festival Lantern | p:342 | World Event: Lunar Festival / Vendor: Valadar Starsong / Zone: Moonglade / Cost: 50 [home: Holiday & Events] | 17,579g | 1.000 |
+| Firefly | p:146 | Drop: Bogflare Needler / Zone: Zangarmarsh [home: World Drops & Quests] | 7,850g | 0.062 |
+| Gahz'rooki | p:1237 | Vendor: Ravika / Zone: Durotar / Cost: 1 / / Vendor: Tenuki / Zone: Durotar / Cost: 1 [home: Vendor Pets] | 23,392g | 0.034 |
+| Gregarious Grell | p:333 | Trading Card Game: Crown of the Heavens | TCG/promo rule |  |
+| Gu'chi Swarmling | p:1345 | Drop: Gu'chi the Swarmbringer / Zone: Timeless Isle [home: Pandaria Drops & Quests] | 8,941g | 0.500 |
+| Gundrak Hatchling | i:48116 | companion item (teaches Gundrak Hatchling) [home: World Drops & Quests] | 10,204g | 1.000 |
+| Gundrak Hatchling | p:234 | Drop: Gundrak Raptor / Zone: Zul'Drak [home: World Drops & Quests] | 11,557g | 1.000 |
+| Jadefire Spirit | p:1348 | Drop: Spirit of Jadefire / Zone: Timeless Isle [home: Pandaria Drops & Quests] | 25,527g | 0.041 |
+| Kovok | p:1334 | Drop: Paragons of the Klaxxi / Raid: Siege of Orgrimmar [home: Raid & Dungeon Drops] | 45,117g | 1.000 |
+| Lumpy | p:337 | World Event: Feast of Winter Veil [home: Holiday & Events] | 11,040g | 0.045 |
+| Macabre Marionette | p:1351 | World Event: Day of the Dead [home: Holiday & Events] | 25,277g | 0.047 |
+| Magical Crawdad | p:132 | Profession: Fishing: Fishing (430) / Zone: Terokkar Forest (Fishing Nodes) [home: Profession Pets] | 33,773g | 1.000 |
+| Mojo | p:165 | Drop: Forest Frog / Zone: Zul'Aman [home: Raid & Dungeon Drops] | 11,575g | 0.045 |
+| Moon Moon | i:101570 | companion item (teaches Moon Moon) [home: Holiday & Events] | 28,273g | 0.111 |
+| Mulgore Hatchling | i:44980 | companion item (teaches Mulgore Hatchling) [home: Vendor Pets] | 9,839g | 1.000 |
+| Parrot Cage (Hyacinth Macaw) | i:8494 | companion item (teaches Hyacinth Macaw) [home: World Drops & Quests] | 15,092g | 0.052 |
+| Pierre | p:1204 | Profession: Engineering [home: Profession Pets] | 20,965g | 0.046 |
+| Rascal-Bot | p:1256 | Profession: Engineering [home: Profession Pets] | 15,484g | 0.066 |
+| Rotten Helper Box | i:104317 | companion item (teaches Rotten Little Helper) [home: Holiday & Events] | 50,155g | 0.062 |
+| Skunky Alemental | p:1336 | Drop: Zhu-Gon the Sour / Zone: Timeless Isle [home: Pandaria Drops & Quests] | 9,939g | 0.083 |
+| Son of Animus | p:1183 | Drop: Animus / Zone: Throne of Thunder [home: Raid & Dungeon Drops] | 13,805g | 0.200 |
+| Sprite Darter Hatchling | p:87 | Drop: World Drop / Zone: Feralas [home: World Drops & Quests] | 13,782g | 0.166 |
+| Tiny Crimson Whelpling | i:8499 | companion item (teaches Crimson Whelpling) [home: World Drops & Quests] | 19,785g | 0.363 |
+| Tiny Goldfish | i:85447 | companion item (teaches Tiny Goldfish) [home: Vendor Pets] | 8,056g | 0.071 |
+| Tiny Red Carp | i:94932 | companion item (teaches Tiny Red Carp) [home: Profession Pets] | 8,726g | 0.070 |
+| Tiny Red Carp | p:1206 | Profession: Fishing [home: Profession Pets] | 10,048g | 0.031 |
+| Tirisfal Batling | i:44971 | companion item (teaches Tirisfal Batling) [home: Vendor Pets] | 7,597g | 0.125 |
+| Vengeful Porcupette | p:1344 | Vendor: Speaker Gulan / Zone: Timeless Isle [home: Vendor Pets] | 20,000g | 0.300 |
+
+## Vendor Pets (98)
 
 | Name | TSM ID | Source |
 |---|---|---|
-| Bananas | p:156 | Trading Card Game: Through the Dark Portal |
-| Clockwork Gnome | p:277 | Profession: Archaeology |
-| Crawling Claw | p:264 | Profession: Archaeology |
-| Crimson Lasher | p:318 | Vendor: Ayla Shadowstorm / Zone: Molten Front / Cost: 1500 |
-| Droplet of Y'Shaarj | p:1331 | Drop: Sha of Pride / Raid: Siege of Orgrimmar / Difficulty: Flexible, Normal or Heroic |
-| Elementium Geode | p:293 | Drop: Elementium Vein, Rich Elementium Vein / Zone: Deepholm, Twilight Highlands, Uldum |
-| Enchanted Lantern | p:267 | Profession: Enchanting (525) / Formula: Enchanted Lantern |
-| Eye of the Legion | p:348 | Trading Card Game: Timewalkers: War of the Anicents |
-| Fossilized Hatchling | p:266 | Profession: Archaeology |
-| Fox Kit | p:278 | Drop: Baradin Fox / Zone: Tol Barad Peninsula |
-| Gregarious Grell | p:333 | Trading Card Game: Crown of the Heavens |
-| Hyjal Bear Cub | p:317 | Vendor: Varlan Highbough / Zone: Molten Front / Cost: 1500 |
-| Imperial Moth | p:1039 | Profession: Tailoring (Imperial Silk) |
-| Imperial Silkworm | p:1040 | Profession: Tailoring (Imperial Silk) |
-| Jade Owl | p:845 | Profession: Jewelcrafting |
-| Ji-Kun Hatchling | p:1202 | Drop: Ji-Kun / Zone: Throne of Thunder |
-| Kovok | p:1334 | Drop: Paragons of the Klaxxi / Raid: Siege of Orgrimmar |
-| Lil' Bling | p:1320 | Drop: Blingtron Gift Package |
-| Lil' Smoky | p:86 | Profession: Engineering |
-| Magic Lamp | p:292 | Profession: Enchanting |
-| Mechanical Pandaren Dragonling | p:844 | Profession: Engineering |
-| Mini Mindslayer | p:1156 | Drop: The Prophet Skeram / Zone: Ahn'Qiraj |
-| Mojo | p:165 | Drop: Forest Frog / Zone: Zul'Aman |
-| Moon Moon | p:1276 | Drop: Moonfang / Zone: Darkmoon Island |
-| Mr. Grubbs | p:286 | Drop: World Drop: Eastern Plaguelands (requires Fiona's Lucky Charm) |
-| Personal World Destroyer | p:261 | Profession: Engineering |
-| Phoenix Hatchling | p:175 | Drop: Kael'thas Sunstrider / Zone: Magisters' Terrace |
-| Pierre | p:1204 | Profession: Engineering |
-| Pterrordax Hatchling | p:309 | Profession: Archaeology |
-| Rascal-Bot | p:1256 | Profession: Engineering |
-| Sapphire Cub | p:846 | Profession: Jewelcrafting |
-| Searing Scorchling | p:172 | Vendor: Zen'Vorka / Zone: Molten Front / Cost: 30 |
-| Smolderweb Hatchling | p:90 | Drop: Mother Smolderweb / Zone: Lower Blackrock Spire |
-| Son of Animus | p:1183 | Drop: Animus / Zone: Throne of Thunder |
-| Spawn of G'nathus | p:1201 | Drop: G'nathus / Zone: Townlong Steppes |
-| Sprite Darter Hatchling | p:87 | Drop: World Drop / Zone: Feralas |
-| Sunreaver Micro-Sentry | p:1178 | Drop: Haywire Sunreaver Construct / Zone: Isle of Thunder |
-| Tiny Shale Spider | p:279 | Drop: Jadefang / Zone: Deepholm |
-| Voodoo Figurine | p:310 | Profession: Archaeology |
-| Worg Pup | p:89 | Drop: Quartermaster Zigris / Zone: Lower Blackrock Spire |
-| Elementium Geode | i:67282 | companion item (teaches Elementium Geode) |
-| Imperial Moth | i:90900 | companion item (teaches Imperial Moth) |
-| Imperial Silkworm | i:90902 | companion item (teaches Imperial Silkworm) |
-| Moon Moon | i:101570 | companion item (teaches Moon Moon) |
-| Spawn of G'nathus | i:94595 | companion item (teaches Spawn of G'nathus) |
-
-## Vendor Pets (100)
-
-| Name | TSM ID | Source |
-|---|---|---|
+| Albino Snake | i:44822 | companion item (teaches Albino Snake) |
 | Albino Snake | p:74 | Vendor: Breanni / Zone: Dalaran / Cost: 50 |
+| Ammen Vale Lashling | i:44984 | companion item (teaches Ammen Vale Lashling) |
 | Ammen Vale Lashling | p:212 | Vendor: Irisee / Zone: Icecrown / Cost: 40 |
+| Ancona Chicken | i:11023 | companion item (teaches Ancona Chicken) |
 | Ancona Chicken | p:52 | Vendor: "Plucky" Johnson / Zone: Thousand Needles / Cost: 1 |
+| Black Kingsnake | i:10360 | companion item (teaches Black Kingsnake) |
 | Black Kingsnake | p:75 | Vendor: Xan'tish / Zone: Orgrimmar / Cost: 50 |
 | Blue Clockwork Rocket Bot | p:254 | Vendor: World Vendors / Cost: 50 |
+| Blue Dragonhawk Hatchling | i:29958 | companion item (teaches Blue Dragonhawk Hatchling) |
 | Blue Dragonhawk Hatchling | p:145 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 10 |
 | Blue Moth | p:138 | Vendor: Sixx / Zone: The Exodar / Cost: 50 |
+| Blue Moth Egg | i:29901 | companion item (teaches Blue Moth) |
 | Bombay Cat | p:40 | Vendor: Donni Anthania / Zone: Elwynn Forest / Cost: 40 |
 | Brown Prairie Dog | p:70 | Vendor: Halpa, Naleen / Zone: Mulgore / Cost: 50 |
 | Brown Rabbit | p:137 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 10 |
-| Brown Snake | p:77 | Vendor: Xan'tish / Zone: Orgrimmar / Cost: 50 |
-| Calico Cat | p:224 | Vendor: Breanni / Zone: Crystalsong Forest / Cost: 50 |
-| Cockatiel | p:47 | Vendor: Harry No-Hooks, Narkk / Zone: The Cape of Stranglethorn / Cost: 40 |
-| Cornish Rex Cat | p:41 | Vendor: Donni Anthania / Zone: Elwynn Forest / Cost: 40 |
-| Crimson Snake | p:78 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 50 / / Vendor: Xan'tish / Zone: Orgrimmar / Cost: 50 |
-| Dun Morogh Cub | p:205 | Vendor: Derrick Brindlebeard / Zone: Icecrown / Cost: 40 |
-| Durotar Scorpion | p:207 | Vendor: Freka Bloodaxe / Zone: Icecrown / Cost: 40 |
-| Elwynn Lamb | p:209 | Vendor: Corporal Arthur Flew / Zone: Icecrown / Cost: 40 |
-| Enchanted Broom | p:213 | Vendor: Trellis Morningsun / Zone: Icecrown / Cost: 40 |
-| Gahz'rooki | p:1237 | Vendor: Ravika / Zone: Durotar / Cost: 1 / / Vendor: Tenuki / Zone: Durotar / Cost: 1 |
-| Ghostly Skull | p:190 | Vendor: Darahir / Zone: Crystalsong Forest / Cost: 40 |
-| Gilnean Raven | p:630 | Vendor: Will Larsons / Zone: Darkshore |
-| Golden Dragonhawk Hatchling | p:142 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
-| Great Horned Owl | p:68 | Vendor: Shylenai / Zone: Teldrassil / Cost: 50 |
-| Harmonious Porcupette | p:1346 | Vendor: Mistweaver Ku / Zone: Timeless Isle / Faction: Shaohao - Pathwalker |
-| Hawk Owl | p:67 | Vendor: Shylenai / Zone: Teldrassil / Cost: 50 |
-| Jade Crane Chick | p:792 | Vendor: Audrey Burnhep, Varzok / Zone: Stormwind, Orgrimmar / Cost: 50 |
-| Mana Wyrmling | p:136 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 40 |
-| Mechanopeep | p:215 | Vendor: Rillie Spindlenut / Zone: Icecrown |
-| Mulgore Hatchling | p:210 | Vendor: Doru Thunderhorn / Zone: Icecrown / Cost: 40 |
-| Nether Ray Fry | p:186 | Vendor: Grella / Zone: Terokkar Forest / Faction: Sha'tari Skyguard - Exalted / Cost: 40 |
-| Obsidian Hatchling | p:236 | Vendor: Breanni / Zone: Crystalsong Forest / Cost: 50 |
-| Orange Tabby Cat | p:43 | Vendor: Donni Anthania, Steven Lisbane / Zone: Elwynn Forest / Cost: 40 |
-| Pengu | p:198 | Vendor: Sairuk / Zone: Dragonblight / Faction: The Kalu'ak - Exalted / Cost: 12 / / Vendor: Tanaika / Zone: Howling Fjord / Faction: The Kalu'ak - Exalted / Cost: 12 |
-| Red Dragonhawk Hatchling | p:143 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
-| Red Moth | p:139 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 10 |
-| Rustberg Gull | p:271 | Vendor: Quartermaster Brazie / Zone: Tol Barad Peninsula / Faction: Baradin's Wardens - Honored / Cost: 50 |
-| Sen'jin Fetish | p:218 | Vendor: Samamba / Zone: Icecrown / Cost: 40 |
-| Senegal | p:51 | Vendor: Narkk, Harry No-Hooks / Zone: The Cape of Stranglethorn / / / Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 40 |
-| Shimmering Wyrmling | p:229 | Vendor: Hiren Loresong / Zone: Icecrown / Faction: The Silver Covenant - Exalted / Cost: 40 |
-| Shore Crawler | p:629 | Vendor: Matty / Zone: Orgrimmar |
-| Siamese Cat | p:44 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 60 |
-| Silver Dragonhawk Hatchling | p:144 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
-| Silver Tabby Cat | p:45 | Vendor: Donni Anthania / Zone: Elwynn Forest / Cost: 40 |
-| Snowshoe Rabbit | p:72 | Vendor: Yarlyn Amberstill / Zone: Dun Morogh / Cost: 20 |
-| Teldrassil Sproutling | p:204 | Vendor: Rook Hawkfist / Zone: Icecrown / Cost: 40 |
-| Tiny Goldfish | p:652 | Vendor: Nat Pagle / Zone: Krasarang Wilds / Faction: The Anglers - Honored / Cost: 250 |
-| Tiny Sporebat | p:167 | Vendor: Mycah / Zone: Zangarmarsh / Faction: Sporeggar - Exalted / Cost: 30 |
-| Tirisfal Batling | p:206 | Vendor: Eliza Killian / Zone: Icecrown / Cost: 40 |
-| Undercity Cockroach | p:55 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 50 / / Vendor: Jeremiah Payson / Zone: Tirisfal Glades / Cost: 50 |
-| Vengeful Porcupette | p:1344 | Vendor: Speaker Gulan / Zone: Timeless Isle |
-| White Kitten | p:46 | Vendor: Lil Timmy / Zone: Stormwind City / Cost: 60 |
-| White Moth | p:141 | Vendor: Sixx / Zone: The Exodar / Cost: 50 |
-| Winterspring Cub | p:306 | Vendor: Michelle De Rum / Zone: Winterspring / Cost: 50 |
-| Yellow Moth | p:140 | Vendor: Sixx / Zone: The Exodar / Cost: 50 |
-| Albino Snake | i:44822 | companion item (teaches Albino Snake) |
-| Ammen Vale Lashling | i:44984 | companion item (teaches Ammen Vale Lashling) |
-| Ancona Chicken | i:11023 | companion item (teaches Ancona Chicken) |
-| Black Kingsnake | i:10360 | companion item (teaches Black Kingsnake) |
-| Blue Dragonhawk Hatchling | i:29958 | companion item (teaches Blue Dragonhawk Hatchling) |
-| Blue Moth Egg | i:29901 | companion item (teaches Blue Moth) |
 | Brown Rabbit Crate | i:29364 | companion item (teaches Brown Rabbit) |
 | Brown Snake | i:10361 | companion item (teaches Brown Snake) |
+| Brown Snake | p:77 | Vendor: Xan'tish / Zone: Orgrimmar / Cost: 50 |
+| Calico Cat | p:224 | Vendor: Breanni / Zone: Crystalsong Forest / Cost: 50 |
 | Cat Carrier (Bombay) | i:8485 | companion item (teaches Bombay Cat) |
 | Cat Carrier (Calico Cat) | i:46398 | companion item (teaches Calico Cat) |
 | Cat Carrier (Cornish Rex) | i:8486 | companion item (teaches Cornish Rex Cat) |
@@ -154,108 +106,159 @@ Part of [Schizzle's TSM](../README.md).
 | Cat Carrier (Siamese) | i:8490 | companion item (teaches Siamese Cat) |
 | Cat Carrier (Silver Tabby) | i:8488 | companion item (teaches Silver Tabby Cat) |
 | Cat Carrier (White Kitten) | i:8489 | companion item (teaches White Kitten) |
+| Cockatiel | p:47 | Vendor: Harry No-Hooks, Narkk / Zone: The Cape of Stranglethorn / Cost: 40 |
+| Cornish Rex Cat | p:41 | Vendor: Donni Anthania / Zone: Elwynn Forest / Cost: 40 |
+| Crimson Lasher | p:318 | Vendor: Ayla Shadowstorm / Zone: Molten Front / Cost: 1500 |
 | Crimson Snake | i:10392 | companion item (teaches Crimson Snake) |
+| Crimson Snake | p:78 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 50 / / Vendor: Xan'tish / Zone: Orgrimmar / Cost: 50 |
 | Dun Morogh Cub | i:44970 | companion item (teaches Dun Morogh Cub) |
+| Dun Morogh Cub | p:205 | Vendor: Derrick Brindlebeard / Zone: Icecrown / Cost: 40 |
 | Durotar Scorpion | i:44973 | companion item (teaches Durotar Scorpion) |
+| Durotar Scorpion | p:207 | Vendor: Freka Bloodaxe / Zone: Icecrown / Cost: 40 |
 | Elwynn Lamb | i:44974 | companion item (teaches Elwynn Lamb) |
+| Elwynn Lamb | p:209 | Vendor: Corporal Arthur Flew / Zone: Icecrown / Cost: 40 |
 | Enchanted Broom | i:44982 | companion item (teaches Enchanted Broom) |
+| Enchanted Broom | p:213 | Vendor: Trellis Morningsun / Zone: Icecrown / Cost: 40 |
+| Ghostly Skull | p:190 | Vendor: Darahir / Zone: Crystalsong Forest / Cost: 40 |
+| Gilnean Raven | p:630 | Vendor: Will Larsons / Zone: Darkshore |
 | Golden Dragonhawk Hatchling | i:29953 | companion item (teaches Golden Dragonhawk Hatchling) |
+| Golden Dragonhawk Hatchling | p:142 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
 | Great Horned Owl | i:8500 | companion item (teaches Great Horned Owl) |
+| Great Horned Owl | p:68 | Vendor: Shylenai / Zone: Teldrassil / Cost: 50 |
+| Harmonious Porcupette | p:1346 | Vendor: Mistweaver Ku / Zone: Timeless Isle / Faction: Shaohao - Pathwalker |
 | Hawk Owl | i:8501 | companion item (teaches Hawk Owl) |
+| Hawk Owl | p:67 | Vendor: Shylenai / Zone: Teldrassil / Cost: 50 |
+| Hyjal Bear Cub | p:317 | Vendor: Varlan Highbough / Zone: Molten Front / Cost: 1500 |
 | Jade Crane Chick | i:88148 | companion item (teaches Jade Crane Chick) |
+| Jade Crane Chick | p:792 | Vendor: Audrey Burnhep, Varzok / Zone: Stormwind, Orgrimmar / Cost: 50 |
 | Mana Wyrmling | i:29363 | companion item (teaches Mana Wyrmling) |
+| Mana Wyrmling | p:136 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 40 |
 | Mechanopeep | i:45002 | companion item (teaches Mechanopeep) |
-| Mulgore Hatchling | i:44980 | companion item (teaches Mulgore Hatchling) |
+| Mechanopeep | p:215 | Vendor: Rillie Spindlenut / Zone: Icecrown |
+| Mulgore Hatchling | p:210 | Vendor: Doru Thunderhorn / Zone: Icecrown / Cost: 40 |
+| Nether Ray Fry | p:186 | Vendor: Grella / Zone: Terokkar Forest / Faction: Sha'tari Skyguard - Exalted / Cost: 40 |
 | Obsidian Hatchling | i:48120 | companion item (teaches Obsidian Hatchling) |
+| Obsidian Hatchling | p:236 | Vendor: Breanni / Zone: Crystalsong Forest / Cost: 50 |
+| Orange Tabby Cat | p:43 | Vendor: Donni Anthania, Steven Lisbane / Zone: Elwynn Forest / Cost: 40 |
 | Parrot Cage (Cockatiel) | i:8496 | companion item (teaches Cockatiel) |
 | Parrot Cage (Senegal) | i:8495 | companion item (teaches Senegal) |
+| Pengu | p:198 | Vendor: Sairuk / Zone: Dragonblight / Faction: The Kalu'ak - Exalted / Cost: 12 / / Vendor: Tanaika / Zone: Howling Fjord / Faction: The Kalu'ak - Exalted / Cost: 12 |
 | Prairie Dog Whistle | i:10394 | companion item (teaches Brown Prairie Dog) |
 | Rabbit Crate (Snowshoe) | i:8497 | companion item (teaches Snowshoe Rabbit) |
 | Red Dragonhawk Hatchling | i:29956 | companion item (teaches Red Dragonhawk Hatchling) |
+| Red Dragonhawk Hatchling | p:143 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
+| Red Moth | p:139 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 10 |
 | Red Moth Egg | i:29902 | companion item (teaches Red Moth) |
+| Rustberg Gull | p:271 | Vendor: Quartermaster Brazie / Zone: Tol Barad Peninsula / Faction: Baradin's Wardens - Honored / Cost: 50 |
+| Searing Scorchling | p:172 | Vendor: Zen'Vorka / Zone: Molten Front / Cost: 30 |
 | Sen'jin Fetish | i:45606 | companion item (teaches Sen'jin Fetish) |
+| Sen'jin Fetish | p:218 | Vendor: Samamba / Zone: Icecrown / Cost: 40 |
+| Senegal | p:51 | Vendor: Narkk, Harry No-Hooks / Zone: The Cape of Stranglethorn / / / Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 40 |
 | Shimmering Wyrmling | i:46820 | companion item (teaches Shimmering Wyrmling) |
 | Shimmering Wyrmling | i:46821 | companion item (teaches Shimmering Wyrmling) |
+| Shimmering Wyrmling | p:229 | Vendor: Hiren Loresong / Zone: Icecrown / Faction: The Silver Covenant - Exalted / Cost: 40 |
+| Shore Crawler | p:629 | Vendor: Matty / Zone: Orgrimmar |
+| Siamese Cat | p:44 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 60 |
 | Silver Dragonhawk Hatchling | i:29957 | companion item (teaches Silver Dragonhawk Hatchling) |
+| Silver Dragonhawk Hatchling | p:144 | Vendor: Jilanne / Zone: Eversong Woods / Cost: 50 |
+| Silver Tabby Cat | p:45 | Vendor: Donni Anthania / Zone: Elwynn Forest / Cost: 40 |
+| Snowshoe Rabbit | p:72 | Vendor: Yarlyn Amberstill / Zone: Dun Morogh / Cost: 20 |
 | Teldrassil Sproutling | i:44965 | companion item (teaches Teldrassil Sproutling) |
-| Tiny Goldfish | i:85447 | companion item (teaches Tiny Goldfish) |
-| Tirisfal Batling | i:44971 | companion item (teaches Tirisfal Batling) |
+| Teldrassil Sproutling | p:204 | Vendor: Rook Hawkfist / Zone: Icecrown / Cost: 40 |
+| Tiny Goldfish | p:652 | Vendor: Nat Pagle / Zone: Krasarang Wilds / Faction: The Anglers - Honored / Cost: 250 |
+| Tiny Sporebat | p:167 | Vendor: Mycah / Zone: Zangarmarsh / Faction: Sporeggar - Exalted / Cost: 30 |
+| Tirisfal Batling | p:206 | Vendor: Eliza Killian / Zone: Icecrown / Cost: 40 |
 | Undercity Cockroach | i:10393 | companion item (teaches Undercity Cockroach) |
+| Undercity Cockroach | p:55 | Vendor: Dealer Rashaad / Zone: Netherstorm / Cost: 50 / / Vendor: Jeremiah Payson / Zone: Tirisfal Glades / Cost: 50 |
+| White Kitten | p:46 | Vendor: Lil Timmy / Zone: Stormwind City / Cost: 60 |
+| White Moth | p:141 | Vendor: Sixx / Zone: The Exodar / Cost: 50 |
 | White Moth Egg | i:29904 | companion item (teaches White Moth) |
 | Winterspring Cub | i:69239 | companion item (teaches Winterspring Cub) |
+| Winterspring Cub | p:306 | Vendor: Michelle De Rum / Zone: Winterspring / Cost: 50 |
+| Yellow Moth | p:140 | Vendor: Sixx / Zone: The Exodar / Cost: 50 |
 | Yellow Moth Egg | i:29903 | companion item (teaches Yellow Moth) |
 
-## Profession Pets (21)
+## Profession Pets (33)
 
 | Name | TSM ID | Source |
 |---|---|---|
 | Chuck | p:174 | Profession: Fishing / Zone: Shattrath |
+| Crawling Claw | p:264 | Profession: Archaeology |
 | De-Weaponized Mechanical Companion | p:262 | Profession: Engineering |
+| Enchanted Lantern | p:267 | Profession: Enchanting (525) / Formula: Enchanted Lantern |
+| Fossilized Hatchling | p:266 | Profession: Archaeology |
 | Giant Sewer Rat | p:193 | Profession: Fishing / Zone: Dalaran |
+| Imperial Moth | i:90900 | companion item (teaches Imperial Moth) |
+| Imperial Moth | p:1039 | Profession: Tailoring (Imperial Silk) |
+| Imperial Silkworm | i:90902 | companion item (teaches Imperial Silkworm) |
+| Imperial Silkworm | p:1040 | Profession: Tailoring (Imperial Silk) |
+| Jade Owl | p:845 | Profession: Jewelcrafting |
 | Lifelike Toad | p:95 | Profession: Engineering |
-| Magical Crawdad | p:132 | Profession: Fishing: Fishing (430) / Zone: Terokkar Forest (Fishing Nodes) |
+| Lil' Smoky | p:86 | Profession: Engineering |
+| Magic Lamp | p:292 | Profession: Enchanting |
+| Mechanical Pandaren Dragonling | p:844 | Profession: Engineering |
 | Mechanical Squirrel | p:39 | Profession: Engineering |
 | Muckbreath | p:164 | Profession: Fishing / Zone: Shattrath |
+| Personal World Destroyer | p:261 | Profession: Engineering |
 | Pet Bombling | p:85 | Profession: Engineering |
+| Pterrordax Hatchling | p:309 | Profession: Archaeology |
+| Sapphire Cub | p:846 | Profession: Jewelcrafting |
 | Sea Pony | p:340 | Profession: Fishing / Zone: Darkmoon Island |
 | Snarly | p:173 | Profession: Fishing / Zone: Shattrath |
 | Strand Crawler | p:211 | Profession: Fishing / Zone: Northrend, Stormwind, Orgrimmar |
+| Tiny Blue Carp | i:94933 | companion item (teaches Tiny Blue Carp) |
 | Tiny Blue Carp | p:1207 | Profession: Fishing |
+| Tiny Green Carp | i:94934 | companion item (teaches Tiny Green Carp) |
 | Tiny Green Carp | p:1208 | Profession: Fishing |
-| Tiny Red Carp | p:1206 | Profession: Fishing |
+| Tiny White Carp | i:94935 | companion item (teaches Tiny White Carp) |
 | Tiny White Carp | p:1209 | Profession: Fishing |
 | Toothy | p:163 | Profession: Fishing / Zone: Shattrath |
 | Tranquil Mechanical Yeti | p:116 | Profession: Engineering |
-| Tiny Blue Carp | i:94933 | companion item (teaches Tiny Blue Carp) |
-| Tiny Green Carp | i:94934 | companion item (teaches Tiny Green Carp) |
-| Tiny Red Carp | i:94932 | companion item (teaches Tiny Red Carp) |
-| Tiny White Carp | i:94935 | companion item (teaches Tiny White Carp) |
+| Voodoo Figurine | p:310 | Profession: Archaeology |
 
-## World Drops & Quests (39)
+## World Drops & Quests (37)
 
 | Name | TSM ID | Source |
 |---|---|---|
+| Azure Whelpling | i:34535 | companion item (teaches Azure Whelpling) |
 | Azure Whelpling | p:57 | Drop: World Drop / Zone: Winterspring |
 | Black Tabby Cat | p:42 | Drop: World Drop / Zone: Hillsbrad Foothills |
+| Cobra Hatchling | i:39898 | companion item (teaches Cobra Hatchling) |
 | Cobra Hatchling | p:197 | Drop: Mysterious Egg |
 | Crimson Whelpling | p:58 | Drop: World Drop / Zone: Wetlands |
-| Dark Whelpling | p:56 | Drop: Whelplings / Zone: Wetlands, Dustwallow Marsh, Badlands, Burning Steppes |
-| Darting Hatchling | p:232 | Drop: Dart's Nest / Zone: Dustwallow Marsh |
-| Disgusting Oozeling | p:114 | Drop: World Drop / Creature: Oozes, Slimes and Worms |
-| Emerald Whelpling | p:59 | Drop: Noxious Whelp / Zone: Feralas |
-| Firefly | p:146 | Drop: Bogflare Needler / Zone: Zangarmarsh |
-| Gundrak Hatchling | p:234 | Drop: Gundrak Raptor / Zone: Zul'Drak |
-| Hyacinth Macaw | p:49 | Drop: World Drop / Zone: Northern Stranglethorn, The Cape of Stranglethorn |
-| Leaping Hatchling | p:235 | Drop: Takk's Nest / Zone: The Barrens |
-| Porcupette | p:381 | Drop: Sack of Pet Supplies |
-| Proto-Drake Whelp | p:196 | Drop: Mysterious Egg |
-| Ravasaur Hatchling | p:237 | Drop: Ravasaur Matriarch's Nest / Zone: Un'goro Crater |
-| Razormaw Hatchling | p:238 | Drop: Razormaw Matriarch's Nest / Zone: Wetlands |
-| Razzashi Hatchling | p:239 | Drop: World Drop / Zone: Northern Stranglethorn, The Cape of Stranglethorn |
-| Tickbird Hatchling | p:194 | Drop: Mysterious Egg |
-| White Tickbird Hatchling | p:195 | Drop: Mysterious Egg |
-| Azure Whelpling | i:34535 | companion item (teaches Azure Whelpling) |
-| Captured Firefly | i:29960 | companion item (teaches Firefly) |
-| Cat Carrier (Black Tabby) | i:8491 | companion item (teaches Black Tabby Cat) |
-| Cobra Hatchling | i:39898 | companion item (teaches Cobra Hatchling) |
 | Dark Whelpling | i:10822 | companion item (teaches Dark Whelpling) |
+| Dark Whelpling | p:56 | Drop: Whelplings / Zone: Wetlands, Dustwallow Marsh, Badlands, Burning Steppes |
 | Darting Hatchling | i:48112 | companion item (teaches Darting Hatchling) |
+| Darting Hatchling | p:232 | Drop: Dart's Nest / Zone: Dustwallow Marsh |
 | Disgusting Oozeling | i:20769 | companion item (teaches Disgusting Oozeling) |
-| Gundrak Hatchling | i:48116 | companion item (teaches Gundrak Hatchling) |
+| Disgusting Oozeling | p:114 | Drop: World Drop / Creature: Oozes, Slimes and Worms |
+| Elementium Geode | i:67282 | companion item (teaches Elementium Geode) |
+| Elementium Geode | p:293 | Drop: Elementium Vein, Rich Elementium Vein / Zone: Deepholm, Twilight Highlands, Uldum |
+| Emerald Whelpling | p:59 | Drop: Noxious Whelp / Zone: Feralas |
+| Fox Kit | p:278 | Drop: Baradin Fox / Zone: Tol Barad Peninsula |
+| Hyacinth Macaw | p:49 | Drop: World Drop / Zone: Northern Stranglethorn, The Cape of Stranglethorn |
 | Leaping Hatchling | i:48118 | companion item (teaches Leaping Hatchling) |
+| Leaping Hatchling | p:235 | Drop: Takk's Nest / Zone: The Barrens |
 | Mechanical Chicken | i:10398 | companion item (teaches Mechanical Chicken); the learned pet cannot be caged |
-| Parrot Cage (Hyacinth Macaw) | i:8494 | companion item (teaches Hyacinth Macaw) |
+| Mr. Grubbs | p:286 | Drop: World Drop: Eastern Plaguelands (requires Fiona's Lucky Charm) |
 | Porcupette | i:89587 | companion item (teaches Porcupette) |
+| Porcupette | p:381 | Drop: Sack of Pet Supplies |
 | Proto-Drake Whelp | i:44721 | companion item (teaches Proto-Drake Whelp) |
+| Proto-Drake Whelp | p:196 | Drop: Mysterious Egg |
 | Ravasaur Hatchling | i:48122 | companion item (teaches Ravasaur Hatchling) |
+| Ravasaur Hatchling | p:237 | Drop: Ravasaur Matriarch's Nest / Zone: Un'goro Crater |
 | Razormaw Hatchling | i:48124 | companion item (teaches Razormaw Hatchling) |
+| Razormaw Hatchling | p:238 | Drop: Razormaw Matriarch's Nest / Zone: Wetlands |
 | Razzashi Hatchling | i:48126 | companion item (teaches Razzashi Hatchling) |
+| Razzashi Hatchling | p:239 | Drop: World Drop / Zone: Northern Stranglethorn, The Cape of Stranglethorn |
 | Tickbird Hatchling | i:39896 | companion item (teaches Tickbird Hatchling) |
-| Tiny Crimson Whelpling | i:8499 | companion item (teaches Crimson Whelpling) |
+| Tickbird Hatchling | p:194 | Drop: Mysterious Egg |
 | Tiny Emerald Whelpling | i:8498 | companion item (teaches Emerald Whelpling) |
+| Tiny Shale Spider | p:279 | Drop: Jadefang / Zone: Deepholm |
 | White Tickbird Hatchling | i:39899 | companion item (teaches White Tickbird Hatchling) |
+| White Tickbird Hatchling | p:195 | Drop: Mysterious Egg |
 
-## Raid & Dungeon Drops (32)
+## Raid & Dungeon Drops (38)
 
 | Name | TSM ID | Source |
 |---|---|---|
@@ -266,49 +269,54 @@ Part of [Schizzle's TSM](../README.md).
 | Coilfang Stalker | p:1232 | Drop: Lady Vashj / Zone: Serpentshrine Cavern |
 | Corefire Imp | p:1149 | Drop: Magmadar / Zone: Molten Core |
 | Death Talon Whelpguard | p:1153 | Drop: Broodlord Lashlayer / Zone: Blackwing Lair |
+| Deviate Hatchling | i:48114 | companion item (teaches Deviate Hatchling) |
 | Deviate Hatchling | p:233 | Drop: Deviate Guardian, Deviate Ravager / Zone: Wailing Caverns |
+| Droplet of Y'Shaarj | p:1331 | Drop: Sha of Pride / Raid: Siege of Orgrimmar / Difficulty: Flexible, Normal or Heroic |
 | Fiendish Imp | p:1229 | Drop: Terestian Illhoof / Zone: Karazhan |
 | Fungal Abomination | p:1144 | Drop: Loatheb / Zone: Naxxramas |
 | Giant Bone Spider | p:1143 | Drop: Maexxna / Zone: Naxxramas |
 | Gooey Sha-ling | p:1332 | Drop: Sha of Pride / Raid: Siege of Orgrimmar / Difficulty: LFR and Flexible |
 | Green Wing Macaw | p:50 | Drop: Defias Pirate / Zone: The Deadmines |
 | Harbinger of Flame | p:1147 | Drop: Sulfuron Harbinger / Zone: Molten Core |
+| Ji-Kun Hatchling | p:1202 | Drop: Ji-Kun / Zone: Throne of Thunder |
 | Lesser Voidcaller | p:1234 | Drop: High Astromancer Solarian / Zone: Tempest Keep |
 | Lil' Bad Wolf | p:1226 | Drop: The Big Bad Wolf / Zone: Karazhan |
 | Living Fluid | p:1243 | Drop: Primordius / Zone: Throne of Thunder / Difficulty: Looking For Raid |
 | Living Sandling | p:1177 | Drop: Throne of Thunder |
 | Menagerie Custodian | p:1227 | Drop: The Curator / Zone: Karazhan |
+| Mini Mindslayer | p:1156 | Drop: The Prophet Skeram / Zone: Ahn'Qiraj |
 | Netherspace Abyssal | p:1228 | Drop: Prince Malchezaar / Zone: Karazhan |
+| Parrot Cage (Green Wing Macaw) | i:8492 | companion item (teaches Green Wing Macaw) |
+| Phoenix Hatchling | p:175 | Drop: Kael'thas Sunstrider / Zone: Magisters' Terrace |
 | Phoenix Hawk Hatchling | p:1235 | Drop: Al'ar / Zone: Tempest Keep |
 | Pocket Reaver | p:1233 | Drop: Void Reaver / Zone: Tempest Keep |
+| Pygmy Direhorn | i:94574 | companion item (teaches Pygmy Direhorn) |
 | Pygmy Direhorn | p:1200 | Drop: Horridon / Zone: Throne of Thunder |
+| Smolderweb Hatchling | p:90 | Drop: Mother Smolderweb / Zone: Lower Blackrock Spire |
 | Stitched Pup | p:1146 | Drop: Gluth / Zone: Naxxramas |
 | Tainted Waveling | p:1231 | Drop: Hydross the Unstable / Zone: Serpentshrine Cavern |
 | Tideskipper | p:1230 | Drop: Morogrim Tidewalker / Zone: Serpentshrine Cavern |
 | Untamed Hatchling | p:1151 | Drop: Razorgore the Untamed / Zone: Blackwing Lair |
 | Viscidus Globule | p:1154 | Drop: Viscidus / Zone: Ahn'Qiraj |
 | Viscous Horror | p:1244 | Drop: Primordius / Zone: Throne of Thunder / Difficulty: Normal or Heroic |
-| Deviate Hatchling | i:48114 | companion item (teaches Deviate Hatchling) |
-| Parrot Cage (Green Wing Macaw) | i:8492 | companion item (teaches Green Wing Macaw) |
-| Pygmy Direhorn | i:94574 | companion item (teaches Pygmy Direhorn) |
+| Worg Pup | p:89 | Drop: Quartermaster Zigris / Zone: Lower Blackrock Spire |
 
 ## Pandaria Drops & Quests (35)
 
 | Name | TSM ID | Source |
 |---|---|---|
 | Aqua Strider | p:836 | Drop: Nalash Verdantis / Zone: Dread Wastes |
-| Ashleaf Spriteling | p:1323 | Drop: Leafmender / Zone: Timeless Isle |
 | Azure Crane Chick | p:1321 | Drop: Crane Nest / Zone: Timeless Isle |
 | Dandelion Frolicker | p:1329 | Drop: Scary Sprite / Zone: Timeless Isle |
 | Death Adder Hatchling | p:1330 | Drop: Imperial Python / Zone: Timeless Isle |
+| Direhorn Runt | i:94573 | companion item (teaches Direhorn Runt) |
 | Direhorn Runt | p:1205 | Drop: Direhorns / Zone: Isle of Giants |
 | Filthling | p:1245 | Drop: Quivering Filth |
 | Fishy | p:847 | Quest: Let Them Burn / Zone: The Jade Forest |
 | Grinder | p:834 | Drop: Karr the Darkener / Zone: Dread Wastes |
-| Gu'chi Swarmling | p:1345 | Drop: Gu'chi the Swarmbringer / Zone: Timeless Isle |
 | Gulp Froglet | p:1338 | Drop: Bufo / Pet Battle: Timeless Isle |
-| Jadefire Spirit | p:1348 | Drop: Spirit of Jadefire / Zone: Timeless Isle |
 | Jademist Dancer | p:1333 | Drop: Jademist Dancer / Zone: Timeless Isle |
+| Lil' Bling | p:1320 | Drop: Blingtron Gift Package |
 | Mountain Panda | p:1198 | Quest: Beasts of Fable |
 | Ominous Flame | p:1335 | Drop: Foreboding Flame / Zone: Timeless Isle |
 | Pandaren Air Spirit | p:1125 | Quest: Pandaren Spirit Tamer / Zone: Vale of Eternal Blossoms |
@@ -316,81 +324,75 @@ Part of [Schizzle's TSM](../README.md).
 | Pandaren Fire Spirit | p:1124 | Quest: Pandaren Spirit Tamer / Zone: Vale of Eternal Blossoms |
 | Pandaren Water Spirit | p:868 | Quest: Pandaren Spirit Tamer / Zone: Vale of Eternal Blossoms |
 | Ruby Droplet | p:1328 | Drop: Garnia / Zone: Timeless Isle |
-| Skunky Alemental | p:1336 | Drop: Zhu-Gon the Sour / Zone: Timeless Isle |
+| Singing Cricket Cage | i:88147 | companion item (teaches Singing Cricket); the learned pet cannot be caged |
 | Snowy Panda | p:1197 | Quest: Beasts of Fable |
+| Spawn of G'nathus | i:94595 | companion item (teaches Spawn of G'nathus) |
+| Spawn of G'nathus | p:1201 | Drop: G'nathus / Zone: Townlong Steppes |
+| Spectral Porcupette | i:94190 | companion item (teaches Spectral Porcupette) |
 | Spectral Porcupette | p:1185 | Quest: A Large Pile of Giant Dinosaur Bones / Zone: Isle Of Giants |
 | Spineclaw Crab | p:1337 | Drop: Monstrous Spineclaw / Zone: Timeless Isle |
+| Stunted Direhorn | i:94191 | companion item (teaches Stunted Direhorn); the learned pet cannot be caged |
 | Sunfur Panda | p:1196 | Quest: Beasts of Fable |
+| Sunreaver Micro-Sentry | p:1178 | Drop: Haywire Sunreaver Construct / Zone: Isle of Thunder |
+| Terrible Turnip | i:85220 | companion item (teaches Terrible Turnip) |
 | Terrible Turnip | p:650 | Drop: World Drop / Zone: Valley of the Four Winds |
 | Zandalari Anklerender | p:1211 | Drop: Zandalari Dinomancer / Zone: Isle Of Giants |
 | Zandalari Footslasher | p:1212 | Drop: Zandalari Dinomancer / Zone: Isle Of Giants |
 | Zandalari Kneebiter | p:1180 | Drop: Zandalari Dinomancer / Zone: Isle Of Giants |
 | Zandalari Toenibbler | p:1213 | Drop: Zandalari Dinomancer / Zone: Isle Of Giants |
-| Direhorn Runt | i:94573 | companion item (teaches Direhorn Runt) |
-| Singing Cricket Cage | i:88147 | companion item (teaches Singing Cricket); the learned pet cannot be caged |
-| Spectral Porcupette | i:94190 | companion item (teaches Spectral Porcupette) |
-| Stunted Direhorn | i:94191 | companion item (teaches Stunted Direhorn); the learned pet cannot be caged |
-| Terrible Turnip | i:85220 | companion item (teaches Terrible Turnip) |
 
-## Holiday & Events (56)
+## Holiday & Events (49)
 
 | Name | TSM ID | Source |
 |---|---|---|
+| Captured Flame | i:23083 | companion item (teaches Spirit of Summer) |
 | Clockwork Rocket Bot | p:191 | World Event: Feast of Winter Veil |
 | Darkmoon Cub | p:343 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
-| Darkmoon Eye | p:1063 | Drop: Darkmoon Pet Supplies |
+| Darkmoon Eye | i:91040 | companion item (teaches Darkmoon Eye) |
+| Darkmoon Glowfly | i:91031 | companion item (teaches Darkmoon Glowfly); the learned pet cannot be caged |
+| Darkmoon Hatchling | i:91003 | companion item (teaches Darkmoon Hatchling) |
 | Darkmoon Hatchling | p:1061 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
 | Darkmoon Monkey | p:330 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
-| Darkmoon Rabbit | p:848 | Drop: Darkmoon Rabbit / Zone: Darkmoon Island |
+| Darkmoon Rabbit | i:80008 | companion item (teaches Darkmoon Rabbit) |
 | Darkmoon Tonk | p:338 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
 | Darkmoon Turtle | p:335 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
 | Darkmoon Zeppelin | p:339 | Vendor: Lhara / Zone: Darkmoon Island / Cost: 90 |
 | Egbert | p:158 | World Event: Children's Week |
 | Father Winter's Helper | p:119 | World Event: Feast of Winter Veil |
-| Feline Familiar | p:319 | World Event: Hallow's End / Vendor: Chub / Zone: Tirisfal Glades / Cost: 150 / / Vendor: Dorothy / Zone: Stormwind City / Cost: 150 |
-| Festival Lantern | p:342 | World Event: Lunar Festival / Vendor: Valadar Starsong / Zone: Moonglade / Cost: 50 |
+| Festival Lantern | i:74611 | companion item (teaches Festival Lantern) |
 | Frigid Frostling | p:253 | World Event: Midsummer Fire Festival |
+| Green Helper Box | i:21301 | companion item (teaches Father Winter's Helper) |
+| Jingling Bell | i:21308 | companion item (teaches Winter Reindeer) |
 | Legs | p:308 | World Event: Children's Week |
-| Lumpy | p:337 | World Event: Feast of Winter Veil |
+| Lunar Lantern | i:74610 | companion item (teaches Lunar Lantern) |
 | Lunar Lantern | p:341 | World Event: Lunar Festival / Vendor: Valadar Starsong / Zone: Moonglade / Cost: 50 |
-| Macabre Marionette | p:1351 | World Event: Day of the Dead |
+| Moon Moon | p:1276 | Drop: Moonfang / Zone: Darkmoon Island |
 | Mr. Wiggles | p:126 | World Event: Children's Week |
 | Peanut | p:159 | World Event: Children's Week |
 | Peddlefeet | p:122 | World Event: Love is in the Air / Vendor: Lovely Merchant / Cost: 40 |
+| Pint-Sized Pink Pachyderm | i:46707 | companion item (teaches Pint-Sized Pink Pachyderm) |
 | Pint-Sized Pink Pachyderm | p:166 | World Event: Brewfest / Vendor: Belbi Quikswitch / Zone: Dun Morogh / Cost: 100 / / Vendor: Bliz Fixwidget / Zone: Durotar / Cost: 100 |
+| Red Helper Box | i:21305 | companion item (teaches Winter's Little Helper) |
 | Rotten Little Helper | p:1349 | Quest: World Event: Feast of Winter Veil |
 | Scooter the Snail | p:289 | World Event: Children's Week |
+| Sinister Squashling | i:33154 | companion item (teaches Sinister Squashling) |
 | Sinister Squashling | p:162 | World Event: Hallow's End |
+| Snowman Kit | i:21309 | companion item (teaches Tiny Snowman) |
 | Speedy | p:125 | World Event: Children's Week |
 | Spirit of Summer | p:128 | World Event: Midsummer Fire Festival / Vendor: Midsummer Merchant / Cost: 350 |
 | Spring Rabbit | p:200 | World Event: Noblegarden / Vendor: Noblegarden Merchant / Cost: 100 |
+| Spring Rabbit's Foot | i:44794 | companion item (teaches Spring Rabbit) |
 | Tiny Snowman | p:117 | World Event: Feast of Winter Veil |
 | Toxic Wasteling | p:251 | World Event: Love is in the Air |
 | Tree Frog | p:65 | Vendor: Flik / Zone: Darkmoon Island / Cost: 1 |
+| Tree Frog Box | i:11026 | companion item (teaches Tree Frog) |
+| Truesilver Shafted Arrow | i:22235 | companion item (teaches Peddlefeet) |
 | Whiskers the Rat | p:127 | World Event: Children's Week |
 | Willy | p:157 | World Event: Children's Week |
 | Winter Reindeer | p:118 | World Event: Feast of Winter Veil |
 | Winter's Little Helper | p:120 | World Event: Feast of Winter Veil |
 | Wolpertinger | p:153 | World Event: Brewfest |
 | Wood Frog | p:64 | Vendor: Flik / Zone: Darkmoon Island / Cost: 1 |
-| Captured Flame | i:23083 | companion item (teaches Spirit of Summer) |
-| Darkmoon Eye | i:91040 | companion item (teaches Darkmoon Eye) |
-| Darkmoon Glowfly | i:91031 | companion item (teaches Darkmoon Glowfly); the learned pet cannot be caged |
-| Darkmoon Hatchling | i:91003 | companion item (teaches Darkmoon Hatchling) |
-| Darkmoon Rabbit | i:80008 | companion item (teaches Darkmoon Rabbit) |
-| Feline Familiar | i:70908 | companion item (teaches Feline Familiar) |
-| Festival Lantern | i:74611 | companion item (teaches Festival Lantern) |
-| Green Helper Box | i:21301 | companion item (teaches Father Winter's Helper) |
-| Jingling Bell | i:21308 | companion item (teaches Winter Reindeer) |
-| Lunar Lantern | i:74610 | companion item (teaches Lunar Lantern) |
-| Pint-Sized Pink Pachyderm | i:46707 | companion item (teaches Pint-Sized Pink Pachyderm) |
-| Red Helper Box | i:21305 | companion item (teaches Winter's Little Helper) |
-| Rotten Helper Box | i:104317 | companion item (teaches Rotten Little Helper) |
-| Sinister Squashling | i:33154 | companion item (teaches Sinister Squashling) |
-| Snowman Kit | i:21309 | companion item (teaches Tiny Snowman) |
-| Spring Rabbit's Foot | i:44794 | companion item (teaches Spring Rabbit) |
-| Tree Frog Box | i:11026 | companion item (teaches Tree Frog) |
-| Truesilver Shafted Arrow | i:22235 | companion item (teaches Peddlefeet) |
 | Wood Frog Box | i:11027 | companion item (teaches Wood Frog) |
 
 ## Pet Supplies (1)
@@ -479,16 +481,12 @@ Joyous (p:4734), Pebble (p:4234), Timbered Air Snakelet (p:4685)
 - New subgroups. "Vendor & Reputation" became **Vendor Pets**. "World Events" became **Holiday & Events** and now also holds the Darkmoon Faire pets. "Old World to Cata Drops" became **World Drops & Quests**. "Crafted & Profession" became **Profession Pets**. **Pet Supplies** is new.
 - The group root changed from **Pets** to **Schizzle's TSM > Battle Pets** (or **Battle Pets** for the per-subgroup files).
 
-## Suggested Auctioning operation ("Battle Pets")
+## Operations (v2.2)
 
-Caged pets have no vendor sell price, so there is a hard gold floor instead of a `vendorsell` floor.
+The old "Suggested Auctioning operation" text is replaced by real importable operations. See [../operations/README.md](../operations/README.md).
 
-- **Minimum:** `max(20g, 0.8*min(first(dbmarket, dbregionmarketavg), first(dbregionsaleavg, dbregionmarketavg)))`
-- **Normal:** `max(20g, first(dbmarket, dbregionsaleavg, dbregionmarketavg))`
-- **Maximum:** `max(40g, 2*first(dbmarket, dbregionmarketavg))`
-- **Settings:** stack size 1, post cap 1 or 2, 48h duration. Set "When Below Minimum" to **Don't Post**. Pets sell slowly, so it pays to wait out a cheap listing.
-- **Vendor Pets subgroup:** override the minimum with what the pet costs you to buy, plus the AH cut. For example `max(<vendor cost>*1.1, ...)`.
-- **Sniper/Shopping for pets:** `min(0.6*first(dbmarket, dbregionmarketavg), 0.6*first(dbregionsaleavg, dbregionmarketavg))`
+- **Battle Pets** (every subgroup except High Value): Auctioning **Schizzle Battle Pets**, Shopping **Schizzle Buy Pets**.
+- **High Value:** Auctioning **Schizzle High Value**.
+- Both post one pet at a time for 48h and **post at the minimum price** when undercut below it (they never skip).
 
 Test any string with `/tsm price [shift-click caged pet] <string>`.
-

@@ -1,6 +1,6 @@
 # Schizzle's TSM
 
-TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own strings in `groups/pets/`: one per subgroup, plus one for all pets.
+TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own strings in `groups/pets/`: one per subgroup, plus one for all pets. Ready-made **operations** (v2.2) are in `operations/`, either already attached to the full group tree or as an operations-only string.
 
 Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item, ItemSparse, SkillLineAbility, SpellEffect and SpellReagents, build 5.5.4.70631). The groups only contain items you can sell on the auction house. **No item appears in more than one group**, so the profession strings never conflict with each other.
 
@@ -24,17 +24,31 @@ Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item
 | First Aid | 25 | 2 | [`groups/professions/schizzles-tsm-first-aid.txt`](groups/professions/schizzles-tsm-first-aid.txt) | [docs/first-aid.md](docs/first-aid.md) | Bandages, anti-venoms |
 | Archaeology | 11 | 1 | [`groups/professions/schizzles-tsm-archaeology.txt`](groups/professions/schizzles-tsm-archaeology.txt) | [docs/archaeology.md](docs/archaeology.md) | Tradeable keystones only (see below) |
 | **All professions** | **5315** | 203 | [`groups/professions/schizzles-tsm-all-professions.txt`](groups/professions/schizzles-tsm-all-professions.txt) | (per-profession docs) | All 15 groups above, nested under one parent group **Schizzle's TSM** |
-| Battle Pets: High Value | 45 | 1 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](groups/pets/schizzles-tsm-pets-high-value.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Hand-picked expensive pets: TCG pets, rare raid/world drops, Molten Front and Archaeology pets, MoP rares. Matched first, so these are never in another subgroup. |
-| Battle Pets: Vendor Pets | 100 | 1 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](groups/pets/schizzles-tsm-pets-vendor.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
-| Battle Pets: Profession Pets | 21 | 1 | [`groups/pets/schizzles-tsm-pets-profession.txt`](groups/pets/schizzles-tsm-pets-profession.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
-| Battle Pets: World Drops & Quests | 39 | 1 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](groups/pets/schizzles-tsm-pets-world-drops.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Old world through Cataclysm drops and quest rewards. |
-| Battle Pets: Raid & Dungeon Drops | 32 | 1 | [`groups/pets/schizzles-tsm-pets-raid-dungeon.txt`](groups/pets/schizzles-tsm-pets-raid-dungeon.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets from raid and dungeon bosses. |
+| Battle Pets: High Value | 38 | 1 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](groups/pets/schizzles-tsm-pets-high-value.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Data-driven (v2.2): any pet whose realm value is at least 7,500g **and** whose region sale rate is at least 0.03, plus the TCG/promo pets (no other home). Realm value = realm market value, else realm historical, capped at 2x region market; pets with no realm price use 0.8x region market. Matched first, so these are never in another subgroup. |
+| Battle Pets: Vendor Pets | 98 | 1 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](groups/pets/schizzles-tsm-pets-vendor.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
+| Battle Pets: Profession Pets | 33 | 1 | [`groups/pets/schizzles-tsm-pets-profession.txt`](groups/pets/schizzles-tsm-pets-profession.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
+| Battle Pets: World Drops & Quests | 37 | 1 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](groups/pets/schizzles-tsm-pets-world-drops.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Old world through Cataclysm drops and quest rewards. |
+| Battle Pets: Raid & Dungeon Drops | 38 | 1 | [`groups/pets/schizzles-tsm-pets-raid-dungeon.txt`](groups/pets/schizzles-tsm-pets-raid-dungeon.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets from raid and dungeon bosses. |
 | Battle Pets: Pandaria Drops & Quests | 35 | 1 | [`groups/pets/schizzles-tsm-pets-pandaria.txt`](groups/pets/schizzles-tsm-pets-pandaria.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pandaria drops, rares and quest rewards. |
-| Battle Pets: Holiday & Events | 56 | 1 | [`groups/pets/schizzles-tsm-pets-holiday-events.txt`](groups/pets/schizzles-tsm-pets-holiday-events.txt) | [docs/battle-pets.md](docs/battle-pets.md) | World events (Hallow's End, Winter Veil, Lunar Festival, Noblegarden and others) and the Darkmoon Faire. |
+| Battle Pets: Holiday & Events | 49 | 1 | [`groups/pets/schizzles-tsm-pets-holiday-events.txt`](groups/pets/schizzles-tsm-pets-holiday-events.txt) | [docs/battle-pets.md](docs/battle-pets.md) | World events (Hallow's End, Winter Veil, Lunar Festival, Noblegarden and others) and the Darkmoon Faire. |
 | Battle Pets: Pet Supplies | 1 | 1 | [`groups/pets/schizzles-tsm-pets-supplies.txt`](groups/pets/schizzles-tsm-pets-supplies.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Tradeable pet-battle supplies. Only the Flawless Battle-Stone qualifies: the typed/Polished/Perfect battle-stones, pet treats and pet bandages are all soulbound. |
 | **All battle pets** | **329** | 8 | [`groups/pets/schizzles-tsm-battle-pets-all.txt`](groups/pets/schizzles-tsm-battle-pets-all.txt) | [docs/battle-pets.md](docs/battle-pets.md) | 227 cageable species (p:) and 102 pet items (i:), nested under **Schizzle's TSM > Battle Pets**. It nests next to the professions when both are imported. |
 
 Most crafted gear and consumables are split into subgroups by expansion (Classic, Burning Crusade, Wrath, Cataclysm, Pandaria). That way you can attach different Auctioning operations to old-world and current-tier items.
+
+## Operations (v2.2)
+
+The [`operations/`](operations/README.md) folder ships 10 TSM operations. They price from **your realm** first (`dbmarket`, then `dbhistorical`, then 0.8× region market), are capped at 2× region market, and always **post at the minimum price** when undercut below it. The full string `operations/schizzles-tsm-everything-with-operations.txt` creates the whole group tree with these operations already attached:
+
+| Groups | Auctioning | Other operations |
+|---|---|---|
+| **Schizzle's TSM** root (consumables and everything not listed below inherit it) | Schizzle Normal | Shopping *Schizzle Buy*, Crafting *Schizzle Craft*, Sniper *Schizzle Snipe* |
+| Bulk materials: Herbalism, Mining (ore, bars, stone, elementals, smelting), Skinning leather, raw cloth and bolts, dust and essences, raw gems, pigments and inks, raw fish, cooking ingredients, Parts, Shared Reagents, keystones (57 groups) | Schizzle Bulk Mats | |
+| Crafted gear: armor, weapons, jewelry, goggles, cloaks, bags, off-hands, trinkets, wands, tools (54 groups) | Schizzle Gear | Vendoring *Schizzle Vendor Gear* |
+| **Battle Pets** and the profession **Companion Pets** groups | Schizzle Battle Pets | Shopping *Schizzle Buy Pets* |
+| **Battle Pets > High Value** and the **Mounts** groups | Schizzle High Value | |
+
+Mailing operations can't be put in an import string. TSM leaves them out on purpose, so set Mailing up by hand. The exact settings, every formula, the Mailing setup and the import steps are in [operations/README.md](operations/README.md). The data behind the pricing is in [docs/pricing-analysis.md](docs/pricing-analysis.md).
 
 ## How to import
 
@@ -89,6 +103,18 @@ Since an item can only be in one group, each item goes to exactly one profession
 - **v2 (Nov 2026): all professions.** The folder was renamed `schizzles-tsm-groups` → `schizzles-tsm` and the project renamed to **Schizzle's TSM**. All 15 professions now have groups, including First Aid, Cooking, Fishing and Archaeology. Each profession has its own import string, plus one all-professions string. Every item belongs to exactly one profession using the ownership rules above. Changes from v1: raw fish moved from Cooking to Fishing, gems moved from Mining and Alchemy to Jewelcrafting, pigments and inks moved from Herbalism to Inscription, cloth now lives in Tailoring, and blasting powders are in Engineering. The v1 strings were replaced by the v2 files. Battle pets were unchanged in v2.
 
 - **v2.1 (Nov 2026): pets revised.** Battle pets moved to `groups/pets/`. The species audit against 5.5.4 data confirmed 227 cageable species. Added 102 tradeable pet items (101 companion items plus the Flawless Battle-Stone). Pets are reorganized into 8 subgroups, each with its own string, plus `schizzles-tsm-battle-pets-all.txt` nested under **Schizzle's TSM > Battle Pets**. Crafted pet items stay in their professions.
+
+- **v2.2 (Nov 2026): operations and price-based High Value.**
+  - **Operations.** New `operations/` folder with 10 realm-first operations:
+    - Auctioning: Normal, Bulk Mats, Gear, Battle Pets, High Value
+    - Shopping: Buy, Buy Pets
+    - Crafting: Craft
+    - Sniper: Snipe
+    - Vendoring: Vendor Gear
+
+    They come as one full group-tree string with the operations attached, plus an operations-only string. The strings were checked against TSM's own import code and formula compiler.
+  - **High Value is now data-driven.** It used to be hand-picked. A pet now goes in when its realm value is at least 7,500g and its region sale rate is at least 0.03, plus the TCG/promo pets. That takes it from 45 to 38 entries: 11 kept, 34 moved back to their home subgroups, 27 added.
+  - **Pricing analysis.** Added [docs/pricing-analysis.md](docs/pricing-analysis.md), which compares realm and region prices.
 
 ## License
 
