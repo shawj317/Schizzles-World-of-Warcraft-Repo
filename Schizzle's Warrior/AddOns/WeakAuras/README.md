@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (25,869 chars, starts `!WA:2!`). Current version: **v1.2** (engine `VERSION = 2`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (28,756 chars, starts `!WA:2!`). Current version: **v1.3** (engine `VERSION = 3`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 233 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9) and freshly specced level 10 characters. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 278 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -28,19 +28,22 @@ Updating later: delete the old group first (`/wa`, right-click the group, **Dele
 
 ## What's on screen
 
-All 20 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
+All 23 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
 | Element | Size | Position | What it shows |
 |---|---|---|---|
 | **SWR Interrupt** + "KICK" | 44 px | y +126 | Pummel when the target is casting something interruptible (red glow), with the cast-time swipe |
 | **SWR Interrupt Cast** | 120x10 | y +98 | Name and % of the cast you should kick |
 | **SWR Resources** | 12 pt | y +76 | Stance name and spec counters (see each spec below). Starts with `!` when you're in the wrong stance |
-| **SWR Rage** | 160x10 | y +58 | Rage bar with the number. It turns orange when you're close to the rage cap and should dump rage |
+| **SWR Rage** | 160x10 | y +62 | Rage bar with the number. It turns orange when you're close to the rage cap and should dump rage |
+| **SWR Swing Timer** | 160x6 | y +53 | Main-hand white swing: fills up until the next swing lands (combat log `SWING_DAMAGE` / `SWING_MISSED`, speed from `UnitAttackSpeed`). Full and still while auto attack is on but no swing has landed yet |
+| **SWR Swing Timer OH** | 160x4 | y +47 | Off-hand swing, only when dual wielding (Fury) |
 | Mode label | 14 pt gold | above Next | `ARMS`, `FURY TG`, `FURY SMF`, `PROT TANK`, `PROT DPS` or `LEVELING`, plus `AoE n` and `EXEC` |
-| **SWR Next** | 56 px | 0, 0 | The ability to press now, with its keybind, a reason tag (top left), and a glow for high-priority picks |
+| **SWR Next** | 56 px | 0, 0 | The ability to press now, with its keybind, a reason tag (top left), and a glow for high-priority picks. A GCD swipe runs over it after each GCD spell, and a short white sparkle plays when the suggested spell goes off |
 | **SWR Defensive 1-3** | 36 px | x -52 / -92 / -132 | Stance reminder, Prot active mitigation, and defensives when your health drops |
 | **SWR Cooldown 1-3** | 36 px | x +52 / +92 / +132 | Offensive cooldowns, lined up with Colossus Smash |
-| **SWR Next+1** | 34 px | y -50 | The next different ability in the list |
+| **SWR Next+1** | 34 px | y -50 | The next different ability in the list, with the same GCD swipe |
+| **SWR Last Cast** | 26 px | x -40, y -50 | The spell that just went off, for 3 s. A green border means it was one of the suggested spells |
 | **SWR Off-GCD** | 34 px | x +40, y -50 | Heroic Strike or Cleave. These are off the global cooldown, so press them alongside the Next icon |
 | **SWR Tracker 1-4** | 28 px | y -90 | Four buff/debuff icons for your spec. Greyed out when missing, with a red glow when something important is missing. A tracker stays hidden until its spell is learned, and all four are hidden in Leveling mode |
 | **SWR Colossus Smash** | 160x12 | y -118 | Arms/Fury only, once Colossus Smash is learned. Your CS window on the target, or `CS in Xs` / `CS READY` |
@@ -49,7 +52,15 @@ All 20 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 
 **When it shows:** in combat, or when you have a hostile target, at any level. Every aura loads for the Warrior class only, with no spec or level condition, because a warrior under level 10 has no spec. The engine decides what each aura shows: the Colossus Smash bar appears only for Arms/Fury and the two Shield bars only for Protection, and each one waits until its spell is learned.
 
-**Colours on the icons:** desaturated (grey) means you're waiting on the GCD, a cooldown or rage. Grey plus red tint means you're out of range.
+**Colours on the icons:** desaturated (grey) means you're waiting on the GCD or a cooldown. Grey plus red tint means you're out of range. The Next icon never shows a spell you can't afford: it shows the next affordable one, or Attack (see below).
+
+**Auto attack (all modes and levels):** warriors build rage from white swings, so auto attack comes first.
+- Target in melee range and auto attack off (`IsCurrentSpell(6603)` is false): Next shows **Attack** with a glow and the `ATK` tag. The spell that would come next sits in Next+1.
+- Auto attack on, but not enough rage for the top suggestion: Next shows the next affordable ability. If nothing is affordable, it shows Attack in full colour with the `RAGE` tag ("building rage"), and the rage-starved spell waits in Next+1.
+- Out of melee range: the Charge / Heroic Throw logic is unchanged.
+- A wait on a real cooldown (e.g. Mortal Strike coming back) still shows the greyed-out spell with its swipe.
+
+**Heroic Strike is not on-next-swing in MoP.** It has been an instant attack since patch 4.0.1. Since 5.0.4 it is off the global cooldown, with a 1.5 s cooldown shared with Cleave. So the swing timer has nothing to do with Heroic Strike: it only shows white swings. Heroic Strike and Cleave never get the GCD swipe or grey-out; their own 1.5 s cooldown shows as a swipe instead.
 
 ## Per spec
 
@@ -126,7 +137,7 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
   5. Thunder Clap on 2+ enemies, once learned.
   6. Heroic Strike at 30+ rage. It is the main attack while leveling, so it sits in the Next icon and the Off-GCD icon stays empty.
   7. Sunder Armor and Battle/Commanding Shout, once learned.
-  8. Otherwise Heroic Strike, greyed out, while rage builds.
+  8. Otherwise Attack (`RAGE` tag) while rage builds, with Heroic Strike in Next+1. With auto attack off, Attack (`ATK`) comes before everything above whenever the target is in melee range.
 - **Resources text:** stance and character level, e.g. `Battle  Lv 5`.
 - **Hidden in Leveling mode:** the trackers, the Colossus Smash bar and the Shield bars. The rage bar, the Battle Stance reminder, defensives and the interrupt icon still work with whatever is learned.
 - **Picking a spec at level 10** switches to the Arms, Fury or Protection priority on the next update. While a character is level 10-19 and still has few spec spells, the spec priority adds the same basics: Charge to close the gap, and Victory Rush or Heroic Strike when the spec spells are on cooldown.
@@ -145,6 +156,8 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
 
 | Option | Default | What it does |
 |---|---|---|
+| Show swing timer | On | Main-hand (and off-hand) swing bars under the rage bar |
+| Show last cast | On | The small Last Cast icon left of Next+1 |
 | AoE threshold | 3 | Nearby enemies (nameplates, ~8 yd) that switch to AoE priority |
 | Protection mode | Auto | Auto = Tank when in Defensive Stance, queued as TANK, or holding threat. Tank / DPS force it |
 | Prot active mitigation | Auto (Block first) | Auto / Block only / Barrier first (magic) |
@@ -212,18 +225,20 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - **Range:** the enemy count uses nameplates, so turn on enemy nameplates for the AoE switch to work.
 - **Shield Barrier absorb:** the amount comes from the aura's points value. If the client doesn't report it, the bar just says "Shield Barrier".
 - **Leveling spell levels:** the level 5 (Victory Rush) and level 7 (Execute) unlocks come from guide text, not from client data. The Leveling mode reads `IsPlayerSpell`, so a different unlock level only changes when the spell first appears.
+- **Swing timer:** it restarts on each landed or missed white swing and rescales on haste changes. Parry haste and swing resets are not modelled, and the bar shows a static full bar until the first swing after auto attack starts.
 - **Stance swaps** (for example Defensive Stance for a big hit as DPS) are your call. The left-side reminder only nudges you back.
 
 ## Source files (`source/`)
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 233 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 278 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.3** (Nov 1, 2026): auto attack fix. Next shows Attack when auto attack is off in melee range, and it never shows a spell you can't afford: it shows the next affordable one, or Attack with a `RAGE` tag while rage builds. New main-hand/off-hand **swing timer** under the rage bar. The GCD swipe now runs on the Next and Next+1 icons (Heroic Strike and Cleave are off the GCD, so their real 1.5 s cooldown shows instead). The Next icon sparkles when the suggested spell is cast, and a new **Last Cast** icon shows what just went off. New "Show swing timer" and "Show last cast" options. Engine `VERSION = 3`.
 - **v1.2** (Nov 1, 2026): the aura now works before level 10. A no-spec **Leveling** mode (Heroic Strike, Charge, Victory Rush, Execute and anything else learned) runs until a spec is picked, then the spec priority takes over without a `/reload`. Every aura loads for the class only (no spec condition). Trackers and the CS and Shield bars stay hidden until their spells are learned, and level 10-19 spec priorities add Charge, Victory Rush and Heroic Strike as fillers. Engine `VERSION = 2`, so it replaces an older engine that is still loaded.
 - **v1.1** (Nov 1, 2026): the in-game group is renamed to "Schizzle's Warrior Rotation" and the files moved to `Schizzle's Warrior/AddOns/WeakAuras/`, with the import string renamed to `All-in-One Rotation.txt`. The rotation hasn't changed (engine `VERSION = 1`).
 - **v1** (Nov 1, 2026): first release. One group covers Arms, Fury (TG/SMF) and Protection, with automatic spec switching. It includes the rotation queue, off-GCD icon, defensives and cooldowns, rage bar, spec trackers, Colossus Smash bar, Shield Block and Barrier bars, interrupts with fallbacks, a stance reminder, keybinds and range tint.

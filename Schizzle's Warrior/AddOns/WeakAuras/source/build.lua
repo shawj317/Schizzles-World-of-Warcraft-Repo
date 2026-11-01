@@ -37,7 +37,7 @@ local function iconTSU(pick)
   local dur = e.duration or 0
   allstates[""] = {
     show = true, changed = true, icon = e.icon, name = e.name,
-    keybind = e.key or "", glow = e.glow and true or false, waiting = e.waiting and true or false,
+    keybind = e.key or "", glow = e.glow and true or false, waiting = e.waiting and true or false, flash = R.flash and true or false,
     oor = e.oor and true or false, oorTint = e.oorTint and true or false, tag = e.tag or "",
     mode = R.mode or "", progressType = "timed", duration = dur,
     expirationTime = dur > 0 and ((e.start or 0) + dur) or 0, autoHide = false,
@@ -76,7 +76,7 @@ local function trig(code, vars)
       untrigger = {} },
   }
 end
-local ICONVARS = "{ tag = 'string', glow = 'bool', waiting = 'bool', oor = 'bool', oorTint = 'bool', keybind = 'string', mode = 'string', expirationTime = true, duration = true }"
+local ICONVARS = "{ tag = 'string', glow = 'bool', flash = 'bool', waiting = 'bool', oor = 'bool', oorTint = 'bool', keybind = 'string', mode = 'string', expirationTime = true, duration = true }"
 
 local function text(t, point, size, x, y, color, flags)
   return { type = "subtext", text_text = t, text_color = color or { 1, 1, 1, 1 }, text_font = FONT,
@@ -94,7 +94,12 @@ local ANIM = { start = { type = "none", duration_type = "seconds", easeType = "n
                main = { type = "none", duration_type = "seconds", easeType = "none", easeStrength = 3 },
                finish = { type = "none", duration_type = "seconds", easeType = "none", easeStrength = 3 } }
 
-local RAGE_Y, RAGE_H = 58, 10
+-- rage bar, then the swing timer under it (main hand 6 px, off hand 4 px)
+local RAGE_Y, RAGE_H = 62, 10
+local SW_H, OH_H = 6, 4
+local SW_Y = RAGE_Y - RAGE_H / 2 - 1 - SW_H / 2
+local OH_Y = SW_Y - SW_H / 2 - 1 - OH_H / 2
+local MODE_TOP = OH_Y - OH_H / 2
 local function icon(id, size, x, y, pick, withMode)
   -- glow sits right after the background so every text draws above it
   local subs = { { type = "subbackground" }, glowSub(size >= 50 and "buttonOverlay" or "Pixel") }
@@ -103,9 +108,14 @@ local function icon(id, size, x, y, pick, withMode)
   if size >= 34 then subs[#subs + 1] = text("%tag", "INNER_TOPLEFT", size >= 50 and 10 or 8, 1, -1, { 0.6, 0.9, 1, 1 }, "OUTLINE") end
   if withMode then
     -- centred in the gap between the icon top (+size/2) and the bottom of the rage bar
-    local m = text("%mode", "CENTER", 14, 0, (size / 2 + (RAGE_Y - RAGE_H / 2)) / 2, { 1, 0.82, 0, 1 }, "THICKOUTLINE")
+    -- centred in the gap between the icon top (+size/2) and the bottom of the off-hand swing bar
+    local m = text("%mode", "CENTER", 14, 0, (size / 2 + MODE_TOP) / 2, { 1, 0.82, 0, 1 }, "THICKOUTLINE")
     m.text_selfPoint = "CENTER"
     subs[#subs + 1] = m
+    -- cast-success pulse: autocast shine for 0.4 s after a suggested spell goes off (sub 3)
+    local shine = glowSub("ACShine")
+    shine.useGlowColor = true; shine.glowColor = { 1, 1, 1, 1 }; shine.glowLines = 10; shine.glowFrequency = 0.6; shine.glowScale = 1.2
+    table.insert(subs, 3, shine)
   end
   return {
     id = id, uid = id:gsub("%W", ""), parent = GROUP, regionType = "icon", internalVersion = INTERNAL, tocversion = TOC,
@@ -121,6 +131,7 @@ local function icon(id, size, x, y, pick, withMode)
       { check = { trigger = 1, variable = "waiting", value = 1 }, changes = { { property = "desaturate", value = true } } },
       { check = { trigger = 1, variable = "oor", value = 1 }, changes = { { property = "desaturate", value = true } } },
       { check = { trigger = 1, variable = "oorTint", value = 1 }, changes = { { property = "color", value = { 1, 0.35, 0.35, 1 } } } },
+      withMode and { check = { trigger = 1, variable = "flash", value = 1 }, changes = { { property = "sub.3.glow", value = true } } } or nil,
     },
     load = LOADFOR(), actions = { init = {}, start = {}, finish = {} },
     animation = ANIM, config = {}, authorOptions = {}, information = {},
@@ -145,18 +156,27 @@ nextIcon.authorOptions = {
   { type = "toggle", key = "showCDs", name = "Show offensive cooldowns (right)", default = true, width = 1 },
   { type = "toggle", key = "showKeys", name = "Show keybinds", default = true, width = 1 },
   { type = "toggle", key = "tintOOR", name = "Red tint when out of range", default = true, width = 1, useDesc = true, desc = "Out-of-range icons are always desaturated; this also tints them red so they differ from GCD/rage grey." },
+  { type = "toggle", key = "showSwing", name = "Show swing timer", default = true, width = 1, useDesc = true, desc = "Main-hand swing bar under the rage bar, plus an off-hand bar when dual wielding." },
+  { type = "toggle", key = "showLast", name = "Show last cast", default = true, width = 1, useDesc = true, desc = "Small icon left of Next+1 showing the spell that just went off (green border = it was the suggested spell)." },
   { type = "toggle", key = "showInt", name = "Show interrupts", default = true, width = 1 },
   { type = "toggle", key = "intCC", name = "Include stuns/CC as fallback", default = true, width = 1, useDesc = true, desc = "Storm Bolt, Shockwave, Heroic Throw (Glyph of Gag Order), Quaking Palm, Arcane Torrent, War Stomp when Pummel / Disrupting Shout are on cooldown or out of range." },
   { type = "toggle", key = "intMain", name = "Interrupt in main icon", default = false, width = 1, useDesc = true, desc = "Off = dedicated red interrupt icon above the rage bar. On = the interrupt takes over the Next icon." },
   { type = "toggle", key = "intFocus", name = "Also watch focus casts", default = false, width = 1 },
 }
 nextIcon.config = { aoe = 3, protMode = 1, amMode = 1, fuMode = 1, shout = 1, dpsStance = 1, dumpMargin = 20, slamRage = 80, wildRage = 70,
-  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showInt = true, intCC = true, intMain = false, intFocus = false }
+  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showSwing = true, showLast = true, showInt = true, intCC = true, intMain = false, intFocus = false }
 children[#children + 1] = nextIcon
 children[#children + 1] = icon("SWR Next+1", 34, 0, -50, "R.next2", false)
 local off = icon("SWR Off-GCD", 34, 40, -50, "R.off", false)
 off.subRegions[#off.subRegions + 1] = text("off-GCD", "OUTER_BOTTOM", 8, 0, -1, { 0.8, 0.8, 0.8, 1 }, "OUTLINE")
 children[#children + 1] = off
+local lastIcon = icon("SWR Last Cast", 26, -40, -50, "R.last", false)
+lastIcon.subRegions[#lastIcon.subRegions + 1] = text("last", "OUTER_BOTTOM", 8, 0, -1, { 0.8, 0.8, 0.8, 1 }, "OUTLINE")
+lastIcon.subRegions[#lastIcon.subRegions + 1] = { type = "subborder", border_visible = false, border_edge = "Square Full White",
+  border_color = { 0.2, 1, 0.3, 1 }, border_offset = 1, border_size = 2 }
+lastIcon.cooldownTextDisabled = true
+lastIcon.conditions = { { check = { trigger = 1, variable = "glow", value = 1 }, changes = { { property = "sub." .. #lastIcon.subRegions .. ".border_visible", value = true } } } }
+children[#children + 1] = lastIcon
 for i = 1, 3 do children[#children + 1] = icon("SWR Defensive " .. i, 36, -12 - 40 * i, 0, "R.left and R.left[" .. i .. "]", false) end
 for i = 1, 3 do children[#children + 1] = icon("SWR Cooldown " .. i, 36, 12 + 40 * i, 0, "R.right and R.right[" .. i .. "]", false) end
 
@@ -211,6 +231,36 @@ rb.subRegions[#rb.subRegions + 1] = text("%ragetext", "INNER_RIGHT", 9, -2, 0)
 rb.triggers = trig(RAGE_TSU, "{ dump = 'bool', value = true, total = true, ragetext = 'string' }")
 rb.conditions = { { check = { trigger = 1, variable = "dump", value = 1 }, changes = { { property = "barColor", value = { 1, 0.55, 0.05, 1 } } } } }
 children[#children + 1] = rb
+
+-- swing timer (white swings; Heroic Strike / Cleave are instant in MoP, not on-next-swing)
+local function swingTSU(hand)
+  return HEAD .. [[
+  local s = R.show and R.swing and R.swing.]] .. hand .. [[
+
+  if not s then
+]] .. hide() .. [[
+
+  end
+  local st = allstates[""]
+  if st and st.show and st.expirationTime == s.exp and st.up == s.up then return false end
+  allstates[""] = { show = true, changed = true, up = s.up, progressType = s.up and "timed" or "static",
+    value = 0, total = 1, duration = s.up and s.dur or 0, expirationTime = s.exp, autoHide = false,
+    swingtext = s.up and string.format("%.1f", s.dur) or "" }
+  return true
+end]]
+end
+local sw = bar("SWR Swing Timer", 160, SW_H, 0, SW_Y, { 0.95, 0.95, 0.95, 1 }, { 0.1, 0.1, 0.1, 0.8 })
+sw.inverse = true -- fills up towards the next swing
+sw.subRegions[#sw.subRegions + 1] = border()
+sw.subRegions[#sw.subRegions + 1] = text("Swing", "OUTER_LEFT", 8, -2, 0, { 0.85, 0.85, 0.85, 1 })
+sw.triggers = trig(swingTSU("mh"), "{ up = 'bool', swingtext = 'string', expirationTime = true, duration = true }")
+children[#children + 1] = sw
+local so = bar("SWR Swing Timer OH", 160, OH_H, 0, OH_Y, { 0.7, 0.8, 1, 1 }, { 0.1, 0.1, 0.1, 0.8 })
+so.inverse = true
+so.subRegions[#so.subRegions + 1] = border()
+so.subRegions[#so.subRegions + 1] = text("OH", "OUTER_LEFT", 7, -2, 0, { 0.7, 0.8, 1, 1 })
+so.triggers = trig(swingTSU("oh"), "{ up = 'bool', swingtext = 'string', expirationTime = true, duration = true }")
+children[#children + 1] = so
 
 -- interrupt icon (red pixel glow + red border, cast-time swipe) and cast bar
 local INT_TSU = HEAD .. [[
@@ -322,7 +372,7 @@ local group = {
   conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {},
   information = { saved = true },
-  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10.",
+  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v1.3.",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

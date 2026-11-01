@@ -58,6 +58,11 @@ _G.UnitPowerMax = function(_, p) if p == 1 then return W.rageMax or 120 end retu
 _G.UnitHealth = function(u) if u == "target" then return W.thp or 100 end return W.hp end
 _G.UnitHealthMax = function() return 100 end
 _G.UnitLevel = function() return W.level or 90 end
+_G.IsCurrentSpell = function(id) if id == 6603 then return W.attacking end return false end
+_G.UnitAttackSpeed = function() return W.mhSpeed or 2.6, W.ohSpeed end
+_G.UnitGUID = function(u) if u == "player" then return "Player-1-1" end return "Creature-0-1" end
+local CLEU = {}
+_G.CombatLogGetCurrentEventInfo = function() return unpack(CLEU) end
 _G.IsPlayerSpell = function(id) return W.known[id] and true or false end
 _G.C_SpellBook = { IsSpellKnown = function(id) return W.known[id] and true or false end }
 local NAMES = {}
@@ -67,7 +72,10 @@ _G.C_Spell = {
   GetSpellCooldown = function(id) local r = W.cd[id] or (id == 61304 and W.gcd) if r then return { startTime = now - 1, duration = r + 1, isEnabled = true, isOnGCD = false } end return { startTime = 0, duration = 0, isEnabled = true } end,
   GetSpellCharges = function(id) if id == 2565 then return { currentCharges = W.sbCharges or 2, maxCharges = 2 } end return nil end,
   IsSpellInRange = function(id, unit) if W.oor and W.oor[id] then return false end return true end,
-  IsSpellUsable = function(id) if W.noMana and W.noMana[id] then return false, true end return true end,
+  IsSpellUsable = function(id)
+    if W.noMana and W.noMana[id] then return false, true end
+    if (id == 78 or id == 845 or id == 5308) and (W.rage or 0) < 30 then return false, true end -- 30 rage cost
+    return true end,
 }
 -- aura lists: { spellId, remaining, stacks, points }
 _G.C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
@@ -153,7 +161,7 @@ local SN = { [12294]="MortalStrike",[7384]="Overpower",[1464]="Slam",[12328]="Sw
   [2457]="BattleStance",[71]="DefensiveStance",[2458]="BerserkerStance",[23881]="Bloodthirst",[85288]="RagingBlow",[100130]="WildStrike",
   [118038]="DieByTheSword",[23922]="ShieldSlam",[6572]="Revenge",[20243]="Devastate",[2565]="ShieldBlock",[112048]="ShieldBarrier",[12975]="LastStand",
   [1160]="DemoShout",[46924]="Bladestorm",[46968]="Shockwave",[118000]="DragonRoar",[107574]="Avatar",[12292]="Bloodbath",[107570]="StormBolt",
-  [102060]="DisruptingShout",[1250619]="Charge",[100]="ChargeOld",[7386]="SunderArmor",[103840]="ImpendingVictory",[55694]="EnragedRegen",[107079]="QuakingPalm",[69179]="ArcaneTorrent" }
+  [102060]="DisruptingShout",[1250619]="Charge",[6603]="Attack",[100]="ChargeOld",[7386]="SunderArmor",[103840]="ImpendingVictory",[55694]="EnragedRegen",[107079]="QuakingPalm",[69179]="ArcaneTorrent" }
 
 local ORDER = {}
 for _, c in ipairs(t.c) do ORDER[#ORDER + 1] = c.id end
@@ -164,10 +172,11 @@ local getE = WeakAuras.LoadFunction("return function() return SchizzleWarrior en
 
 local function run(label, sc, expect)
   W = { rage = 50, hp = 100, thp = 100, buffs = {}, debuffs = {}, tdebuffs = {}, tdebuffsOther = {}, cd = {}, target = true, combat = true,
-        n = 1, spec = 1, stance = 2457, group = false }
+        n = 1, spec = 1, stance = 2457, group = false, attacking = true }
   for k, v in pairs(sc) do W[k] = v end
   if sc.noSpec then W.spec = nil end   -- GetSpecialization() returns nil before level 10
   if sc.noStance then W.stance = nil end
+  if sc.notAttacking then W.attacking = false end
   if sc.knownOnly then W.known = {} for _, id in ipairs(sc.knownOnly) do W.known[id] = true end
   else W.known = book(W.spec, sc.talents) end
   for id in pairs(sc.removeKnown or {}) do W.known[id] = nil end
@@ -178,7 +187,8 @@ local function run(label, sc, expect)
   Private.DeleteAuraEnvironment("SWR Next")
   Private.ActivateAuraEnvironment("SWR Next", nil, nil, nil)
   Private.ActivateAuraEnvironment()
-  now = now + 1
+  now = now + (sc.dt or 1)
+  if sc.before then sc.before(getE()) end
   for _, id in ipairs(ORDER) do
     -- honour load conditions like WeakAuras would (class always WARRIOR here; spec only if a child asked for it)
     local ld = byId[id].load
@@ -326,8 +336,8 @@ local L7 = { 2457, 78, 1250619, 34428, 5308 }
 local VIC = { 32216, 15 }
 local function lev(st) local x = st("SWR Next") return x and x.mode:find("^LEVELING") ~= nil, x and x.mode end
 local function noSpecBars(st) return st("SWR Colossus Smash") == nil and st("SWR Shield Block") == nil and st("SWR Shield Barrier") == nil and st("SWR Tracker 1") == nil and st("SWR Tracker 4") == nil end
-R("L1 spec nil, 0 rage -> wait Heroic Strike", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
-  check = function(st) local x = st("SWR Next") return lev(st) and x.waiting and st("SWR Rage") ~= nil and st("SWR Resources").res == "Battle  Lv 1" and noSpecBars(st), st("SWR Resources") and st("SWR Resources").res end }, "HeroicStrike")
+R("L1 attacking, 0 rage -> Attack (building rage), HS next", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return lev(st) and not x.waiting and x.tag == "RAGE" and icon(st("SWR Next+1"), 78) and st("SWR Rage") ~= nil and st("SWR Resources").res == "Battle  Lv 1" and noSpecBars(st), st("SWR Resources") and st("SWR Resources").res end }, "Attack")
 R("L1 GetSpecialization 0, 30 rage -> Heroic Strike", { spec = 0, level = 1, rage = 30, knownOnly = L1,
   check = function(st) return lev(st) and not st("SWR Next").waiting and st("SWR Off-GCD") == nil, "hs main, no off-GCD copy" end }, "HeroicStrike")
 R("L1 spec 5 (initial) counts as no spec", { spec = 5, level = 1, rage = 30, knownOnly = L1, check = lev }, "HeroicStrike")
@@ -375,6 +385,86 @@ R("Prot lv12 with Def Stance -> stance first", { spec = 3, level = 12, rage = 30
 R("back to no spec (respec / reset) -> Leveling again", { noSpec = true, level = 10, rage = 30, knownOnly = B10, check = lev }, "HeroicStrike")
 R("level 90 Arms unchanged: wait MS, HS stays off-GCD", { spec = 1, rage = 110, cd = { [86346] = 10, [12294] = 3, [6673] = 30, [1464] = 0 }, removeKnown = { [1464] = true },
   check = function(st) return icon(st("SWR Off-GCD"), 78) and st("SWR Next").waiting, "off-gcd hs" end }, "MortalStrike")
+
+print("\n== Auto attack ==")
+R("L1 not attacking, target in melee -> Attack", { noSpec = true, level = 1, rage = 0, notAttacking = true, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return x.glow and x.tag == "ATK" and not x.waiting, "start attack" end }, "Attack")
+R("L1 not attacking, 30 rage -> Attack first, HS next", { noSpec = true, level = 1, rage = 30, notAttacking = true, knownOnly = L1,
+  check = function(st) return icon(st("SWR Next+1"), 78) and not st("SWR Next+1").waiting, "hs next" end }, "Attack")
+R("L1 attacking, 29 rage -> still Attack, never a grey HS", { noSpec = true, level = 1, rage = 29, knownOnly = L1,
+  check = function(st) return st("SWR Next").tag == "RAGE" and not st("SWR Next").waiting, "building" end }, "Attack")
+R("L1 attacking, 30 rage -> Heroic Strike", { noSpec = true, level = 1, rage = 30, knownOnly = L1,
+  check = function(st) return not st("SWR Next").waiting and not st("SWR Next").oorTint, "hs" end }, "HeroicStrike")
+R("L3 not attacking, 15 yd -> Charge (no Attack out of melee)", { noSpec = true, level = 3, rage = 0, dist = 15, notAttacking = true, knownOnly = L3 }, "Charge")
+R("L5 not attacking, Victorious -> Attack, then Victory Rush", { noSpec = true, level = 5, rage = 0, notAttacking = true, buffs = { VIC }, knownOnly = L5,
+  check = function(st) return icon(st("SWR Next+1"), 34428), "vr next" end }, "Attack")
+R("L7 attacking, target 15%, 10 rage -> Attack building (Execute unaffordable)", { noSpec = true, level = 7, rage = 10, thp = 15, knownOnly = L7,
+  check = function(st) return st("SWR Next").tag == "RAGE", "building" end }, "Attack")
+R("Arms 90 not attacking -> Attack, then Colossus Smash", { rage = 40, notAttacking = true,
+  check = function(st) return icon(st("SWR Next+1"), 86346), "cs next" end }, "Attack")
+R("Arms 90 first pick unaffordable -> next affordable", { rage = 40, noMana = { [86346] = true } }, "MortalStrike")
+R("Arms 90 attacking -> no Attack prompt", { rage = 40 }, "ColossusSmash")
+R("Prot lv10 not attacking -> Attack, then Shield Slam", { spec = 3, level = 10, rage = 0, notAttacking = true, knownOnly = plus(B10, 23922),
+  check = function(st) return icon(st("SWR Next+1"), 23922), "ss next" end }, "Attack")
+
+print("\n== GCD swipe ==")
+do local n, n1 = byId["SWR Next"], byId["SWR Next+1"]
+  check(n.cooldown == true and n.cooldownSwipe == true and n1.cooldown == true and n1.cooldownSwipe == true and n.useCooldownModRate, "GCD swipe config on Next / Next+1") end
+R("GCD running -> swipe on Next and Next+1", { rage = 40, gcd = 0.7,
+  check = function(st) local a, b = st("SWR Next"), st("SWR Next+1")
+    return a.duration > 0 and a.expirationTime > now and b.duration > 0 and b.expirationTime > now, a.duration end }, "ColossusSmash")
+R("GCD running, Heroic Strike in Next stays bright (off-GCD)", { noSpec = true, level = 1, rage = 30, gcd = 0.7, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return not x.waiting and x.duration == 0, x.duration end }, "HeroicStrike")
+R("Heroic Strike 1.5 s cooldown is shown (not mistaken for the GCD)", { noSpec = true, level = 1, rage = 60, cd = { [78] = 0.5 }, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return x.waiting and x.duration == 1.5 and x.tag ~= "RAGE", x.duration end }, "HeroicStrike")
+
+print("\n== Swing timer ==")
+local function cl(sub, src, off)
+  local t = { now, sub, false, src }
+  for i = 5, 21 do t[i] = false end
+  if sub == "SWING_DAMAGE" then t[21] = off or false else t[13] = off or false end
+  for i = 1, 21 do CLEU[i] = t[i] end
+end
+local function reset(E) E.swing.mh = { s = 0, d = 0 }; E.swing.oh = { s = 0, d = 0 } end
+local function sw(st, h) return st(h == "oh" and "SWR Swing Timer OH" or "SWR Swing Timer") end
+R("L1 main-hand SWING_DAMAGE -> 2.6 s swing bar", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
+  check = function(st) local b = sw(st) return b and b.up and b.duration == 2.6 and math.abs(b.expirationTime - (now + 2.6)) < 1e-6 and sw(st, "oh") == nil, b and b.duration end }, "Attack")
+R("swing bar keeps running between ticks", { noSpec = true, level = 1, rage = 0, knownOnly = L1, dt = 1,
+  check = function(st) local b = sw(st) return b and b.up and math.abs(b.expirationTime - (now + 1.6)) < 1e-6, b and b.expirationTime end }, "Attack")
+R("SWING_MISSED counts as a swing", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  before = function(E) reset(E) cl("SWING_MISSED", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
+  check = function(st) local b = sw(st) return b and b.up, "missed" end }, "Attack")
+R("someone else's swing is ignored", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  before = function(E) reset(E) cl("SWING_DAMAGE", "Creature-0-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
+  check = function(st) local b = sw(st) return b and not b.up, "static ready bar" end }, "Attack")
+R("not attacking, no swing -> swing bar hidden", { noSpec = true, level = 1, rage = 0, notAttacking = true, knownOnly = L1,
+  before = function(E) reset(E) end, check = function(st) return sw(st) == nil, "hidden" end }, "Attack")
+R("Fury dual wield: main + off-hand bars", { spec = 2, rage = 40, weap = TG, mhSpeed = 3.6, ohSpeed = 3.4,
+  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") cl("SWING_MISSED", "Player-1-1", true) E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
+  check = function(st) local a, b = sw(st), sw(st, "oh") return a and b and a.up and b.up and a.duration == 3.6 and b.duration == 3.4, "mh/oh" end }, nil)
+R("UNIT_ATTACK_SPEED rescales the running swing", { noSpec = true, level = 1, rage = 0, knownOnly = L1, mhSpeed = 4,
+  before = function(E) reset(E) E.swing.mh = { s = now - 1, d = 2 } E:OnEvent("UNIT_ATTACK_SPEED", "player") end,
+  check = function(st) local b = sw(st) return b and b.duration == 4 and math.abs(b.expirationTime - (now + 2)) < 1e-6, b and b.duration end }, "Attack")
+R("swing timer option off -> hidden", { noSpec = true, level = 1, rage = 0, knownOnly = L1, cfg = { showSwing = false },
+  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
+  check = function(st) return sw(st) == nil, "off" end }, "Attack")
+
+print("\n== Cast feedback ==")
+R("setup: HS suggested", { noSpec = true, level = 1, rage = 30, knownOnly = L1 }, "HeroicStrike")
+R("HS cast while suggested -> Next pulses, Last Cast = HS (green)", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  before = function(E) E:OnEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 78) end,
+  check = function(st) local l = st("SWR Last Cast") return st("SWR Next").flash and l and icon(l, 78) and l.glow, "flash" end }, "Attack")
+R("0.5 s later: pulse over, Last Cast still shown", { noSpec = true, level = 1, rage = 0, knownOnly = L1, dt = 0.5,
+  check = function(st) local l = st("SWR Last Cast") return not st("SWR Next").flash and l and icon(l, 78), "after" end }, "Attack")
+R("3 s later: Last Cast gone", { noSpec = true, level = 1, rage = 0, knownOnly = L1, dt = 3,
+  check = function(st) return st("SWR Last Cast") == nil, "gone" end }, "Attack")
+R("cast of an unsuggested spell: Last Cast, no pulse, no green", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  before = function(E) E:OnEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-2", 6673) end,
+  check = function(st) local l = st("SWR Last Cast") return l and not l.glow and not st("SWR Next").flash, "plain" end }, "Attack")
+R("other units' casts ignored", { noSpec = true, level = 1, rage = 0, knownOnly = L1, dt = 4,
+  before = function(E) E:OnEvent("UNIT_SPELLCAST_SUCCEEDED", "target", "Cast-3", 78) end,
+  check = function(st) return st("SWR Last Cast") == nil, "ignored" end }, "Attack")
 
 print("\n== Interrupts ==")
 local function intIs(st, sid) local it = st("SWR Interrupt") if sid == nil then return it == nil, "none" end return icon(it, sid) and it.expirationTime > now, "int" end

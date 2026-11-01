@@ -4,12 +4,14 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 2
+local VERSION = 3
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
 end
-local E = { v = VERSION, cfg = aura_env.config or {}, last = 0, R = {}, keys = {}, keysByName = {}, keysrc = {}, keysAt = -99 }
+local OLD = SchizzleWarrior
+local E = { v = VERSION, cfg = aura_env.config or {}, last = 0, R = {}, keys = {}, keysByName = {}, keysrc = {}, keysAt = -99,
+  swing = { mh = { s = 0, d = 0 }, oh = { s = 0, d = 0 } } }
 SchizzleWarrior = E
 
 -- spell IDs verified against MoP Classic client data (build 5.5.4.70631)
@@ -25,6 +27,7 @@ local ID = {
   reck = 1719, skull = 114207, bshout = 6673, cshout = 469, brage = 18499, leap = 6544, hthrow = 57755,
   pummel = 6552, sref = 23920, dbts = 118038, rcry = 97462, swall = 871, vr = 34428,
   battle = 2457, def = 71, bers = 2458,
+  attack = 6603, gcd = 61304, -- Auto Attack; the global cooldown spell
   -- Charge: MoP Classic 5.5 uses 1250619 (level 3); 100 is the older ID, kept as a fallback
   charge = 1250619, chargeOld = 100,
   -- talents (tier 2 / 3 / 4 / 6)
@@ -66,7 +69,12 @@ local function cd(id, now)
   local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
   if type(info) ~= "table" then return 0, 0, 0 end
   local s, d = info.startTime or 0, info.duration or 0
-  if s == 0 or d == 0 or info.isOnGCD or d <= 1.5 then return 0, 0, 0 end
+  if s == 0 or d == 0 or info.isOnGCD then return 0, 0, 0 end
+  if d <= 1.5 then
+    -- the GCD shows up as a cooldown on every GCD spell; Heroic Strike / Cleave have a real 1.5 s cooldown
+    local g = C_Spell.GetSpellCooldown(61304)
+    if type(g) == "table" and g.startTime == s and g.duration == d then return 0, 0, 0 end
+  end
   local rem = s + d - now
   if rem < 0 then rem = 0 end
   return rem, s, d
@@ -454,7 +462,7 @@ local AOE10 = { [ID.demo] = true, [ID.shock] = true, [ID.dshout] = true }
 -- melee spells: used only when the API returns nil for them
 local MELEE5 = { [ID.ms] = true, [ID.cs] = true, [ID.op] = true, [ID.slam] = true, [ID.exe] = true, [ID.hs] = true,
   [ID.cleave] = true, [ID.sslam] = true, [ID.rev] = true, [ID.dev] = true, [ID.sunder] = true, [ID.bt] = true,
-  [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
+  [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.attack] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
 local function meleeCheck(yards)
   if WeakAuras and WeakAuras.CheckRange then return WeakAuras.CheckRange("target", yards, "<=") and true or false end
   if CheckInteractDistance then local ok = CheckInteractDistance("target", 3) if ok ~= nil then return ok and true or false end end
@@ -480,7 +488,7 @@ E.outOfRange = outOfRange
 local function ready(id, S, lead) return known(id) and cd(id, S.now) <= (lead or 0.25) end
 E.cd, E.aura, E.rem, E.stacks, E.BUFF, E.DEBUFF, E.TDEBUFF, E.TDEBUFF_ALL = cd, aura, rem, stacks, BUFF, DEBUFF, TDEBUFF, TDEBUFF_ALL
 local function adder(out)
-  return function(id, f, why) out[#out + 1] = { id = id, glow = f and f.glow, wait = f and f.wait, why = why, tag = f and f.tag } end
+  return function(id, f, why) out[#out + 1] = { id = id, glow = f and f.glow, wait = f and f.wait, rage = f and f.rage, why = why, tag = f and f.tag } end
 end
 local function talent4(S, add, csOnly)
   -- tier 4: Bladestorm (AoE or CS window), Dragon Roar (on cooldown), Shockwave (AoE / cooldown)
@@ -526,7 +534,7 @@ local function leveling(S, out)
   if S.hostile and ready(ID.hs, S) and S.rage >= 30 then add(ID.hs, nil, "Heroic Strike: main attack while leveling") end
   if S.hostile and known(ID.sunder) and S.rage >= 15 and stacks(TDEBUFF_ALL, ID.warmor) < 3 then add(ID.sunder, nil, "Sunder Armor") end
   shout(S, add)
-  if known(ID.hs) then add(ID.hs, { wait = true }, "waiting for rage (Heroic Strike at 30)") end
+  if known(ID.hs) then add(ID.hs, { wait = true, rage = S.rage < 30 }, "waiting for rage (Heroic Strike at 30)") end
 end
 -- freshly specced (levels 10-19): few spec spells yet, so add the leveling basics around the spec priority
 local function earlySpec(S, list)
@@ -770,11 +778,13 @@ local function gcd(now)
   return rem, s, d
 end
 E.gcd = gcd
+-- spells that are not on the global cooldown: no GCD swipe / grey-out for them in the Next icons
+local OFFGCD = { [ID.attack] = true, [ID.hs] = true, [ID.cleave] = true, [ID.charge] = true, [ID.chargeOld] = true, [ID.pummel] = true }
 local function entry(e, S, side)
   if not e then return nil end
   local r, s, d = cd(e.id, S.now)
   local gr, gs, gd = S.gcdRem or 0, S.gcdStart or 0, S.gcdDur or 0
-  if side then gr = 0 end
+  if side or OFFGCD[e.id] then gr = 0 end
   if gr > r then s, d = gs, gd end
   local noRes = false
   if C_Spell and C_Spell.IsSpellUsable then
@@ -783,6 +793,7 @@ local function entry(e, S, side)
   end
   local waiting = (e.wait or r > 0 or gr > 0 or noRes) and true or false
   local oor = outOfRange(e.id)
+  if e.building then waiting, noRes = false, false end
   return { id = e.id, icon = spellIcon(e.id), name = spellName(e.id), key = E:Key(e.id),
            glow = e.glow and true or false, waiting = waiting, wait = waiting,
            tag = e.tag, why = e.why,
@@ -823,6 +834,74 @@ local function trackers(S)
   return t
 end
 
+-- auto attack, swing timer and cast feedback ------------------------------------
+-- Heroic Strike / Cleave are instant, off-GCD attacks in MoP (not "on next swing"), so the swing timer is just
+-- your white swings: main hand, plus off hand when dual wielding.
+local function autoAttacking()
+  if IsCurrentSpell then return IsCurrentSpell(ID.attack) and true or false end
+  if C_Spell and C_Spell.IsCurrentSpell then return C_Spell.IsCurrentSpell(ID.attack) and true or false end
+  return nil -- API missing: never nag about auto attack
+end
+E.autoAttacking = autoAttacking
+function E:Swing(hand, now)
+  local mh, oh
+    if UnitAttackSpeed then mh, oh = UnitAttackSpeed("player") end
+  local d = hand == "oh" and oh or mh
+  if d and d > 0 then self.swing[hand] = { s = now, d = d } end
+  self.last = -1
+end
+function E:Cast(id, now)
+  local R = self.R or {}
+  local hit = false
+  local nm = spellName(id)
+  for _, e in ipairs({ R.next, R.next2, R.off, R.int }) do
+    if e and (e.id == id or (nm and e.name == nm)) then hit = true end
+  end
+  self.lastCast = { id = id, t = now, hit = hit }
+  self.last = -1
+end
+function E:OnEvent(event, ...)
+  local now = GetTime()
+  if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+    if not CombatLogGetCurrentEventInfo then return end
+    local info = { CombatLogGetCurrentEventInfo() }
+    local sub, src = info[2], info[4]
+    if src == nil or src ~= (UnitGUID and UnitGUID("player")) then return end
+    if sub == "SWING_DAMAGE" then self:Swing(info[21] and "oh" or "mh", now)
+    elseif sub == "SWING_MISSED" then self:Swing(info[13] and "oh" or "mh", now) end
+  elseif event == "UNIT_ATTACK_SPEED" then
+    local unit = ...
+    if unit ~= "player" then return end
+    local mh, oh
+    if UnitAttackSpeed then mh, oh = UnitAttackSpeed("player") end
+    for hand, d in pairs({ mh = mh, oh = oh }) do
+      local w = self.swing[hand]
+      if d and w and w.d > 0 and w.s + w.d > now then
+        local frac = (now - w.s) / w.d -- keep the same progress, new speed
+        w.s, w.d = now - frac * d, d
+      end
+    end
+  elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+    local unit, _, id = ...
+    if unit == "player" and id then self:Cast(id, now) end
+  end
+end
+if CreateFrame then
+  local f = (OLD and OLD.frame) or CreateFrame("Frame")
+  f:UnregisterAllEvents()
+  f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+  f:RegisterEvent("UNIT_ATTACK_SPEED")
+  f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+  f:SetScript("OnEvent", function(_, ev, ...) E:OnEvent(ev, ...) end)
+  E.frame = f
+end
+local function swingState(hand, now, attacking)
+  local w = E.swing[hand]
+  local up = w and w.d > 0 and (w.s + w.d) > now
+  if not up and not attacking then return nil end
+  return { up = up and true or false, start = up and w.s or 0, dur = up and w.d or 0, exp = up and (w.s + w.d) or 0 }
+end
+
 -- one evaluation per 0.1 s shared by every aura
 function E:Tick()
   local now = GetTime()
@@ -834,6 +913,24 @@ function E:Tick()
   local list = {}
   if S.arms then arms(S, list) elseif S.fury then fury(S, list) elseif S.prot then prot(S, list) else leveling(S, list) end
   if not S.leveling and S.level < 20 then earlySpec(S, list) end
+  -- auto attack: white swings build the rage, so start them first, and never lead with a spell you can't afford
+  S.attacking = autoAttacking()
+  S.melee = S.hostile and meleeCheck(5)
+  if S.melee then
+    local function starved(e)
+      if e.rage then return true end
+      if C_Spell and C_Spell.IsSpellUsable then local _, noMana = C_Spell.IsSpellUsable(e.id) if noMana then return true end end
+      return false
+    end
+    if S.attacking == false then
+      table.insert(list, 1, { id = ID.attack, glow = true, tag = "ATK", why = "start auto attack (white swings build rage)" })
+    elseif not list[1] or starved(list[1]) then
+      local pick
+      for i = 2, #list do if not list[i].wait and not starved(list[i]) then pick = i break end end
+      if pick then table.insert(list, 1, table.remove(list, pick))
+      else table.insert(list, 1, { id = ID.attack, building = true, tag = "RAGE", why = "auto attacking: building rage" }) end
+    end
+  end
   if S.int then
     local c = S.int.cast
     local ie = entry({ id = S.int.id, glow = true }, S, true)
@@ -887,6 +984,20 @@ function E:Tick()
   if S.prot and known(ID.sbarrier) then
     local ba = aura(BUFF, ID.sbarrier)
     R.sbar = { rem = ba and ba.rem or 0, exp = ba and ba.exp or 0, dur = ba and ba.dur or 6, amount = ba and ba.points or nil }
+  end
+  -- swing timer + cast feedback
+  if E.cfg.showSwing ~= false then
+    local oh
+    if UnitAttackSpeed then oh = select(2, UnitAttackSpeed("player")) end
+    R.swing = { mh = swingState("mh", now, S.attacking), oh = oh and swingState("oh", now, S.attacking) or nil }
+  end
+  local lc = self.lastCast
+  if lc then
+    local age = now - lc.t
+    R.flash = lc.hit and age < 0.4 or false
+    if E.cfg.showLast ~= false and age < 3 then
+      R.last = { id = lc.id, icon = spellIcon(lc.id), name = spellName(lc.id), key = "", glow = lc.hit, start = lc.t, duration = 3, tag = "" }
+    end
   end
   self.R = R
   return R, true
