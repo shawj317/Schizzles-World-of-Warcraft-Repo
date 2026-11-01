@@ -1,0 +1,1 @@
+( Pawn: v1: "Schizzle's Warrior Protection": Class=Warrior, Spec=3, Strength=1, HitRating=3.73, ExpertiseRating=2.58, Stamina=1.91, ParryRating=1.49, DodgeRating=1.48, CritRating=1.04, Armor=0.56, MasteryRating=0.36, MeleeDps=0.35, Ap=0.25, HasteRating=0.12, MetaSocketEffect=160, IsCloth=X, IsLeather=X, IsMail=X )

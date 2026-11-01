@@ -1,0 +1,1 @@
+( Pawn: v1: "Schizzle's Warrior Fury": Class=Warrior, Spec=2, Strength=1, HitRating=3.61, ExpertiseRating=3.04, MeleeDps=1.92, CritRating=1.86, MasteryRating=1.28, HasteRating=0.84, Ap=0.45, Agility=0.12, MetaSocketEffect=160, IsCloth=X, IsLeather=X, IsMail=X, Stamina=0.01, IsShield=X )

@@ -1,0 +1,1 @@
+( Pawn: v1: "Schizzle's Warrior Arms": Class=Warrior, Spec=1, Strength=1, HitRating=3.8, ExpertiseRating=2.83, MeleeDps=3.54, CritRating=0.92, MasteryRating=0.91, HasteRating=0.82, Ap=0.45, MetaSocketEffect=160, IsCloth=X, IsLeather=X, IsMail=X, Stamina=0.01, IsShield=X )
