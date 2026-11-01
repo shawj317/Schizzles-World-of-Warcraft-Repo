@@ -4,7 +4,7 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** `schizzles-warrior-rotation.txt` (24,498 chars, starts `!WA:2!`). Current version: **v1** (engine `VERSION = 1`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (24,498 chars, starts `!WA:2!`). Current version: **v1** (engine `VERSION = 1`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
@@ -13,7 +13,7 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 ## Install (step by step)
 
 1. Install **WeakAuras** for MoP Classic (CurseForge app or Wago app) and log in on your Warrior.
-2. Open `schizzles-warrior-rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
+2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
 5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation" group. Click **Import** again to accept it.
@@ -195,14 +195,14 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 ## Source files (`source/`)
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
-- `build.lua`: builds the export string from `engine.lua` and writes `../schizzles-warrior-rotation.txt`. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
+- `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
 - `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 183 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
-- **v1.1** (Nov 1, 2026): the in-game group is renamed to "Schizzle's Warrior Rotation" and the folder moved to `Schizzle's Warrior/AddOns/WeakAuras/Rotation Aura/`. The rotation hasn't changed (engine `VERSION = 1`).
+- **v1.1** (Nov 1, 2026): the in-game group is renamed to "Schizzle's Warrior Rotation" and the files moved to `Schizzle's Warrior/AddOns/WeakAuras/`, with the import string renamed to `All-in-One Rotation.txt`. The rotation hasn't changed (engine `VERSION = 1`).
 - **v1** (Nov 1, 2026): first release. One group covers Arms, Fury (TG/SMF) and Protection, with automatic spec switching. It includes the rotation queue, off-GCD icon, defensives and cooldowns, rage bar, spec trackers, Colossus Smash bar, Shield Block and Barrier bars, interrupts with fallbacks, a stance reminder, keybinds and range tint.
 
 ## License

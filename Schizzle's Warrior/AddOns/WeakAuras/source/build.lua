@@ -1,12 +1,12 @@
 -- Builds "Schizzle's Warrior Rotation" (!WA:2! export) from engine.lua.
--- Usage: lua build.lua   (writes ../schizzles-warrior-rotation.txt; paths are relative to this folder; LibSerialize / LibDeflate must be on disk)
+-- Usage: lua build.lua   (writes "../All-in-One Rotation.txt"; paths are relative to this folder; LibSerialize / LibDeflate must be on disk)
 local HERE = (arg and arg[0] and arg[0]:match("^(.*)/[^/]*$")) or "."
 local LIBDIR = os.getenv("WA_LIBS") or "/workspace"
 local LibSerialize = dofile(LIBDIR .. "/LibSerialize/LibSerialize.lua")
 local LibDeflate = dofile(LIBDIR .. "/LibDeflate/LibDeflate.lua")
 local function read(p) local f = assert(io.open(p)) local s = f:read("*a") f:close() return s end
 local ENGINE = read(HERE .. "/engine.lua")
-local OUT = os.getenv("WA_OUT") or (HERE .. "/../schizzles-warrior-rotation.txt")
+local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 local GROUP = "Schizzle's Warrior Rotation"
 local FONT = "Fira Sans Condensed Medium"

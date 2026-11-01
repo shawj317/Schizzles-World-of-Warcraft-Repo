@@ -3,7 +3,7 @@
 -- against a mocked WoW API. Needs a WeakAuras2 checkout with tests/helpers.lua + tests/wow_stubs.lua (run from that tests dir).
 local WA_TESTS = os.getenv("WA_TESTS") or "/workspace/wa2/tests"
 local LIBDIR = os.getenv("WA_LIBS") or "/workspace"
-local EXPORT = os.getenv("WA_EXPORT") or "/workspace/schizzles-warrior-rotation.txt"
+local EXPORT = os.getenv("WA_EXPORT") or "/workspace/All-in-One Rotation.txt"
 package.path = WA_TESTS .. "/?.lua;" .. package.path
 local LibSerialize = dofile(LIBDIR .. "/LibSerialize/LibSerialize.lua")
 local LibDeflate = dofile(LIBDIR .. "/LibDeflate/LibDeflate.lua")
