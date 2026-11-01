@@ -5,7 +5,7 @@ and dataset builders that come across this repository.
 
 ## Request
 
-Schizzle's TSM Groups (schizzles-tsm-groups) is a personal World of Warcraft project by
+Schizzle's MoP Classic Addons (schizzles-mop-classic) is a personal World of Warcraft project by
 Jon Shaw (GitHub: shawj317). Unless you are acting on behalf of the author,
 please do not:
 
