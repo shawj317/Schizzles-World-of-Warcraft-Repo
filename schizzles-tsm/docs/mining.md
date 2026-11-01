@@ -1,6 +1,6 @@
 # Mining
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-mining.txt`](../groups/schizzles-tsm-mining.txt). **80 items** in 6 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-mining.txt`](../groups/professions/schizzles-tsm-mining.txt). **80 items** in 6 subgroups.
 
 | Subgroup | Items |
 |---|---|

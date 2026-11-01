@@ -1,6 +1,6 @@
 # Tailoring
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-tailoring.txt`](../groups/schizzles-tsm-tailoring.txt). **646 items** in 16 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-tailoring.txt`](../groups/professions/schizzles-tsm-tailoring.txt). **646 items** in 16 subgroups.
 
 | Subgroup | Items |
 |---|---|

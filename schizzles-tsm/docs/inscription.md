@@ -1,6 +1,6 @@
 # Inscription
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-inscription.txt`](../groups/schizzles-tsm-inscription.txt). **596 items** in 22 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-inscription.txt`](../groups/professions/schizzles-tsm-inscription.txt). **596 items** in 22 subgroups.
 
 | Subgroup | Items |
 |---|---|

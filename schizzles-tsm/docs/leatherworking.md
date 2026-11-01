@@ -1,6 +1,6 @@
 # Leatherworking
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-leatherworking.txt`](../groups/schizzles-tsm-leatherworking.txt). **871 items** in 16 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-leatherworking.txt`](../groups/professions/schizzles-tsm-leatherworking.txt). **871 items** in 16 subgroups.
 
 | Subgroup | Items |
 |---|---|

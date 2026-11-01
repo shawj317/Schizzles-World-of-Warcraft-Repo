@@ -1,6 +1,6 @@
 # Alchemy
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-alchemy.txt`](../groups/schizzles-tsm-alchemy.txt). **281 items** in 36 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-alchemy.txt`](../groups/professions/schizzles-tsm-alchemy.txt). **281 items** in 36 subgroups.
 
 | Subgroup | Items |
 |---|---|

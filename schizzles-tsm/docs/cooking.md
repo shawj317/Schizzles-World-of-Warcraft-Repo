@@ -1,6 +1,6 @@
 # Cooking
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-cooking.txt`](../groups/schizzles-tsm-cooking.txt). **422 items** in 11 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-cooking.txt`](../groups/professions/schizzles-tsm-cooking.txt). **422 items** in 11 subgroups.
 
 | Subgroup | Items |
 |---|---|

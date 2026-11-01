@@ -1,6 +1,6 @@
 # First Aid
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-first-aid.txt`](../groups/schizzles-tsm-first-aid.txt). **25 items** in 2 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-first-aid.txt`](../groups/professions/schizzles-tsm-first-aid.txt). **25 items** in 2 subgroups.
 
 | Subgroup | Items |
 |---|---|

@@ -1,6 +1,6 @@
 # Herbalism
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-herbalism.txt`](../groups/schizzles-tsm-herbalism.txt). **77 items** in 7 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-herbalism.txt`](../groups/professions/schizzles-tsm-herbalism.txt). **77 items** in 7 subgroups.
 
 | Subgroup | Items |
 |---|---|

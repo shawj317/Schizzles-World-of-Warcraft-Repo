@@ -1,6 +1,6 @@
 # Skinning
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-skinning.txt`](../groups/schizzles-tsm-skinning.txt). **68 items** in 6 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-skinning.txt`](../groups/professions/schizzles-tsm-skinning.txt). **68 items** in 6 subgroups.
 
 | Subgroup | Items |
 |---|---|

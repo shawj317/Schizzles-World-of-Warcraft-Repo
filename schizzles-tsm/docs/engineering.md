@@ -1,6 +1,6 @@
 # Engineering
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-engineering.txt`](../groups/schizzles-tsm-engineering.txt). **302 items** in 14 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-engineering.txt`](../groups/professions/schizzles-tsm-engineering.txt). **302 items** in 14 subgroups.
 
 | Subgroup | Items |
 |---|---|

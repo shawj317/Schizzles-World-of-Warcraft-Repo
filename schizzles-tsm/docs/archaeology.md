@@ -1,6 +1,6 @@
 # Archaeology
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-archaeology.txt`](../groups/schizzles-tsm-archaeology.txt). **11 items** in 1 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-archaeology.txt`](../groups/professions/schizzles-tsm-archaeology.txt). **11 items** in 1 subgroups.
 
 | Subgroup | Items |
 |---|---|

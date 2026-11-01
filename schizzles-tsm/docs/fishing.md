@@ -1,6 +1,6 @@
 # Fishing
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-fishing.txt`](../groups/schizzles-tsm-fishing.txt). **84 items** in 6 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-fishing.txt`](../groups/professions/schizzles-tsm-fishing.txt). **84 items** in 6 subgroups.
 
 | Subgroup | Items |
 |---|---|

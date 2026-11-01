@@ -1,6 +1,6 @@
 # Enchanting
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-enchanting.txt`](../groups/schizzles-tsm-enchanting.txt). **383 items** in 20 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-enchanting.txt`](../groups/professions/schizzles-tsm-enchanting.txt). **383 items** in 20 subgroups.
 
 | Subgroup | Items |
 |---|---|

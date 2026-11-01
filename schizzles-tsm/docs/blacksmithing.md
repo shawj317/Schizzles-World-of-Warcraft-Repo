@@ -1,6 +1,6 @@
 # Blacksmithing
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-blacksmithing.txt`](../groups/schizzles-tsm-blacksmithing.txt). **763 items** in 18 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-blacksmithing.txt`](../groups/professions/schizzles-tsm-blacksmithing.txt). **763 items** in 18 subgroups.
 
 | Subgroup | Items |
 |---|---|

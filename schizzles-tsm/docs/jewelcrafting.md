@@ -1,6 +1,6 @@
 # Jewelcrafting
 
-Part of [Schizzle's TSM](../README.md). Import string: [`groups/schizzles-tsm-jewelcrafting.txt`](../groups/schizzles-tsm-jewelcrafting.txt). **706 items** in 22 subgroups.
+Part of [Schizzle's TSM](../README.md). Import string: [`groups/professions/schizzles-tsm-jewelcrafting.txt`](../groups/professions/schizzles-tsm-jewelcrafting.txt). **706 items** in 22 subgroups.
 
 | Subgroup | Items |
 |---|---|
