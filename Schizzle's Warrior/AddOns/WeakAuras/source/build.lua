@@ -57,17 +57,15 @@ local function textTSU(field)
 end]]
 end
 
--- load: Warrior only, plus the listed specialisations (71 Arms, 72 Fury, 73 Protection)
-local function LOADFOR(specs)
-  local multi = {}
-  for _, s in ipairs(specs) do multi[s] = true end
+-- load: Warrior class only, no specialisation requirement. Before level 10 a warrior has no spec, so a spec load
+-- would hide the whole HUD; the engine decides what each aura shows (spec-only bars hide through their triggers).
+local function LOADFOR()
   return {
     use_class = true, class = { single = "WARRIOR", multi = { WARRIOR = true } },
-    use_class_and_spec = false, class_and_spec = { multi = multi },
+    use_class_and_spec = nil, class_and_spec = { multi = {} },
     size = { multi = {} }, spec = { multi = {} }, talent = { multi = {} },
   }
 end
-local ALL, DPS, PROT = { 71, 72, 73 }, { 71, 72 }, { 73 }
 
 local function trig(code, vars)
   return {
@@ -97,7 +95,7 @@ local ANIM = { start = { type = "none", duration_type = "seconds", easeType = "n
                finish = { type = "none", duration_type = "seconds", easeType = "none", easeStrength = 3 } }
 
 local RAGE_Y, RAGE_H = 58, 10
-local function icon(id, size, x, y, pick, withMode, specs)
+local function icon(id, size, x, y, pick, withMode)
   -- glow sits right after the background so every text draws above it
   local subs = { { type = "subbackground" }, glowSub(size >= 50 and "buttonOverlay" or "Pixel") }
   local g = 2
@@ -124,7 +122,7 @@ local function icon(id, size, x, y, pick, withMode, specs)
       { check = { trigger = 1, variable = "oor", value = 1 }, changes = { { property = "desaturate", value = true } } },
       { check = { trigger = 1, variable = "oorTint", value = 1 }, changes = { { property = "color", value = { 1, 0.35, 0.35, 1 } } } },
     },
-    load = LOADFOR(specs or ALL), actions = { init = {}, start = {}, finish = {} },
+    load = LOADFOR(), actions = { init = {}, start = {}, finish = {} },
     animation = ANIM, config = {}, authorOptions = {}, information = {},
   }
 end
@@ -171,13 +169,13 @@ local function textAura(id, field, x, y, size)
     automaticWidth = "Auto", fixedWidth = 200, wordWrap = "WordWrap", shadowColor = { 0, 0, 0, 1 }, shadowXOffset = 1, shadowYOffset = -1,
     subRegions = { { type = "subbackground" } },
     triggers = trig(textTSU(field), "{ " .. field .. " = 'string' }"),
-    conditions = {}, load = LOADFOR(ALL), actions = { init = {}, start = {}, finish = {} },
+    conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} },
     animation = ANIM, config = {}, authorOptions = {}, information = {},
   }
 end
 children[#children + 1] = textAura("SWR Resources", "res", 0, 76, 12)
 
-local function bar(id, w, h, x, y, color, bg, specs)
+local function bar(id, w, h, x, y, color, bg)
   return {
     id = id, uid = id:gsub("%W", ""), parent = GROUP, regionType = "aurabar", internalVersion = INTERNAL, tocversion = TOC,
     width = w, height = h, xOffset = x, yOffset = y, selfPoint = "CENTER", anchorPoint = "CENTER", anchorFrameType = "SCREEN",
@@ -186,7 +184,7 @@ local function bar(id, w, h, x, y, color, bg, specs)
     gradientOrientation = "HORIZONTAL", spark = false, frameStrata = 1, zoom = 0, alpha = 1, desaturate = false,
     progressSource = { -1, "" }, adjustedMax = "", adjustedMin = "",
     subRegions = { { type = "subbackground" }, { type = "subforeground" } },
-    conditions = {}, load = LOADFOR(specs or ALL), actions = { init = {}, start = {}, finish = {} },
+    conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} },
     animation = ANIM, config = {}, authorOptions = {}, information = {},
   }
 end
@@ -277,7 +275,7 @@ for i = 1, 4 do
   children[#children + 1] = t
 end
 
--- timed bar helper: Colossus Smash window (Arms/Fury), Shield Block / Shield Barrier (Protection)
+-- timed bar helper: Colossus Smash window (Arms/Fury, once CS is learned), Shield Block / Shield Barrier (Protection, once learned)
 local function timedTSU(field, label, extra)
   return HEAD .. [[
   local s = R.show and R.]] .. field .. [[
@@ -298,8 +296,8 @@ local function timedTSU(field, label, extra)
   return true
 end]]
 end
-local function timedBar(id, y, color, field, label, extra, specs)
-  local b = bar(id, 160, 12, 0, y, color, { 0, 0, 0, 0.5 }, specs)
+local function timedBar(id, y, color, field, label, extra)
+  local b = bar(id, 160, 12, 0, y, color, { 0, 0, 0, 0.5 })
   b.subRegions[#b.subRegions + 1] = border()
   b.subRegions[#b.subRegions + 1] = text("%label", "INNER_LEFT", 10, 2, 0)
   b.subRegions[#b.subRegions + 1] = text("%p", "INNER_RIGHT", 10, -2, 0)
@@ -307,11 +305,11 @@ local function timedBar(id, y, color, field, label, extra, specs)
   return b
 end
 children[#children + 1] = timedBar("SWR Colossus Smash", -118, { 0.9, 0.2, 0.15, 1 }, "cs", "Colossus Smash",
-  [[up and "Colossus Smash" or ((s.cd or 0) > 0.25 and string.format("CS in %.0fs", s.cd) or "CS READY")]], DPS)
+  [[up and "Colossus Smash" or ((s.cd or 0) > 0.25 and string.format("CS in %.0fs", s.cd) or "CS READY")]])
 children[#children + 1] = timedBar("SWR Shield Block", -118, { 0.3, 0.55, 1, 1 }, "sblock", "Shield Block",
-  [[string.format("Shield Block (%d)", s.charges or 0)]], PROT)
+  [[string.format("Shield Block (%d)", s.charges or 0)]])
 children[#children + 1] = timedBar("SWR Shield Barrier", -133, { 0.95, 0.8, 0.2, 1 }, "sbar", "Shield Barrier",
-  [[(up and s.amount) and string.format("Barrier %.1fk", s.amount / 1000) or "Shield Barrier"]], PROT)
+  [[(up and s.amount) and string.format("Barrier %.1fk", s.amount / 1000) or "Shield Barrier"]])
 
 local group = {
   id = GROUP, uid = "SchizzleWarriorGroup", regionType = "group", internalVersion = INTERNAL, tocversion = TOC,
@@ -321,10 +319,10 @@ local group = {
   scale = 1, alpha = 1, subRegions = {},
   triggers = { activeTriggerMode = -10, { trigger = { type = "aura2", names = {}, event = "Health", subeventPrefix = "SPELL",
     subeventSuffix = "_CAST_START", spellIds = {}, unit = "player", debuffType = "HELPFUL" }, untrigger = {} } },
-  conditions = {}, load = LOADFOR(ALL), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
+  conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {},
   information = { saved = true },
-  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically.",
+  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10.",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

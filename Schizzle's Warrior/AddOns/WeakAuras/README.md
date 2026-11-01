@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (24,498 chars, starts `!WA:2!`). Current version: **v1** (engine `VERSION = 1`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (25,869 chars, starts `!WA:2!`). Current version: **v1.2** (engine `VERSION = 2`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
-**Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP.
+**Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 183 checks across all three specs. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 233 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9) and freshly specced level 10 characters. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -36,18 +36,18 @@ All 20 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 | **SWR Interrupt Cast** | 120x10 | y +98 | Name and % of the cast you should kick |
 | **SWR Resources** | 12 pt | y +76 | Stance name and spec counters (see each spec below). Starts with `!` when you're in the wrong stance |
 | **SWR Rage** | 160x10 | y +58 | Rage bar with the number. It turns orange when you're close to the rage cap and should dump rage |
-| Mode label | 14 pt gold | above Next | `ARMS`, `FURY TG`, `FURY SMF`, `PROT TANK` or `PROT DPS`, plus `AoE n` and `EXEC` |
+| Mode label | 14 pt gold | above Next | `ARMS`, `FURY TG`, `FURY SMF`, `PROT TANK`, `PROT DPS` or `LEVELING`, plus `AoE n` and `EXEC` |
 | **SWR Next** | 56 px | 0, 0 | The ability to press now, with its keybind, a reason tag (top left), and a glow for high-priority picks |
 | **SWR Defensive 1-3** | 36 px | x -52 / -92 / -132 | Stance reminder, Prot active mitigation, and defensives when your health drops |
 | **SWR Cooldown 1-3** | 36 px | x +52 / +92 / +132 | Offensive cooldowns, lined up with Colossus Smash |
 | **SWR Next+1** | 34 px | y -50 | The next different ability in the list |
 | **SWR Off-GCD** | 34 px | x +40, y -50 | Heroic Strike or Cleave. These are off the global cooldown, so press them alongside the Next icon |
-| **SWR Tracker 1-4** | 28 px | y -90 | Four buff/debuff icons for your spec. Greyed out when missing, with a red glow when something important is missing |
-| **SWR Colossus Smash** | 160x12 | y -118 | Arms/Fury only. Your CS window on the target, or `CS in Xs` / `CS READY` |
-| **SWR Shield Block** | 160x12 | y -118 | Prot only. Shield Block uptime with charges, e.g. `Shield Block (1)` |
-| **SWR Shield Barrier** | 160x12 | y -133 | Prot only. Shield Barrier uptime and absorb left, e.g. `Barrier 45.2k` |
+| **SWR Tracker 1-4** | 28 px | y -90 | Four buff/debuff icons for your spec. Greyed out when missing, with a red glow when something important is missing. A tracker stays hidden until its spell is learned, and all four are hidden in Leveling mode |
+| **SWR Colossus Smash** | 160x12 | y -118 | Arms/Fury only, once Colossus Smash is learned. Your CS window on the target, or `CS in Xs` / `CS READY` |
+| **SWR Shield Block** | 160x12 | y -118 | Prot only, once Shield Block is learned. Shield Block uptime with charges, e.g. `Shield Block (1)` |
+| **SWR Shield Barrier** | 160x12 | y -133 | Prot only, once Shield Barrier is learned. Shield Barrier uptime and absorb left, e.g. `Barrier 45.2k` |
 
-**When it shows:** in combat, or when you have a hostile target. Every aura loads for the Warrior class only; the Colossus Smash bar loads only for Arms/Fury, and the two Shield bars only for Protection.
+**When it shows:** in combat, or when you have a hostile target, at any level. Every aura loads for the Warrior class only, with no spec or level condition, because a warrior under level 10 has no spec. The engine decides what each aura shows: the Colossus Smash bar appears only for Arms/Fury and the two Shield bars only for Protection, and each one waits until its spell is learned.
 
 **Colours on the icons:** desaturated (grey) means you're waiting on the GCD, a cooldown or rage. Grey plus red tint means you're out of range.
 
@@ -114,6 +114,24 @@ All 20 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 - **Resources text:** stance and `Block n/2` charges.
 - **Prot DPS mode:** for off-tanking or soloing. It skips active mitigation and dumps rage into Heroic Strike at 60+.
 
+### Leveling (levels 1-9, no spec)
+
+Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Leveling priority instead of a spec list. It uses only spells the character has learned (`IsPlayerSpell`). In MoP Classic, a warrior has Battle Stance and Heroic Strike at level 1, Charge at 3, Victory Rush at 5 and Execute at 7.
+
+- **Priority:**
+  1. Victory Rush below 70% health (glows).
+  2. Charge when the target is out of melee range and within Charge range (glows). If Charge is on cooldown, Heroic Throw once it is learned.
+  3. Execute on a target under 20% health (30 rage).
+  4. Victory Rush whenever the Victorious proc is up.
+  5. Thunder Clap on 2+ enemies, once learned.
+  6. Heroic Strike at 30+ rage. It is the main attack while leveling, so it sits in the Next icon and the Off-GCD icon stays empty.
+  7. Sunder Armor and Battle/Commanding Shout, once learned.
+  8. Otherwise Heroic Strike, greyed out, while rage builds.
+- **Resources text:** stance and character level, e.g. `Battle  Lv 5`.
+- **Hidden in Leveling mode:** the trackers, the Colossus Smash bar and the Shield bars. The rage bar, the Battle Stance reminder, defensives and the interrupt icon still work with whatever is learned.
+- **Picking a spec at level 10** switches to the Arms, Fury or Protection priority on the next update. While a character is level 10-19 and still has few spec spells, the spec priority adds the same basics: Charge to close the gap, and Victory Rush or Heroic Strike when the spec spells are on cooldown.
+- **Taunt** is not suggested. It only matters in groups, and threat calls are left to the player.
+
 ### All specs
 
 - **Interrupt:** Pummel, then Disrupting Shout (if talented) when Pummel is out of reach. With "Include stuns/CC" on, the fallbacks are Storm Bolt, Shockwave, Heroic Throw (only with Glyph of Gag Order), Quaking Palm, Arcane Torrent and War Stomp.
@@ -163,6 +181,7 @@ IDs were checked against MoP Classic client data (wago.tools DB2 tables for buil
   - Pummel 6552, Die by the Sword 118038, Rallying Cry 97462, Shield Wall 871, Victory Rush 34428, Heroic Throw 57755.
   - Enrage 12880, Weakened Blows 115798, Weakened Armor 113746, Deep Wounds 115767.
   - Stances: Battle 2457, Defensive 71, Berserker 2458.
+  - Charge 1250619 (the MoP Classic 5.5 ID, level 3; the older ID 100 is accepted too), Sunder Armor 7386, Victorious buff 32216.
 - **Talents:**
   - Tier 2: Enraged Regeneration 55694, Impending Victory 103840.
   - Tier 3: Disrupting Shout 102060.
@@ -180,6 +199,8 @@ IDs were checked against MoP Classic client data (wago.tools DB2 tables for buil
   - Arms: https://www.wowhead.com/mop-classic/guide/classes/warrior/arms/dps-rotation-cooldowns-abilities-pve
   - Fury: https://www.wowhead.com/mop-classic/guide/classes/warrior/fury/dps-rotation-cooldowns-abilities-pve
   - Protection: https://www.wowhead.com/mop-classic/guide/classes/warrior/protection/tank-rotation-cooldowns-abilities-pve
+- Warcraft Tavern, Warrior leveling guide (MoP Classic), for the level 1-9 spell order (Battle Stance and Heroic Strike, Charge at 3, then Victory Rush and Execute): https://www.warcrafttavern.com/mop/guides/warrior-leveling-guide/
+- Wowhead MoP Classic, Charge (level 3, spell 1250619): https://www.wowhead.com/mop-classic/spell=1250619/charge
 - **Single-Minded Fury vs Titan's Grip:** the change (Bloodsurge above Raging Blow with SMF) follows community theorycrafting from the MoP era (MMO-Champion Fury threads). Treat it as the least certain rule here.
 
 Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, a 20-rage dump margin, Execute at 90 rage for Prot, and holding one Raging Blow charge when CS is less than 6 s away. You can change the first two in Options.
@@ -190,18 +211,20 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - **MoP-era behaviour:** the aura assumes 5.4-style mechanics, as the MoP Classic guides describe them. If Blizzard changes a spell in a Classic patch, its rule may need an update.
 - **Range:** the enemy count uses nameplates, so turn on enemy nameplates for the AoE switch to work.
 - **Shield Barrier absorb:** the amount comes from the aura's points value. If the client doesn't report it, the bar just says "Shield Barrier".
+- **Leveling spell levels:** the level 5 (Victory Rush) and level 7 (Execute) unlocks come from guide text, not from client data. The Leveling mode reads `IsPlayerSpell`, so a different unlock level only changes when the spell first appears.
 - **Stance swaps** (for example Defensive Stance for a big hit as DPS) are your call. The left-side reminder only nudges you back.
 
 ## Source files (`source/`)
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 183 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 233 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.2** (Nov 1, 2026): the aura now works before level 10. A no-spec **Leveling** mode (Heroic Strike, Charge, Victory Rush, Execute and anything else learned) runs until a spec is picked, then the spec priority takes over without a `/reload`. Every aura loads for the class only (no spec condition). Trackers and the CS and Shield bars stay hidden until their spells are learned, and level 10-19 spec priorities add Charge, Victory Rush and Heroic Strike as fillers. Engine `VERSION = 2`, so it replaces an older engine that is still loaded.
 - **v1.1** (Nov 1, 2026): the in-game group is renamed to "Schizzle's Warrior Rotation" and the files moved to `Schizzle's Warrior/AddOns/WeakAuras/`, with the import string renamed to `All-in-One Rotation.txt`. The rotation hasn't changed (engine `VERSION = 1`).
 - **v1** (Nov 1, 2026): first release. One group covers Arms, Fury (TG/SMF) and Protection, with automatic spec switching. It includes the rotation queue, off-GCD icon, defensives and cooldowns, rage bar, spec trackers, Colossus Smash bar, Shield Block and Barrier bars, interrupts with fallbacks, a stance reminder, keybinds and range tint.
 

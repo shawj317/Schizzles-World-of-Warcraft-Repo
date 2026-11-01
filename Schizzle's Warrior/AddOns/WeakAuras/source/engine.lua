@@ -2,8 +2,9 @@
 -- Arms + Fury (Titan's Grip / Single-Minded Fury) + Protection, MoP Classic 5.5.x.
 -- Every spell is gated by IsPlayerSpell, so talent tiers 4 (Bladestorm / Shockwave / Dragon Roar) and
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
+-- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 1
+local VERSION = 2
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -24,6 +25,8 @@ local ID = {
   reck = 1719, skull = 114207, bshout = 6673, cshout = 469, brage = 18499, leap = 6544, hthrow = 57755,
   pummel = 6552, sref = 23920, dbts = 118038, rcry = 97462, swall = 871, vr = 34428,
   battle = 2457, def = 71, bers = 2458,
+  -- Charge: MoP Classic 5.5 uses 1250619 (level 3); 100 is the older ID, kept as a fallback
+  charge = 1250619, chargeOld = 100,
   -- talents (tier 2 / 3 / 4 / 6)
   eregen = 55694, iv = 103840, dshout = 102060,
   bstorm = 46924, shock = 46968, droar = 118000,
@@ -35,6 +38,8 @@ local ID = {
   -- auras
   enrage = 12880, rbCharges = 131116, bsurge = 46916, tfb = 60503, sdeath = 52437, sexec = 139958,
   ult = 122510, snb = 50227, mcleaver = 85739, sblockBuff = 132404, incite = 122016,
+  -- passives that unlock the trackers above
+  sdeathTal = 29725, mcTal = 12950, bsTal = 46915, ultTal = 122509, snbTal = 46953,
   wblows = 115798, warmor = 113746, dwounds = 115767, victorious = 32216, skullBuff = 114206,
 }
 E.ID = ID
@@ -387,9 +392,16 @@ function E:Snapshot(now)
   local S = {}
   local cfg = self.cfg
   S.now = now
-  S.spec = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization())
-           or (GetSpecialization and GetSpecialization()) or 0
-  S.arms, S.fury, S.prot = S.spec == 1, S.spec == 2, S.spec == 3
+  -- read every tick, so picking a spec at level 10 (or swapping specs) switches the priority straight away
+  local spec = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization())
+               or (GetSpecialization and GetSpecialization())
+  spec = tonumber(spec) or 0
+  if spec ~= 1 and spec ~= 2 and spec ~= 3 then spec = 0 end -- nil / 0 / 5 = no specialisation yet (levels 1-9)
+  S.spec = spec
+  S.arms, S.fury, S.prot = spec == 1, spec == 2, spec == 3
+  S.leveling = spec == 0
+  S.level = (UnitLevel and tonumber(UnitLevel("player"))) or 90
+  if S.level < 1 then S.level = 90 end
   S.rage = UnitPower("player", 1) or 0
   S.rageMax = UnitPowerMax("player", 1) or 100
   if S.rageMax < 1 then S.rageMax = 100 end
@@ -431,6 +443,39 @@ function E:Snapshot(now)
   return S
 end
 
+-- range. Self / no-range spells always count as in range; point-blank AoE uses an 8 or 10 yd check.
+local NORANGE = { [ID.battle] = true, [ID.def] = true, [ID.bers] = true, [ID.bshout] = true, [ID.cshout] = true,
+  [ID.reck] = true, [ID.avatar] = true, [ID.bbath] = true, [ID.skull] = true, [ID.brage] = true, [ID.sblock] = true,
+  [ID.sbarrier] = true, [ID.swall] = true, [ID.lstand] = true, [ID.rcry] = true, [ID.dbts] = true, [ID.eregen] = true,
+  [ID.sweep] = true, [ID.sref] = true }
+local AOE8 = { [ID.tc] = true, [ID.ww] = true, [ID.bstorm] = true, [ID.droar] = true, [ID.warstomp] = true,
+  [69179] = true, [129597] = true, [28730] = true, [25046] = true, [50613] = true, [80483] = true }
+local AOE10 = { [ID.demo] = true, [ID.shock] = true, [ID.dshout] = true }
+-- melee spells: used only when the API returns nil for them
+local MELEE5 = { [ID.ms] = true, [ID.cs] = true, [ID.op] = true, [ID.slam] = true, [ID.exe] = true, [ID.hs] = true,
+  [ID.cleave] = true, [ID.sslam] = true, [ID.rev] = true, [ID.dev] = true, [ID.sunder] = true, [ID.bt] = true,
+  [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
+local function meleeCheck(yards)
+  if WeakAuras and WeakAuras.CheckRange then return WeakAuras.CheckRange("target", yards, "<=") and true or false end
+  if CheckInteractDistance then local ok = CheckInteractDistance("target", 3) if ok ~= nil then return ok and true or false end end
+  return true
+end
+local function outOfRange(id)
+  if not id or NORANGE[id] then return false end
+  if not (UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsDead("target")) then return false end
+  if AOE8[id] then return not meleeCheck(8) end
+  if AOE10[id] then return not meleeCheck(10) end
+  local r
+  local name = spellName(id)
+  if IsSpellInRange and name then r = IsSpellInRange(name, "target") end
+  if r == nil and C_Spell and C_Spell.IsSpellInRange then r = C_Spell.IsSpellInRange(id, "target") end
+  if r == 0 or r == false then return true end
+  if r == 1 or r == true then return false end
+  if MELEE5[id] then return not meleeCheck(5) end
+  return false
+end
+E.outOfRange = outOfRange
+
 -- helpers used by priority lists
 local function ready(id, S, lead) return known(id) and cd(id, S.now) <= (lead or 0.25) end
 E.cd, E.aura, E.rem, E.stacks, E.BUFF, E.DEBUFF, E.TDEBUFF, E.TDEBUFF_ALL = cd, aura, rem, stacks, BUFF, DEBUFF, TDEBUFF, TDEBUFF_ALL
@@ -453,6 +498,46 @@ end
 local function victory(S, add, hpLimit)
   if known(ID.iv) and ready(ID.iv, S) and S.hp < hpLimit and S.rage >= 10 then add(ID.iv, nil, "Impending Victory heal") return end
   if not known(ID.iv) and known(ID.vr) and aura(BUFF, ID.victorious) and S.hp < hpLimit then add(ID.vr, nil, "Victory Rush heal") end
+end
+
+-- Leveling (levels 1-9, no specialisation): Battle Stance, Heroic Strike as the main attack, Charge to pull (3),
+-- Victory Rush (5), Execute (7). Every entry is gated by IsPlayerSpell, so it only shows what you have learned.
+local function chargeId()
+  if known(ID.charge) then return ID.charge end
+  if known(ID.chargeOld) then return ID.chargeOld end
+  return nil
+end
+local function gapCloser(S, add)
+  if not S.hostile or meleeCheck(5) then return end
+  local ch = chargeId()
+  if ch and ready(ch, S) and not outOfRange(ch) then add(ch, { glow = true }, "Charge: target out of melee range") return end
+  if ready(ID.hthrow, S) and not outOfRange(ID.hthrow) then add(ID.hthrow, nil, "Heroic Throw: target out of melee range") end
+end
+local function victorious(S) return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end
+local function leveling(S, out)
+  local add = adder(out)
+  local vic = victorious(S)
+  if known(ID.iv) and ready(ID.iv, S) and S.hp < 60 and S.rage >= 10 then add(ID.iv, { glow = true }, "Impending Victory heal") end
+  if vic and S.hp < 70 then add(ID.vr, { glow = true }, "Victory Rush: heal") end
+  gapCloser(S, add)
+  if S.exec and S.rage >= 30 then add(ID.exe, { glow = true }, "Execute: target below 20%") end
+  if vic and S.hostile then add(ID.vr, nil, "Victory Rush (free hit before the proc ends)") end
+  if S.hostile and S.n >= 2 and ready(ID.tc, S) and S.rage >= 20 then add(ID.tc, nil, "2+ enemies: Thunder Clap") end
+  if S.hostile and ready(ID.hs, S) and S.rage >= 30 then add(ID.hs, nil, "Heroic Strike: main attack while leveling") end
+  if S.hostile and known(ID.sunder) and S.rage >= 15 and stacks(TDEBUFF_ALL, ID.warmor) < 3 then add(ID.sunder, nil, "Sunder Armor") end
+  shout(S, add)
+  if known(ID.hs) then add(ID.hs, { wait = true }, "waiting for rage (Heroic Strike at 30)") end
+end
+-- freshly specced (levels 10-19): few spec spells yet, so add the leveling basics around the spec priority
+local function earlySpec(S, list)
+  local pre = {}
+  local add = adder(pre)
+  gapCloser(S, add)
+  if not list[1] or list[1].wait then
+    if victorious(S) and S.hostile then add(ID.vr, nil, "Victory Rush (free hit)") end
+    if S.hostile and ready(ID.hs, S) and S.rage >= 30 then add(ID.hs, nil, "Heroic Strike: spare rage while spec spells are on cooldown") end
+  end
+  for i = #pre, 1, -1 do table.insert(list, 1, pre[i]) end
 end
 
 -- each priority list: Icy Veins / Warcraft Tavern / Wowhead MoP Classic guides (see README)
@@ -593,7 +678,7 @@ end
 -- off-GCD rage spender: Heroic Strike / Cleave
 local function offGcd(S)
   local cfg = E.cfg
-  if cfg.showOff == false or not S.hostile then return nil end
+  if cfg.showOff == false or not S.hostile or S.leveling then return nil end
   local hs = (S.n >= 2 and known(ID.cleave)) and ID.cleave or ID.hs
   if not known(hs) then return nil end
   if cd(hs, S.now) > 0.25 then return nil end
@@ -674,38 +759,6 @@ local function sidePops(S, left, right)
   end
 end
 
--- range. Self / no-range spells always count as in range; point-blank AoE uses an 8 or 10 yd check.
-local NORANGE = { [ID.battle] = true, [ID.def] = true, [ID.bers] = true, [ID.bshout] = true, [ID.cshout] = true,
-  [ID.reck] = true, [ID.avatar] = true, [ID.bbath] = true, [ID.skull] = true, [ID.brage] = true, [ID.sblock] = true,
-  [ID.sbarrier] = true, [ID.swall] = true, [ID.lstand] = true, [ID.rcry] = true, [ID.dbts] = true, [ID.eregen] = true,
-  [ID.sweep] = true, [ID.sref] = true }
-local AOE8 = { [ID.tc] = true, [ID.ww] = true, [ID.bstorm] = true, [ID.droar] = true, [ID.warstomp] = true,
-  [69179] = true, [129597] = true, [28730] = true, [25046] = true, [50613] = true, [80483] = true }
-local AOE10 = { [ID.demo] = true, [ID.shock] = true, [ID.dshout] = true }
--- melee spells: used only when the API returns nil for them
-local MELEE5 = { [ID.ms] = true, [ID.cs] = true, [ID.op] = true, [ID.slam] = true, [ID.exe] = true, [ID.hs] = true,
-  [ID.cleave] = true, [ID.sslam] = true, [ID.rev] = true, [ID.dev] = true, [ID.sunder] = true, [ID.bt] = true,
-  [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
-local function meleeCheck(yards)
-  if WeakAuras and WeakAuras.CheckRange then return WeakAuras.CheckRange("target", yards, "<=") and true or false end
-  if CheckInteractDistance then local ok = CheckInteractDistance("target", 3) if ok ~= nil then return ok and true or false end end
-  return true
-end
-local function outOfRange(id)
-  if not id or NORANGE[id] then return false end
-  if not (UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsDead("target")) then return false end
-  if AOE8[id] then return not meleeCheck(8) end
-  if AOE10[id] then return not meleeCheck(10) end
-  local r
-  local name = spellName(id)
-  if IsSpellInRange and name then r = IsSpellInRange(name, "target") end
-  if r == nil and C_Spell and C_Spell.IsSpellInRange then r = C_Spell.IsSpellInRange(id, "target") end
-  if r == 0 or r == false then return true end
-  if r == 1 or r == true then return false end
-  if MELEE5[id] then return not meleeCheck(5) end
-  return false
-end
-E.outOfRange = outOfRange
 
 local function gcd(now)
   local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(61304)
@@ -738,7 +791,9 @@ local function entry(e, S, side)
 end
 
 -- buff / debuff trackers: 4 small icons, contents depend on the spec
-local function track(tbl, id, label, alertWhenMissing, minStacks)
+local function track(tbl, id, label, alertWhenMissing, minStacks, need)
+  -- need = the spell that makes this tracker relevant; not learned yet (low level) -> tracker hidden
+  if need and not known(need) then return nil end
   local a = aura(tbl, id)
   local st = a and a.stacks or 0
   local active = a ~= nil and (not minStacks or st >= minStacks)
@@ -749,21 +804,21 @@ end
 local function trackers(S)
   local t = {}
   if S.arms then
-    t[1] = track(TDEBUFF, ID.cs, "CS")
-    t[2] = track(BUFF, ID.tfb, "TfB")
-    t[3] = S.exec and track(BUFF, ID.sexec, "SE") or track(BUFF, ID.sdeath, "SD")
-    t[4] = track(BUFF, ID.enrage, "Enr")
+    t[1] = track(TDEBUFF, ID.cs, "CS", nil, nil, ID.cs)
+    t[2] = track(BUFF, ID.tfb, "TfB", nil, nil, ID.op)
+    t[3] = S.exec and track(BUFF, ID.sexec, "SE", nil, nil, ID.op) or track(BUFF, ID.sdeath, "SD", nil, nil, ID.sdeathTal)
+    t[4] = track(BUFF, ID.enrage, "Enr", nil, nil, ID.brage)
   elseif S.fury then
-    t[1] = track(TDEBUFF, ID.cs, "CS")
-    t[2] = track(BUFF, ID.enrage, "Enr", S.combat and S.hostile)
-    t[3] = track(BUFF, ID.rbCharges, "RB")
-    t[4] = S.n >= 2 and track(BUFF, ID.mcleaver, "MC") or track(BUFF, ID.bsurge, "BS")
+    t[1] = track(TDEBUFF, ID.cs, "CS", nil, nil, ID.cs)
+    t[2] = track(BUFF, ID.enrage, "Enr", S.combat and S.hostile, nil, ID.bt)
+    t[3] = track(BUFF, ID.rbCharges, "RB", nil, nil, ID.rb)
+    t[4] = (S.n >= 2 and known(ID.mcTal)) and track(BUFF, ID.mcleaver, "MC") or track(BUFF, ID.bsurge, "BS", nil, nil, ID.bsTal)
   elseif S.prot then
     local hostile = S.hostile and S.tank
-    t[1] = track(TDEBUFF_ALL, ID.wblows, "WB", hostile)
-    t[2] = track(TDEBUFF_ALL, ID.warmor, "WA", hostile, 3)
-    t[3] = track(BUFF, ID.ult, "Ult")
-    t[4] = track(BUFF, ID.snb, "S&B")
+    t[1] = track(TDEBUFF_ALL, ID.wblows, "WB", hostile, nil, ID.tc)
+    t[2] = track(TDEBUFF_ALL, ID.warmor, "WA", hostile, 3, known(ID.dev) and ID.dev or ID.sunder)
+    t[3] = track(BUFF, ID.ult, "Ult", nil, nil, ID.ultTal)
+    t[4] = track(BUFF, ID.snb, "S&B", nil, nil, ID.snbTal)
   end
   return t
 end
@@ -775,9 +830,10 @@ function E:Tick()
   self.last = now
   if now - self.keysAt > 2 then self:RefreshKeys(now) end
   local S = self:Snapshot(now)
-  local R = { S = S, show = (S.combat or S.hostile) and (S.arms or S.fury or S.prot) }
+  local R = { S = S, show = (S.combat or S.hostile) and true or false }
   local list = {}
-  if S.arms then arms(S, list) elseif S.fury then fury(S, list) elseif S.prot then prot(S, list) end
+  if S.arms then arms(S, list) elseif S.fury then fury(S, list) elseif S.prot then prot(S, list) else leveling(S, list) end
+  if not S.leveling and S.level < 20 then earlySpec(S, list) end
   if S.int then
     local c = S.int.cast
     local ie = entry({ id = S.int.id, glow = true }, S, true)
@@ -787,9 +843,10 @@ function E:Tick()
     if E.cfg.intMain then table.insert(list, 1, { id = S.int.id, glow = true, why = "interrupt " .. (c.name or "cast") }) end
   end
   R.next = entry(list[1], S)
-  local specName = S.arms and "ARMS" or S.fury and ("FURY " .. (S.weap == "SMF" and "SMF" or "TG")) or S.prot and (S.tank and "PROT TANK" or "PROT DPS") or "?"
+  local specName = S.arms and "ARMS" or S.fury and ("FURY " .. (S.weap == "SMF" and "SMF" or "TG")) or S.prot and (S.tank and "PROT TANK" or "PROT DPS") or "LEVELING"
   local stanceName = STANCE_NAME[S.stance] or "no stance"
   local off = offGcd(S)
+  if off and list[1] and list[1].id == off.id and not list[1].wait then off = nil end -- already the main suggestion
   R.off = off and entry(off, S, true) or nil
   R.why = {
     main = list[1] and ((spellName(list[1].id) or list[1].id) .. ": " .. (list[1].why or (S.int and E.cfg.intMain and "interrupt") or "?")) or "nothing",
@@ -810,8 +867,11 @@ function E:Tick()
   if S.arms then res = string.format("%s  TfB %d", stanceName, stacks(BUFF, ID.tfb))
   elseif S.fury then res = string.format("%s  RB %d  MC %d", stanceName, S.rbc or 0, S.mc or 0)
   elseif S.prot then
-    local c, mx = charges(ID.sblock)
+    local c, mx
+    if known(ID.sblock) then c, mx = charges(ID.sblock) end
     res = string.format("%s  Block %s", stanceName, c and (c .. "/" .. (mx or 2)) or "-")
+  else
+    res = string.format("%s  Lv %d", stanceName, S.level)
   end
   R.res = res and (wrong and ("! " .. res) or res) or nil
   R.trk = trackers(S)
@@ -819,10 +879,13 @@ function E:Tick()
     local a = aura(TDEBUFF, ID.cs)
     R.cs = { rem = a and a.rem or 0, exp = a and a.exp or 0, dur = a and a.dur or 6.5, cd = S.csCd }
   end
-  if S.prot then
-    local b, ba = aura(BUFF, ID.sblockBuff), aura(BUFF, ID.sbarrier)
+  if S.prot and known(ID.sblock) then
+    local b = aura(BUFF, ID.sblockBuff)
     local c = charges(ID.sblock)
     R.sblock = { rem = b and b.rem or 0, exp = b and b.exp or 0, dur = b and b.dur or 6, charges = c or 0 }
+  end
+  if S.prot and known(ID.sbarrier) then
+    local ba = aura(BUFF, ID.sbarrier)
     R.sbar = { rem = ba and ba.rem or 0, exp = ba and ba.exp or 0, dur = ba and ba.dur or 6, amount = ba and ba.points or nil }
   end
   self.R = R

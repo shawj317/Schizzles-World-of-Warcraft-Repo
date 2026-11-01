@@ -33,18 +33,18 @@ local function check(cond, msg) if cond then P = P + 1 else F = F + 1; print("FA
 local uids = {}
 for _, c in ipairs(t.c) do
   byId[c.id] = c
-  local specs = {}
-  for k in pairs(c.load.class_and_spec.multi) do specs[#specs + 1] = k end
-  table.sort(specs)
-  print("  child", c.id, c.regionType, "subs=" .. #(c.subRegions or {}), "conds=" .. #(c.conditions or {}), "specs=" .. table.concat(specs, "/"))
+  print("  child", c.id, c.regionType, "subs=" .. #(c.subRegions or {}), "conds=" .. #(c.conditions or {}))
   check(c.id:sub(1, 4) == "SWR ", "child prefix " .. c.id)
   check(c.load.use_class == true and c.load.class.single == "WARRIOR", "class load " .. c.id)
+  -- no spec requirement anywhere: a level 1-9 warrior has no specialisation
+  check(not c.load.use_class_and_spec and not c.load.use_spec and not c.load.use_level and next(c.load.class_and_spec.multi) == nil, "no spec load " .. c.id)
   check(not uids[c.uid], "unique uid " .. c.uid); uids[c.uid] = true
   for _, s in ipairs(c.subRegions or {}) do if s.type == "subtext" then check(s.text_font == "Fira Sans Condensed Medium", "font " .. c.id) end end
   if c.font then check(c.font == "Fira Sans Condensed Medium", "font " .. c.id) end
 end
 check(not str:lower():find("peanut") and not decompressed:lower():find("peanut"), "no Peanut naming")
 check(data.uid == "SchizzleWarriorGroup", "group uid")
+check(not data.load.use_class_and_spec and not data.load.use_spec, "group has no spec load")
 check(data.id == "Schizzle's Warrior Rotation", "group name")
 WeakAuras.GetData = function(id) return byId[id] end
 Private.UIDtoID = function(uid) for id, d in pairs(byId) do if d.uid == uid then return id end end end
@@ -57,6 +57,7 @@ _G.UnitPower = function(_, p) if p == 1 then return W.rage end return 0 end
 _G.UnitPowerMax = function(_, p) if p == 1 then return W.rageMax or 120 end return 0 end
 _G.UnitHealth = function(u) if u == "target" then return W.thp or 100 end return W.hp end
 _G.UnitHealthMax = function() return 100 end
+_G.UnitLevel = function() return W.level or 90 end
 _G.IsPlayerSpell = function(id) return W.known[id] and true or false end
 _G.C_SpellBook = { IsSpellKnown = function(id) return W.known[id] and true or false end }
 local NAMES = {}
@@ -109,7 +110,7 @@ _G.C_NamePlate = { GetNamePlates = function() local tt = {} for i = 1, W.n do tt
 _G.GetInventoryItemID = function(_, slot) return (W.weap or {})[slot] end
 local ITEMLOC = { [1] = "INVTYPE_2HWEAPON", [2] = "INVTYPE_WEAPON", [3] = "INVTYPE_SHIELD" }
 _G.GetItemInfoInstant = function(item) return item, "Weapon", "x", ITEMLOC[item] end
-WeakAuras.CheckRange = function() return true end
+WeakAuras.CheckRange = function(_, yards) return (W.dist or 0) <= yards end
 SLOTS = { [1] = { "spell", 12294 }, [2] = { "spell", 86346 }, [3] = { "spell", 23922 } }
 BINDS = { ACTIONBUTTON1 = "1", ACTIONBUTTON2 = "SHIFT-2", ACTIONBUTTON3 = "3" }
 _G.GetActionInfo = function(slot) local a = SLOTS[slot] if a then return a[1], a[2] end end
@@ -152,7 +153,7 @@ local SN = { [12294]="MortalStrike",[7384]="Overpower",[1464]="Slam",[12328]="Sw
   [2457]="BattleStance",[71]="DefensiveStance",[2458]="BerserkerStance",[23881]="Bloodthirst",[85288]="RagingBlow",[100130]="WildStrike",
   [118038]="DieByTheSword",[23922]="ShieldSlam",[6572]="Revenge",[20243]="Devastate",[2565]="ShieldBlock",[112048]="ShieldBarrier",[12975]="LastStand",
   [1160]="DemoShout",[46924]="Bladestorm",[46968]="Shockwave",[118000]="DragonRoar",[107574]="Avatar",[12292]="Bloodbath",[107570]="StormBolt",
-  [102060]="DisruptingShout",[103840]="ImpendingVictory",[55694]="EnragedRegen",[107079]="QuakingPalm",[69179]="ArcaneTorrent" }
+  [102060]="DisruptingShout",[1250619]="Charge",[100]="ChargeOld",[7386]="SunderArmor",[103840]="ImpendingVictory",[55694]="EnragedRegen",[107079]="QuakingPalm",[69179]="ArcaneTorrent" }
 
 local ORDER = {}
 for _, c in ipairs(t.c) do ORDER[#ORDER + 1] = c.id end
@@ -165,7 +166,10 @@ local function run(label, sc, expect)
   W = { rage = 50, hp = 100, thp = 100, buffs = {}, debuffs = {}, tdebuffs = {}, tdebuffsOther = {}, cd = {}, target = true, combat = true,
         n = 1, spec = 1, stance = 2457, group = false }
   for k, v in pairs(sc) do W[k] = v end
-  W.known = book(W.spec, sc.talents)
+  if sc.noSpec then W.spec = nil end   -- GetSpecialization() returns nil before level 10
+  if sc.noStance then W.stance = nil end
+  if sc.knownOnly then W.known = {} for _, id in ipairs(sc.knownOnly) do W.known[id] = true end
+  else W.known = book(W.spec, sc.talents) end
   for id in pairs(sc.removeKnown or {}) do W.known[id] = nil end
   local cf = byId["SWR Next"].config
   cf.aoe, cf.protMode, cf.amMode, cf.fuMode, cf.shout, cf.dpsStance, cf.dumpMargin, cf.slamRage, cf.wildRage = 3, 1, 1, 1, 1, 1, 20, 80, 70
@@ -176,9 +180,10 @@ local function run(label, sc, expect)
   Private.ActivateAuraEnvironment()
   now = now + 1
   for _, id in ipairs(ORDER) do
-    -- honour per-spec load conditions like WeakAuras would
-    local specId = ({ 71, 72, 73 })[W.spec]
-    if byId[id].load.class_and_spec.multi[specId] then
+    -- honour load conditions like WeakAuras would (class always WARRIOR here; spec only if a child asked for it)
+    local ld = byId[id].load
+    local specId = ({ 71, 72, 73 })[W.spec or 0]
+    if not ld.use_class_and_spec or (specId and ld.class_and_spec.multi[specId]) then
       Private.ActivateAuraEnvironment(id, nil, nil, states[id])
       local ok2, err = pcall(tsu[id], states[id], "FRAME_UPDATE")
       Private.ActivateAuraEnvironment()
@@ -311,6 +316,65 @@ R("Prot DPS mode: no AM, HS at 60", { spec = 3, rage = 65, stance = 2457, cfg = 
 R("Prot execute only with 90+ rage when tanking", { spec = 3, rage = 50, thp = 10, stance = 71, cd = { [23922] = 4, [6572] = 5 }, tdebuffsOther = { WB, WA3 }, sbCharges = 0,
   check = function(st) return not icon(st("SWR Next"), 5308), "no exe" end }, nil)
 R("Prot Shockwave talent", { spec = 3, rage = 30, stance = 71, talents = { 46968 }, cd = { [23922] = 4, [6572] = 5 }, tdebuffsOther = { WB, WA3 } }, "Shockwave")
+
+print("\n== Leveling (no spec, levels 1-9) ==")
+-- MoP Classic: Battle Stance + Heroic Strike at 1, Charge at 3, Victory Rush at 5, Execute at 7
+local L1 = { 2457, 78 }
+local L3 = { 2457, 78, 1250619 }
+local L5 = { 2457, 78, 1250619, 34428 }
+local L7 = { 2457, 78, 1250619, 34428, 5308 }
+local VIC = { 32216, 15 }
+local function lev(st) local x = st("SWR Next") return x and x.mode:find("^LEVELING") ~= nil, x and x.mode end
+local function noSpecBars(st) return st("SWR Colossus Smash") == nil and st("SWR Shield Block") == nil and st("SWR Shield Barrier") == nil and st("SWR Tracker 1") == nil and st("SWR Tracker 4") == nil end
+R("L1 spec nil, 0 rage -> wait Heroic Strike", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return lev(st) and x.waiting and st("SWR Rage") ~= nil and st("SWR Resources").res == "Battle  Lv 1" and noSpecBars(st), st("SWR Resources") and st("SWR Resources").res end }, "HeroicStrike")
+R("L1 GetSpecialization 0, 30 rage -> Heroic Strike", { spec = 0, level = 1, rage = 30, knownOnly = L1,
+  check = function(st) return lev(st) and not st("SWR Next").waiting and st("SWR Off-GCD") == nil, "hs main, no off-GCD copy" end }, "HeroicStrike")
+R("L1 spec 5 (initial) counts as no spec", { spec = 5, level = 1, rage = 30, knownOnly = L1, check = lev }, "HeroicStrike")
+R("L1 no stance -> Battle Stance reminder", { noSpec = true, level = 1, rage = 30, noStance = true, knownOnly = L1,
+  check = function(st) return has(st, "Defensive", 2457), "stance" end }, "HeroicStrike")
+R("L1 out of combat, no target -> hidden", { noSpec = true, level = 1, combat = false, target = false, knownOnly = L1,
+  check = function(st) return st("SWR Rage") == nil and st("SWR Resources") == nil, "hidden" end }, "-")
+R("L1 target 15 yd, no Charge yet -> Heroic Strike OOR", { noSpec = true, level = 1, rage = 30, dist = 15, oor = { [78] = true }, knownOnly = L1,
+  check = function(st) return st("SWR Next").oorTint, "oor" end }, "HeroicStrike")
+R("L3 target 15 yd -> Charge", { noSpec = true, level = 3, rage = 0, dist = 15, knownOnly = L3,
+  check = function(st) return st("SWR Next").glow and icon(st("SWR Next+1"), 78), "charge glow, HS next" end }, "Charge")
+R("L3 old Charge ID 100 also works", { noSpec = true, level = 3, rage = 0, dist = 15, knownOnly = { 2457, 78, 100 } }, "ChargeOld")
+R("L3 Charge on cooldown -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 12 }, knownOnly = L3 }, "HeroicStrike")
+R("L3 in melee -> no Charge", { noSpec = true, level = 3, rage = 30, knownOnly = L3 }, "HeroicStrike")
+R("L5 Victorious up -> Victory Rush", { noSpec = true, level = 5, rage = 40, buffs = { VIC }, knownOnly = L5 }, "VictoryRush")
+R("L5 Victorious, hp 50 -> Victory Rush glow", { noSpec = true, level = 5, rage = 40, hp = 50, buffs = { VIC }, knownOnly = L5,
+  check = function(st) return st("SWR Next").glow, "glow" end }, "VictoryRush")
+R("L5 no proc -> Heroic Strike", { noSpec = true, level = 5, rage = 40, knownOnly = L5 }, "HeroicStrike")
+R("L5 target 10% but no Execute yet -> Heroic Strike", { noSpec = true, level = 5, rage = 40, thp = 10, knownOnly = L5,
+  check = function(st) return not st("SWR Next").mode:find("EXEC"), "no exec" end }, "HeroicStrike")
+R("L7 target 15% -> Execute", { noSpec = true, level = 7, rage = 40, thp = 15, knownOnly = L7,
+  check = function(st) return st("SWR Next").mode == "LEVELING EXEC", st("SWR Next").mode end }, "Execute")
+R("L7 low hp + proc beats Execute", { noSpec = true, level = 7, rage = 40, thp = 15, hp = 40, buffs = { VIC }, knownOnly = L7 }, "VictoryRush")
+R("L7 cast on target, no Pummel -> no interrupt", { noSpec = true, level = 7, rage = 40, cast = true, knownOnly = L7,
+  check = function(st) return st("SWR Interrupt") == nil, "no int" end }, "HeroicStrike")
+R("L9 full COMMON book, no spec, 3 targets", { noSpec = true, level = 9, rage = 40, n = 3,
+  check = function(st) return lev(st) and noSpecBars(st), "lev" end }, "ThunderClap")
+
+print("\n== Level 10, just specced ==")
+local B10 = { 2457, 78, 1250619, 34428, 5308 }
+local function plus(t, ...) local o = {} for _, v in ipairs(t) do o[#o + 1] = v end for _, v in ipairs({ ... }) do o[#o + 1] = v end return o end
+R("spec picked mid-session: Arms lv10 -> Mortal Strike", { spec = 1, level = 10, rage = 30, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Next").mode == "ARMS" and st("SWR Colossus Smash") == nil and st("SWR Tracker 1") == nil and st("SWR Resources").res:find("TfB") ~= nil, "arms10" end }, "MortalStrike")
+R("Arms lv10, MS on cd, 40 rage -> Heroic Strike filler", { spec = 1, level = 10, rage = 40, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Off-GCD") == nil, "no duplicate off-GCD" end }, "HeroicStrike")
+R("Arms lv10, MS on cd, 10 rage -> wait MS", { spec = 1, level = 10, rage = 10, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Next").waiting, "wait" end }, "MortalStrike")
+R("Arms lv10, target 15 yd -> Charge", { spec = 1, level = 10, rage = 30, dist = 15, knownOnly = plus(B10, 12294) }, "Charge")
+R("Arms lv10, Victorious, MS cd -> Victory Rush", { spec = 1, level = 10, rage = 10, buffs = { VIC }, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294) }, "VictoryRush")
+R("Fury lv10 -> Bloodthirst", { spec = 2, level = 10, rage = 30, knownOnly = plus(B10, 23881),
+  check = function(st) return st("SWR Next").mode:find("^FURY") ~= nil and st("SWR Tracker 2") ~= nil and st("SWR Tracker 3") == nil, "fury10 trackers" end }, "Bloodthirst")
+R("Prot lv10 in Battle Stance, no Def Stance yet -> Shield Slam", { spec = 3, level = 10, rage = 30, knownOnly = plus(B10, 23922),
+  check = function(st) return st("SWR Shield Block") == nil and st("SWR Shield Barrier") == nil and not has(st, "Defensive", 2565), "no AM bars" end }, "ShieldSlam")
+R("Prot lv12 with Def Stance -> stance first", { spec = 3, level = 12, rage = 30, role = "TANK", knownOnly = plus(B10, 23922, 71) }, "DefensiveStance")
+R("back to no spec (respec / reset) -> Leveling again", { noSpec = true, level = 10, rage = 30, knownOnly = B10, check = lev }, "HeroicStrike")
+R("level 90 Arms unchanged: wait MS, HS stays off-GCD", { spec = 1, rage = 110, cd = { [86346] = 10, [12294] = 3, [6673] = 30, [1464] = 0 }, removeKnown = { [1464] = true },
+  check = function(st) return icon(st("SWR Off-GCD"), 78) and st("SWR Next").waiting, "off-gcd hs" end }, "MortalStrike")
 
 print("\n== Interrupts ==")
 local function intIs(st, sid) local it = st("SWR Interrupt") if sid == nil then return it == nil, "none" end return icon(it, sid) and it.expirationTime > now, "int" end
