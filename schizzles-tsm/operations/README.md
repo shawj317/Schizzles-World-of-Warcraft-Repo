@@ -1,6 +1,6 @@
 # Schizzle's TSM: Operations (v2.2)
 
-Part of [Schizzle's TSM](../README.md). These are TSM4 operations for MoP Classic. They are set up for selling battle pets, profession mats and crafted goods.
+Part of [Schizzle's TSM](../README.md). These are TSM4 operations for MoP Classic, set up for selling battle pets, profession mats and crafted goods. Every price reads your own realm's AuctionDB data first, so they work on any realm.
 
 ## Files
 
@@ -26,7 +26,7 @@ min(first(dbmarket, dbhistorical, 0.8*dbregionmarketavg), 2*dbregionmarketavg)
 1. **Realm market value** (`dbmarket`) when your realm has a price.
 2. Otherwise **realm historical** (`dbhistorical`).
 3. Otherwise **80% of the region market value** (`0.8*dbregionmarketavg`). The 20% discount means an item with no realm price at all isn't listed at the full region price. Realm and region prices are about equal at the median (0.99×), but they vary a lot from item to item.
-4. Always **capped at 2× the region market value**. A thin realm market can be skewed by one overpriced listing. In the 1 Nov 2026 data, Shadowgem showed 11.25g on the realm against 1.07g region-wide. The cap stops one overpriced listing from setting your price.
+4. Always **capped at 2× the region market value**. A thin realm market can be skewed by one overpriced listing. In one US realm's data from 1 Nov 2026, Shadowgem showed 11.25g on the realm against 1.07g region-wide. The cap stops one overpriced listing from setting your price.
 
 Pets also use a capped realm historical as a floor helper: `min(dbhistorical, 2*dbregionmarketavg)`.
 
@@ -251,14 +251,14 @@ Both compile in TSM's CustomString compiler.
 2. **If you already have a group called `Schizzle's TSM`** (from the v2 all-professions or all-pets strings), delete it, or rename it to `Schizzle's TSM old`. Otherwise TSM imports the new tree as **Schizzle's TSM 1**.
 3. `/tsm` → **Groups** → **Import Group**, then paste `schizzles-tsm-everything-with-operations.txt`.
 4. In the import dialog, leave all three checkboxes on (they're on by default):
-   - **Move N already grouped items?** pulls the items out of your old groups (Trade Goods, Pets and so on).
+   - **Move N already grouped items?** pulls the items out of any groups you already have them in (for example this repo's v1 **Trade Goods** or **Pets** groups).
    - **Include operations?** creates the operations.
    - **Replace N existing operations?** only appears if you import a second time.
 
-   The operations are all named `Schizzle …`, so they never clash with your existing ones (Battle Pets, Commodities, Gear, Goods, #Default).
+   The operations are all named `Schizzle …`, so they won't clash with operations you already have (including TSM's `#Default`).
 5. **Check it:** open **Schizzle's TSM > Mining > Bars**. It should show Auctioning **Schizzle Bulk Mats**. **Battle Pets > High Value** should show **Schizzle High Value**. Then run a Post scan.
 6. **Groups only, without operations:** use the v2 strings in `../groups/` instead. To add only the operations to your own groups: import `schizzles-tsm-operations-only.txt`, attach the operations to your groups, then delete the empty **Schizzle's TSM Operations** group. The operations stay.
 
-Your old operations ("Battle Pets", "Commodities", "Gear", "Goods") aren't changed or deleted. Your old "Battle Pets" operation has **When below minimum = Don't post**, and "Goods" prices from the region first. Neither matches the realm-first, always-post rule, which is why the new operations are separate. Delete the old ones once you're happy with the new set.
+Your existing operations aren't changed or deleted. They may follow different rules, for example **When below minimum = Don't post** or region-first pricing, which is why these operations are kept separate. Once you're happy with the new set, you can delete the old ones or keep them for other groups.
 
 Test any formula with `/tsm price [item link] <formula>`.

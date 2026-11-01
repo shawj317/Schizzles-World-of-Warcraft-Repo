@@ -1,6 +1,6 @@
 # Schizzle's MoP Classic Addons
 
-World of Warcraft: Mists of Pandaria Classic (5.5.x) addon profiles and import strings by **Schizzle (Jon Shaw)**. Built for a Brewmaster/Windwalker Monk who both tanks and DPSes.
+World of Warcraft: Mists of Pandaria Classic (5.5.x) addon profiles and import strings by **Jon Shaw (Schizzle)**. They're free for any player to download and import: Monk tools for Brewmaster (tank or DPS) and Windwalker, an all-in-one Warrior rotation aura, and auction house groups and operations that work on any realm.
 
 ## Projects
 
@@ -14,9 +14,9 @@ World of Warcraft: Mists of Pandaria Classic (5.5.x) addon profiles and import s
 
 Each folder has its own README with import steps and version history. The `.txt` files are the import strings; copy everything in one and paste it into that addon's Import box.
 
-## How to use this repo (new to GitHub?)
+## How to use this repo
 
-- Click a folder above, then click a `.txt` file and use the **Copy raw file** button to copy the import string.
+- Click a folder above, then click a `.txt` file and use the **Copy raw file** button to copy the import string. Each folder's README walks you through the import step by step.
 - To grab everything at once, click the green **Code** button, then **Download ZIP**.
 
 ## License

@@ -1,11 +1,12 @@
 # Schizzle's Brewmaster Details! Profile
 
-A two-window Details! damage meter profile for a Brewmaster Monk in MoP Classic 5.5.x, plus an optional Tank Mitigation custom display.
+A two-window Details! damage meter profile for Brewmaster Monks (and other tanks) in MoP Classic 5.5.x, plus an optional Tank Mitigation custom display.
 
 Files:
 - `schizzles-brewmaster-details-profile.txt`: the profile import string (2 windows, linked side by side; current v2 build, see the v2 section)
 - `schizzles-tank-mitigation-details-display.txt`: an optional "Tank Mitigation" custom display
-- Build and verify sources: `/workspace/detailsbuild/` (`build.lua`, `verify.lua`, `scripts/*.lua`)
+
+The build and verify scripts used to produce these strings aren't included in this repo.
 
 ## What you get
 - **Two windows, both 232 × 176**, snapped together edge to edge in the bottom right corner of the screen (about 190 px up, so they clear the action bars). Window 1 is on the left and window 2 on the right. Drag either one and both move together.

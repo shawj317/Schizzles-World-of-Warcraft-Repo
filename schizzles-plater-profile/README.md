@@ -1,6 +1,6 @@
 # Schizzle's Plater Profile
 
-A Plater nameplate profile (in game: *Schizzle's Monk Plater Profile*) and five mods, built for a Brewmaster/Windwalker Monk in MoP Classic 5.5.x.
+A Plater nameplate profile (in game: *Schizzle's Monk Plater Profile*) and five mods for Brewmaster and Windwalker Monks in MoP Classic 5.5.x. The profile's look works for any class; the threat, interrupt and Touch of Death mods are tuned for Monks.
 
 Files:
 - `schizzles-plater-profile.txt`: the full profile (look, colours, auras, threat colours)
