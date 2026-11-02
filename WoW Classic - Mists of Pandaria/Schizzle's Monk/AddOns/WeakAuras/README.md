@@ -2,14 +2,14 @@
 
 A WeakAuras rotation helper for Monks in MoP Classic 5.5.x.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (20,946 chars, starts `!WA:2!`). Current version: **v5.2** (engine `VERSION = 6`). In-game group name: **"Schizzle's Monk Rotation v5.2"**.
-**Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (20,869 chars, starts `!WA:2!`). Current version: **v5.3** (engine `VERSION = 6`). In-game group name: **"Schizzle's Monk Rotation v5.3"**.
+**Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras), the same as the Warrior aura.
 **Covers:** Brewmaster (tank or DPS) and Windwalker. Every spell is level-gated with `IsPlayerSpell`, so a spell only shows once your character knows it.
-**Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 100 cases (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds, cooldown tray). A separate layout check confirms the tray icons' size, positions, font and that they overlap nothing. WeakAuras' final import cleanup can only run in the game client.
+**Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 106 checks (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds, cooldown tray, plus static checks of the group name, position, fonts and tray layout). WeakAuras' final import cleanup can only run in the game client.
 
 ## What it does
 
-The **Schizzle's Monk Rotation v5.2** group has 30 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
+The **Schizzle's Monk Rotation v5.3** group has 30 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
 
 - **SMR Next** (56 px): the spell to press now. It shows the keybind (bottom right), the Tiger Palm reason tag (top left), the mode label above it, and a glow for high-priority picks.
 - **SMR Next+1** (34 px, under Next): the next different spell in the list.
@@ -28,9 +28,9 @@ The **Schizzle's Monk Rotation v5.2** group has 30 auras. All of them read one s
 
 1. Type `/wa` and click **Import**.
 2. Open `All-in-One Rotation.txt` on GitHub, click the **Copy raw file** button, then paste the whole string into the Import box and click **Import**.
-3. Accept the "Schizzle's Monk Rotation v5.2" group.
+3. Accept the "Schizzle's Monk Rotation v5.3" group.
 4. Optional: move the whole HUD by dragging the group (default spot: x 0, y -40, the group's centre on the screen's centre, 40 px down).
-5. Options live on **Schizzle's Monk Rotation v5.2 → SMR Next → Custom Options** (see the Options section below).
+5. Options live on **Schizzle's Monk Rotation v5.3 → SMR Next → Custom Options** (see the Options section below).
 
 **Updating from "Schizzle's Monk Rotation WeakAura":** the group's internal ID (uid) is unchanged, and WeakAuras matches imports by that ID, not by name. So importing this build opens WeakAuras' **Update** dialog for the existing group instead of adding a second one. Leave **Aura Names** ticked (the default) so the group takes the new name with the version in it. Only if it arrives as a separate copy should you delete the old group.
 
@@ -278,6 +278,18 @@ Turn it off with **Show cooldown tray** in the options.
 - **v5 name (Nov 2 2026):** same logic as v5. The in-game group is now called "Schizzle's Monk Rotation v5", so the name shows the version, and the description ends with "v5.". The group uid (`SchizzleMonkGroup`) and every child name and uid (`SMR …`) are unchanged, so re-importing updates the existing group in place. The child auras keep fixed names so they stay stable across versions.
 - **v5.1 (Nov 2 2026):** the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group is renamed to "Schizzle's Monk Rotation v5.1" (same uid, so it updates in place), and the description ends with "v5.1.". No rotation changes (engine `VERSION = 5`). On Update, tick **Size & Position** to move the group.
 - **v5.2 (Nov 2 2026):** new **cooldown tray**, 8 small icons (32 px, auras `SMR Tray 1-8`) at the bottom right (y -122, growing leftward from x +150). It shows your racial and the spec's big cooldowns that aren't in the rotation, only while they are known and off cooldown, and never a spell another icon already shows. New "Show cooldown tray" option. Engine `VERSION = 6`. The group is renamed to "Schizzle's Monk Rotation v5.2" (same uid, and every existing child keeps its name and uid). **Updating:** WeakAuras offers **Update**. Leave **Add Missing Auras** ticked (default) to get the eight tray auras. Tick **Size & Position** and **Group Arrangement** if your group or icons were moved and you want the default layout back.
+- **v5.3 (Nov 2 2026):** every text now uses **Fira Sans Condensed Medium**, the same font as the Warrior aura (it was Friz Quadrata TT on all but the tray). That is 27 font fields: the keybind, tag, mode and KICK texts on the icons, the bar labels, and the Resources text. Sizes and outlines are unchanged. No rotation changes (engine `VERSION = 6`). The group is renamed to "Schizzle's Monk Rotation v5.3" (same uid; every child keeps its name and uid). **Updating:** the font change rides in the **Display** category, which is ticked by default, so a plain **Update** applies it. Font sizes would be under **Size & Position**, but they didn't change. The offline scripts now live in `source/` (see below).
+
+## Source files (`source/`)
+
+The import string is the source of truth for this aura; there is no full build script. These scripts edit, check and read it:
+
+- `release.lua`: the release edit. `lua release.lua 5.3` renames the group to "Schizzle's Monk Rotation v5.3", ends the description with "v5.3.", re-points the child parent links and sets every font to Fira Sans Condensed Medium. It re-encodes, checks the round trip, refuses to write if anything else changed, then writes `../All-in-One Rotation.txt`.
+- `tray.lua`: the v5.2 edit that added the cooldown tray (engine code, option, eight `SMR Tray` icons). It is kept for the record and refuses to run on an export that already has the tray.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 106 checks. It needs a WeakAuras2 checkout: copy it into that checkout's `tests/` folder and run it there, with `WA_EXPORT` pointing at the import string (and `WA_LIBS` at the folder holding LibSerialize and LibDeflate).
+- `extract.lua`: writes the engine (SMR Next → On Init) and every trigger function to `source/extracted/` for reading. That folder is git-ignored.
+
+All scripts need LibSerialize and LibDeflate on disk (`WA_LIBS`, default `/workspace`). No SavedVariables or personal data are included.
 
 ## Caveats
 
