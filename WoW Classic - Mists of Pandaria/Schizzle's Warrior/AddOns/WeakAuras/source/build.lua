@@ -8,7 +8,10 @@ local function read(p) local f = assert(io.open(p)) local s = f:read("*a") f:clo
 local ENGINE = read(HERE .. "/engine.lua")
 local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
-local GROUP = "Schizzle's Warrior Rotation"
+-- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
+-- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
+local RELEASE = "1.4"
+local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
 local function hide()
@@ -372,7 +375,7 @@ local group = {
   conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {},
   information = { saved = true },
-  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v1.4.",
+  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v" .. RELEASE .. ".",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

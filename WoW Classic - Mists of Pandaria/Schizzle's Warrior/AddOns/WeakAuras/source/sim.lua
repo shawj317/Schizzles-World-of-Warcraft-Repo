@@ -25,7 +25,8 @@ assert(ok and type(t) == "table", "Deserialize")
 assert(t.m == "d" and t.d and t.c and t.v == 1421, "transmit shape")
 local data = t.d
 data.controlledChildren = {}
-for i, child in ipairs(t.c) do data.controlledChildren[i] = child.id; child.parent = data.id end
+local parentsOk = true
+for i, child in ipairs(t.c) do parentsOk = parentsOk and child.parent == data.id; data.controlledChildren[i] = child.id; child.parent = data.id end
 print(("decoded OK: group %q uid=%s, %d children, s=%s, internalVersion=%s, toc=%s"):format(data.id, data.uid, #t.c, t.s, data.internalVersion, data.tocversion))
 local byId = { [data.id] = data }
 local P, F = 0, 0
@@ -45,7 +46,11 @@ end
 check(not str:lower():find("peanut") and not decompressed:lower():find("peanut"), "no Peanut naming")
 check(data.uid == "SchizzleWarriorGroup", "group uid")
 check(not data.load.use_class_and_spec and not data.load.use_spec, "group has no spec load")
-check(data.id == "Schizzle's Warrior Rotation", "group name")
+local release = data.id:match("^Schizzle's Warrior Rotation v(%d+%.%d+[%.%d]*)$")
+check(release ~= nil, "group name carries the version: " .. data.id)
+check(release and (data.desc or ""):find("v" .. release:gsub("%.", "%%.") .. "%.$") ~= nil, "description ends with the same version")
+check(parentsOk, "every child's parent is the versioned group name")
+check(byId["SWR Next"] and byId["SWR Next"].uid == "SWRNext", "child ids/uids unversioned (stable across bumps)")
 WeakAuras.GetData = function(id) return byId[id] end
 Private.UIDtoID = function(uid) for id, d in pairs(byId) do if d.uid == uid then return id end end end
 
