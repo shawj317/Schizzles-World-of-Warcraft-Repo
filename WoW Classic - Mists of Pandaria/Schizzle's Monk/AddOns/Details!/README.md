@@ -4,7 +4,7 @@ A two-window Details! damage meter profile for Brewmaster Monks (and other tanks
 
 | File | What it is |
 |---|---|
-| [Brewmaster Profile.txt](Brewmaster%20Profile.txt) | The profile import string (2 windows, linked side by side; current v2 build, see the v2 section) |
+| [Brewmaster Profile.txt](Brewmaster%20Profile.txt) | The profile import string (2 windows, linked side by side, 209 × 150 each; current v2.2 build, see the version history) |
 | [Tank Mitigation Display.txt](Tank%20Mitigation%20Display.txt) | An optional "Tank Mitigation" custom display |
 
 The build and verify scripts used to produce these strings aren't included in this repo.
