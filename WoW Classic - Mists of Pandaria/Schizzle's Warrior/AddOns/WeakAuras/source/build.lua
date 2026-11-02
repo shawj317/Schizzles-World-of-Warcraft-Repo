@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
 -- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
-local RELEASE = "1.4.1"
+local RELEASE = "1.5"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -161,13 +161,14 @@ nextIcon.authorOptions = {
   { type = "toggle", key = "tintOOR", name = "Red tint when out of range", default = true, width = 1, useDesc = true, desc = "Out-of-range icons are always desaturated; this also tints them red so they differ from GCD/rage grey." },
   { type = "toggle", key = "showSwing", name = "Show swing timer", default = true, width = 1, useDesc = true, desc = "Main-hand swing bar under the rage bar, plus an off-hand bar when dual wielding." },
   { type = "toggle", key = "showLast", name = "Show last cast", default = true, width = 1, useDesc = true, desc = "Small icon left of Next+1 showing the spell that just went off (green border = it was the suggested spell)." },
+  { type = "toggle", key = "showTray", name = "Show cooldown tray", default = true, width = 1, useDesc = true, desc = "Small icons under the HUD (bottom right, filling leftward) for racials and big cooldowns that are learned and off cooldown. They hide while on cooldown, and never repeat a spell the rotation is already showing." },
   { type = "toggle", key = "showInt", name = "Show interrupts", default = true, width = 1 },
   { type = "toggle", key = "intCC", name = "Include stuns/CC as fallback", default = true, width = 1, useDesc = true, desc = "Storm Bolt, Shockwave, Heroic Throw (Glyph of Gag Order), Quaking Palm, Arcane Torrent, War Stomp when Pummel / Disrupting Shout are on cooldown or out of range." },
   { type = "toggle", key = "intMain", name = "Interrupt in main icon", default = false, width = 1, useDesc = true, desc = "Off = dedicated red interrupt icon above the rage bar. On = the interrupt takes over the Next icon." },
   { type = "toggle", key = "intFocus", name = "Also watch focus casts", default = false, width = 1 },
 }
 nextIcon.config = { aoe = 3, protMode = 1, amMode = 1, fuMode = 1, shout = 1, dpsStance = 1, dumpMargin = 20, slamRage = 80, wildRage = 70,
-  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showSwing = true, showLast = true, showInt = true, intCC = true, intMain = false, intFocus = false }
+  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showSwing = true, showLast = true, showTray = true, showInt = true, intCC = true, intMain = false, intFocus = false }
 children[#children + 1] = nextIcon
 children[#children + 1] = icon("SWR Next+1", 34, 0, -50, "R.next2", false)
 local off = icon("SWR Off-GCD", 34, 40, -50, "R.off", false)
@@ -182,6 +183,7 @@ lastIcon.conditions = { { check = { trigger = 1, variable = "glow", value = 1 },
 children[#children + 1] = lastIcon
 for i = 1, 3 do children[#children + 1] = icon("SWR Defensive " .. i, 36, -12 - 40 * i, 0, "R.left and R.left[" .. i .. "]", false) end
 for i = 1, 3 do children[#children + 1] = icon("SWR Cooldown " .. i, 36, 12 + 40 * i, 0, "R.right and R.right[" .. i .. "]", false) end
+
 
 local function textAura(id, field, x, y, size)
   return {
@@ -363,6 +365,18 @@ children[#children + 1] = timedBar("SWR Shield Block", -118, { 0.3, 0.55, 1, 1 }
   [[string.format("Shield Block (%d)", s.charges or 0)]])
 children[#children + 1] = timedBar("SWR Shield Barrier", -133, { 0.95, 0.8, 0.2, 1 }, "sbar", "Shield Barrier",
   [[(up and s.amount) and string.format("Barrier %.1fk", s.amount / 1000) or "Shield Barrier"]])
+
+-- cooldown tray (added last so the existing children keep their order): 8 fixed slots of 32 px (57% of the 56 px Next icon), 36 px apart, in one row under the whole HUD.
+-- Slot 1 is right-aligned with the right edge of SWR Cooldown 3 (x +150) and the row fills leftward. The engine packs
+-- only ready spells into slots 1..n, so visible icons always sit together from the right.
+local TRAY_SIZE, TRAY_STEP, TRAY_RIGHT, TRAY_Y = 32, 36, 150, -160
+for i = 1, 8 do
+  local t = icon("SWR Tray " .. i, TRAY_SIZE, TRAY_RIGHT - TRAY_SIZE / 2 - TRAY_STEP * (i - 1), TRAY_Y, "R.tray and R.tray[" .. i .. "]", false)
+  t.cooldownTextDisabled = true
+  t.subRegions[#t.subRegions + 1] = { type = "subborder", border_visible = true, border_edge = "Square Full White",
+    border_color = { 0, 0, 0, 0.8 }, border_offset = 0, border_size = 1 }
+  children[#children + 1] = t
+end
 
 -- group default position: CENTER of the group on the screen's CENTER, 0 px across, 40 px down
 -- (child offsets are relative to the group, so they don't change)

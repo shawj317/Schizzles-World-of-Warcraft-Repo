@@ -190,6 +190,7 @@ local function run(label, sc, expect)
   local cf = byId["SWR Next"].config
   cf.aoe, cf.protMode, cf.amMode, cf.fuMode, cf.shout, cf.dpsStance, cf.dumpMargin, cf.slamRage, cf.wildRage = 3, 1, 1, 1, 1, 1, 20, 80, 70
   cf.showOff, cf.showDef, cf.showCDs, cf.showKeys, cf.tintOOR, cf.showInt, cf.intCC, cf.intMain, cf.intFocus = true, true, true, true, true, true, true, false, false
+  cf.showTray = true
   for k, v in pairs(sc.cfg or {}) do cf[k] = v end
   Private.DeleteAuraEnvironment("SWR Next")
   Private.ActivateAuraEnvironment("SWR Next", nil, nil, nil)
@@ -503,6 +504,88 @@ R("out of range -> red tint", { rage = 40, oor = { [86346] = true }, check = fun
 R("GCD -> desaturated", { rage = 40, gcd = 0.7, check = function(st) return st("SWR Next").waiting, "gcd" end }, "ColossusSmash")
 R("keybind read from action bar", { rage = 40, check = function(st) return st("SWR Next").keybind == "S2", st("SWR Next").keybind end }, "ColossusSmash")
 R("rage bar orange near cap", { rage = 105, check = function(st) local b = st("SWR Rage") return b and b.dump and b.value == 105 and b.total == 120, "rage" end }, nil)
+print("\n== Cooldown tray ==")
+-- tray(st) -> list of spell ids in slots 1..8, or false if a hidden slot sits between shown ones (not packed)
+local function trayIds(st)
+  local ids, gap = {}, false
+  for i = 1, 8 do
+    local x = st("SWR Tray " .. i)
+    if x then if gap then return false end ids[#ids + 1] = x.icon - 100000 else gap = true end
+  end
+  return ids
+end
+local function trayIs(want)
+  return function(st)
+    local ids = trayIds(st)
+    if not ids then return false, "tray not packed" end
+    local got = table.concat(ids, ",")
+    return got == table.concat(want, ","), "tray=" .. got
+  end
+end
+local function trayHas(id, yes)
+  return function(st)
+    local ids = trayIds(st)
+    if not ids then return false, "tray not packed" end
+    local found = false
+    for _, v in ipairs(ids) do if v == id then found = true end end
+    return found == yes, "tray=" .. table.concat(ids, ",")
+  end
+end
+local ORC, HUMAN, DWARF, PANDA = 20572, 59752, 20594, 107079
+R("Orc Arms, target -> tray: Blood Fury, Recklessness, Skull Banner, DbtS, Shield Wall, Rallying Cry, Heroic Leap",
+  { rage = 40, talents = { ORC }, check = trayIs({ ORC, 1719, 114207, 118038, 871, 97462, 6544 }) }, "ColossusSmash")
+R("Orc, Blood Fury on cooldown -> hidden, the rest packs right", { rage = 40, talents = { ORC }, cd = { [ORC] = 90 },
+  check = trayIs({ 1719, 114207, 118038, 871, 97462, 6544 }) }, "ColossusSmash")
+R("Recklessness + Heroic Leap on cooldown -> hidden", { rage = 40, talents = { ORC }, cd = { [1719] = 200, [6544] = 30 },
+  check = trayIs({ ORC, 114207, 118038, 871, 97462 }) }, "ColossusSmash")
+R("no racial known (non-Orc) -> no Blood Fury", { rage = 40, check = trayHas(ORC, false) }, "ColossusSmash")
+R("Human -> Every Man for Himself", { rage = 40, talents = { HUMAN }, check = trayHas(HUMAN, true) }, "ColossusSmash")
+R("Dwarf -> Stoneform", { rage = 40, talents = { DWARF }, check = trayHas(DWARF, true) }, "ColossusSmash")
+R("Shattering Throw known -> shown", { rage = 40, talents = { 64382 }, check = trayHas(64382, true) }, "ColossusSmash")
+R("boss, CS ready -> Recklessness / Avatar / Skull Banner on the right, not repeated in the tray",
+  { rage = 40, boss = true, talents = { 107574, ORC }, check = function(st)
+    local ok1 = has(st, "Cooldown", 1719)
+    local a, wa = trayHas(1719, false)(st) local b = trayHas(107574, false)(st) local c = trayHas(114207, false)(st) local d = trayHas(ORC, true)(st)
+    return ok1 and a and b and c and d, wa end }, "ColossusSmash")
+R("hp 25 -> Shield Wall / DbtS on the left, not in the tray", { rage = 40, hp = 25, check = function(st)
+    local a, wa = trayHas(871, false)(st) local b = trayHas(118038, false)(st)
+    return has(st, "Defensive", 871) and a and b, wa end }, nil)
+R("Fury -> same DPS tray", { spec = 2, rage = 40, talents = { ORC }, check = trayIs({ ORC, 1719, 114207, 118038, 871, 97462, 6544 }) }, nil)
+R("Prot -> tank tray (Shield Wall, Last Stand, Spell Reflection, Rallying Cry, Heroic Leap), no Recklessness",
+  { spec = 3, rage = 30, stance = 71, talents = { ORC }, check = trayIs({ ORC, 871, 12975, 23920, 97462, 6544 }) }, nil)
+R("Prot with Demoralizing Banner + Avatar talent", { spec = 3, rage = 30, stance = 71, talents = { 114203, 107574 },
+  check = function(st) local a, w = trayHas(114203, true)(st) local b = trayHas(107574, true)(st) return a and b, w end }, nil)
+R("tray never exceeds 8 slots", { rage = 40, talents = { ORC, 26297, HUMAN, DWARF, 64382, 12292, 107574 },
+  check = function(st) local ids = trayIds(st) return ids and #ids == 8, ids and #ids end }, "ColossusSmash")
+R("Leveling L1, nothing learned -> empty tray", { noSpec = true, level = 1, rage = 30, knownOnly = L1, check = trayIs({}) }, "HeroicStrike")
+R("Leveling L1 Orc -> Blood Fury only", { noSpec = true, level = 1, rage = 30, knownOnly = plus(L1, ORC), check = trayIs({ ORC }) }, "HeroicStrike")
+R("Pandaren Quaking Palm shown when ready", { rage = 40, talents = { PANDA }, check = trayHas(PANDA, true) }, "ColossusSmash")
+R("out of combat, no target -> tray hidden", { combat = false, target = false, talents = { ORC }, check = trayIs({}) }, nil)
+R("Show cooldown tray off -> empty", { rage = 40, talents = { ORC }, cfg = { showTray = false }, check = trayIs({}) }, "ColossusSmash")
+R("tray icons: not desaturated, no glow, no timer", { rage = 40, talents = { ORC }, check = function(st)
+    local x = st("SWR Tray 1") return x and not x.waiting and not x.glow and x.duration == 0 and x.tag == "", x and (tostring(x.waiting) .. tostring(x.glow) .. tostring(x.duration) .. "[" .. tostring(x.tag) .. "]") end }, "ColossusSmash")
+
+-- static layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -160, no overlap with anything else
+do
+  local okL, why = true, ""
+  local function box(c) local w = c.width or 0 local h = c.height or 0 return c.xOffset - w / 2, c.xOffset + w / 2, c.yOffset - h / 2, c.yOffset + h / 2 end
+  local function overlap(a, b) local a1, a2, a3, a4 = box(a) local b1, b2, b3, b4 = box(b) return a1 < b2 and b1 < a2 and a3 < b4 and b3 < a4 end
+  local trays, others = {}, {}
+  for _, c in ipairs(t.c) do if c.id:find("^SWR Tray ") then trays[#trays + 1] = c elseif c.width then others[#others + 1] = c end end
+  if #trays ~= 8 then okL, why = false, "slots " .. #trays end
+  for i, c in ipairs(trays) do
+    if c.id ~= "SWR Tray " .. i or c.uid ~= "SWRTray" .. i then okL, why = false, "id " .. c.id end
+    if c.width ~= 32 or c.height ~= 32 or c.yOffset ~= -160 or c.xOffset ~= 134 - 36 * (i - 1) then okL, why = false, "pos " .. c.id end
+    if c.parent ~= data.id then okL, why = false, "parent " .. c.id end
+    for _, o in ipairs(others) do if overlap(c, o) then okL, why = false, c.id .. " overlaps " .. o.id end end
+    for j, o in ipairs(trays) do if j ~= i and overlap(c, o) then okL, why = false, c.id .. " overlaps " .. o.id end end
+  end
+  local r1 = trays[1] and (trays[1].xOffset + 16) == 150
+  check(okL and r1, "tray layout (8 x 32 px at y -160, right edge +150, no overlap) " .. why)
+  local last = t.c[#t.c - 8]
+  check(last and last.id == "SWR Shield Barrier", "tray slots added after the existing children (order unchanged)")
+end
+
 do local E = getE() print("     /dump SchizzleWarrior.R.why -> main=" .. tostring(E.R.why.main) .. " | " .. tostring(E.R.why.mode)) end
 print(("\n%d passed, %d failed; sandbox warnings: %d"):format(P, F, #warnings))
 for _, w in ipairs(warnings) do print("  warning", w.key, w.message) end

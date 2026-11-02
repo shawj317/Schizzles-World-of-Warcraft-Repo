@@ -4,7 +4,7 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 4
+local VERSION = 5
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -36,6 +36,8 @@ local ID = {
   avatar = 107574, bbath = 12292, sbolt = 107570,
   -- glyphs
   gagOrder = 58357,
+  -- cooldown tray only (not suggested by the rotation)
+  shatter = 64382, dban = 114203,
   -- racials
   quaking = 107079, warstomp = 20549,
   -- auras
@@ -732,6 +734,53 @@ local function activeMitigation(S)
   return nil
 end
 
+-- cooldown tray (v1.5): small ready-only icons for racials and big cooldowns, slot 1 = rightmost.
+-- A spell shows only when it is known and off cooldown, and never while the rotation is already showing it
+-- (Next, Next+1, off-GCD, left/right side icons or the interrupt icon).
+local TRAY_SLOTS = 8
+E.TRAY_SLOTS = TRAY_SLOTS
+-- every MoP racial with a cooldown for the races that can be Warriors or Monks (class variants share one entry each)
+local RACIALS = {
+  20572, 33697, 33702,             -- Blood Fury (Orc: attack power / Monk / caster variants)
+  26297,                           -- Berserking (Troll)
+  59752,                           -- Every Man for Himself (Human)
+  20594,                           -- Stoneform (Dwarf)
+  7744, 20577,                     -- Will of the Forsaken, Cannibalize (Undead)
+  20549,                           -- War Stomp (Tauren)
+  69179, 129597, 28730, 25046, 50613, 80483, -- Arcane Torrent (Blood Elf: Warrior rage / Monk chi / other variants)
+  28880, 121093, 59542, 59543, 59544, 59545, 59547, 59548, -- Gift of the Naaru (Draenei: Warrior / Monk / other variants)
+  20589,                           -- Escape Artist (Gnome)
+  58984,                           -- Shadowmeld (Night Elf)
+  68992,                           -- Darkflight (Worgen)
+  69041, 69070,                    -- Rocket Barrage, Rocket Jump (Goblin)
+  107079,                          -- Quaking Palm (Pandaren)
+}
+E.RACIALS = RACIALS
+local TRAY_DPS = { ID.reck, ID.skull, ID.avatar, ID.bbath, ID.dbts, ID.swall, ID.rcry, ID.leap, ID.shatter }
+local TRAY_PROT = { ID.swall, ID.lstand, ID.sref, ID.dban, ID.rcry, ID.avatar, ID.bbath, ID.leap }
+local TRAY_LEVELING = { ID.reck, ID.swall, ID.rcry, ID.leap, ID.lstand, ID.dbts, ID.shatter }
+E.TRAY = { dps = TRAY_DPS, prot = TRAY_PROT, leveling = TRAY_LEVELING }
+local entry -- defined below
+local function tray(S, R)
+  local out = {}
+  if E.cfg.showTray == false then return out end
+  local shown = {}
+  for _, e in ipairs({ R.next, R.next2, R.off, R.int }) do if e then shown[e.id] = true end end
+  for _, side in ipairs({ R.left or {}, R.right or {} }) do for _, e in ipairs(side) do shown[e.id] = true end end
+  local function try(id)
+    if not id or #out >= TRAY_SLOTS or shown[id] then return end
+    if known(id) and cd(id, S.now) == 0 then
+      shown[id] = true
+      local e = entry({ id = id }, S, true)
+      e.waiting, e.glow, e.tag, e.duration, e.start = false, false, "", 0, 0
+      out[#out + 1] = e
+    end
+  end
+  for _, id in ipairs(RACIALS) do try(id) end
+  for _, id in ipairs(S.prot and TRAY_PROT or S.leveling and TRAY_LEVELING or TRAY_DPS) do try(id) end
+  return out
+end
+
 local function sidePops(S, left, right)
   local cfg = E.cfg
   local function L(id, glow) if id and #left < 3 then left[#left + 1] = { id = id, glow = glow } end end
@@ -783,7 +832,7 @@ end
 E.gcd = gcd
 -- spells that are not on the global cooldown: no GCD swipe / grey-out for them in the Next icons
 local OFFGCD = { [ID.attack] = true, [ID.hs] = true, [ID.cleave] = true, [ID.charge] = true, [ID.chargeOld] = true, [ID.pummel] = true }
-local function entry(e, S, side)
+function entry(e, S, side)
   if not e then return nil end
   local r, s, d = cd(e.id, S.now)
   local gr, gs, gd = S.gcdRem or 0, S.gcdStart or 0, S.gcdDur or 0
@@ -970,6 +1019,7 @@ function E:Tick()
   R.left, R.right = {}, {}
   for i, e in ipairs(left) do R.left[i] = entry(e, S, true) end
   for i, e in ipairs(right) do R.right[i] = entry(e, S, true) end
+  R.tray = tray(S, R)
   local wrong = (S.prot and S.tank and S.stance ~= ID.def) or (not S.prot and S.stance == ID.def)
   R.mode = specName .. (S.aoe and (" AoE " .. S.n) or "") .. (S.exec and " EXEC" or "")
   R.rage = { v = S.rage, max = S.rageMax, dump = S.rage >= S.dump }

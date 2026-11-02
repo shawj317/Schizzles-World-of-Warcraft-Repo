@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (29,072 chars, starts `!WA:2!`). Current version: **v1.4.1** (engine `VERSION = 4`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (30,854 chars, starts `!WA:2!`). Current version: **v1.5** (engine `VERSION = 5`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 292 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 353 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -16,13 +16,13 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.4.1" group. Click **Import** again to accept it.
+5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.5" group. Click **Import** again to accept it.
 6. Type `/reload`.
 7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
 9. Options live on **Schizzle's Warrior Rotation v1.4.1 → SWR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.4.1" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.5" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
 **Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group falls under **Group Arrangement** (ticked by default), and it hasn't changed.
 
@@ -30,7 +30,7 @@ Updating later: delete the old group first (`/wa`, right-click the group, **Dele
 
 ## What's on screen
 
-All 23 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
+All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
 | Element | Size | Position | What it shows |
 |---|---|---|---|
@@ -51,6 +51,7 @@ All 23 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 | **SWR Colossus Smash** | 160x12 | y -118 | Arms/Fury only, once Colossus Smash is learned. Your CS window on the target, or `CS in Xs` / `CS READY` |
 | **SWR Shield Block** | 160x12 | y -118 | Prot only, once Shield Block is learned. Shield Block uptime with charges, e.g. `Shield Block (1)` |
 | **SWR Shield Barrier** | 160x12 | y -133 | Prot only, once Shield Barrier is learned. Shield Barrier uptime and absorb left, e.g. `Barrier 45.2k` |
+| **SWR Tray 1-8** | 32 px | y -160, x +134 to -118 (36 px apart) | Cooldown tray, bottom right: racials and big cooldowns that aren't in the rotation, shown only when known and off cooldown. Fills from the right edge (x +150) toward the left. See [Cooldown tray](#cooldown-tray) |
 
 **When it shows:** in combat, or when you have a hostile target, at any level. Every aura loads for the Warrior class only, with no spec or level condition, because a warrior under level 10 has no spec. The engine decides what each aura shows: the Colossus Smash bar appears only for Arms/Fury and the two Shield bars only for Protection, and each one waits until its spell is learned.
 
@@ -154,12 +155,49 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
   - Die by the Sword under 40% health, Shield Wall under 30%.
   - Impending Victory / Victory Rush below 50% health (60% for Prot).
 
+## Cooldown tray
+
+A row of small icons (32 px, about 57% of the Next icon) under the HUD at y -160. They show racials and big cooldowns that the rotation doesn't call for, so you can see at a glance what's ready.
+
+- **Ready only:** an icon shows only when the spell is known (`IsPlayerSpell`) and off cooldown (the GCD doesn't count). A spell on cooldown or not learned is simply not there, so nothing shows greyed out.
+- **Packs from the right:** ready spells fill slot 1 at the right edge first and grow leftward, up to 8. No gaps, no overlap.
+- **No duplicates:** a spell that the Next, Next+1, Off-GCD, Interrupt, Defensive or Cooldown icons already show is left out of the tray for that moment. For example, Recklessness sits in the Cooldown icons during a boss Colossus Smash window, so the tray drops it until then.
+- **Spec-aware:** the engine picks the list from your current spec. All tray auras load for the Warrior class only, like the rest of the HUD, and they show at the same times (in combat, or with a hostile target).
+- **Order:** your racial first, then the spec list in the order below.
+
+| Spec | Tray spells (in order) |
+|---|---|
+| Arms / Fury | Recklessness, Skull Banner, Avatar, Bloodbath, Die by the Sword, Shield Wall, Rallying Cry, Heroic Leap, Shattering Throw |
+| Protection | Shield Wall, Last Stand, Spell Reflection, Demoralizing Banner, Rallying Cry, Avatar, Bloodbath, Heroic Leap |
+| Leveling (no spec) | Recklessness, Shield Wall, Rallying Cry, Heroic Leap, Last Stand, Die by the Sword, Shattering Throw |
+
+Talent spells (Avatar, Bloodbath) show only if you took the talent. Bladestorm, Dragon Roar, Shockwave, Storm Bolt, Berserker Rage and Impending Victory are left out because the rotation already suggests them.
+
+| Race | Racial |
+|---|---|
+| Orc | Blood Fury |
+| Troll | Berserking |
+| Human | Every Man for Himself (Will to Survive in the MoP Classic client) |
+| Dwarf | Stoneform |
+| Undead | Will of the Forsaken, Cannibalize |
+| Tauren | War Stomp |
+| Blood Elf | Arcane Torrent |
+| Draenei | Gift of the Naaru |
+| Gnome | Escape Artist |
+| Night Elf | Shadowmeld |
+| Worgen | Darkflight |
+| Goblin | Rocket Barrage, Rocket Jump |
+| Pandaren | Quaking Palm |
+
+Turn it off with **Show cooldown tray** in the options.
+
 ## Options (SWR Next → Custom Options)
 
 | Option | Default | What it does |
 |---|---|---|
 | Show swing timer | On | Main-hand (and off-hand) swing bars under the rage bar |
 | Show last cast | On | The small Last Cast icon left of Next+1 |
+| Show cooldown tray | On | The ready-only racial / cooldown row at the bottom right |
 | AoE threshold | 3 | Nearby enemies (nameplates, ~8 yd) that switch to AoE priority |
 | Protection mode | Auto | Auto = Tank when in Defensive Stance, queued as TANK, or holding threat. Tank / DPS force it |
 | Prot active mitigation | Auto (Block first) | Auto / Block only / Barrier first (magic) |
@@ -202,6 +240,8 @@ IDs were checked against MoP Classic client data (wago.tools DB2 tables for buil
   - Tier 3: Disrupting Shout 102060.
   - Tier 4: Bladestorm 46924, Shockwave 46968, Dragon Roar 118000.
   - Tier 6: Avatar 107574, Bloodbath 12292, Storm Bolt 107570.
+- **Cooldown tray extras:** Shattering Throw 64382, Demoralizing Banner 114203, Spell Reflection 23920, Heroic Leap 6544.
+- **Racials** (every rank the client uses): Blood Fury 20572 / 33697 / 33702, Berserking 26297, Every Man for Himself 59752, Stoneform 20594, Will of the Forsaken 7744, Cannibalize 20577, War Stomp 20549, Arcane Torrent 69179 / 129597 / 28730 / 25046 / 50613 / 80483, Gift of the Naaru 28880 / 121093 / 59542-59548, Escape Artist 20589, Shadowmeld 58984, Darkflight 68992, Rocket Barrage 69041, Rocket Jump 69070, Quaking Palm 107079. Names were checked against Wowhead's MoP Classic tooltips.
 
 ## Sources (rotation priorities)
 
@@ -240,6 +280,7 @@ No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.5** (Nov 2, 2026): new **cooldown tray**, 8 small icons (32 px) at the bottom right (y -160, growing leftward from x +150). It shows your racial and the spec's big cooldowns that aren't in the rotation, only while they are known and off cooldown, and never a spell another icon already shows. New "Show cooldown tray" option. Engine `VERSION = 5`. 353 simulator checks. **Updating:** the existing child auras keep their IDs, so WeakAuras offers **Update**. Leave **Add Missing Auras** ticked (default) to get the eight SWR Tray auras. Tick **Size & Position** and **Group Arrangement** if your group or icons were moved and you want the default layout back.
 - **v1.4.1** (Nov 2, 2026): the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group name follows the version: "Schizzle's Warrior Rotation v1.4.1". On Update, tick **Size & Position** to apply the new position. No rotation changes (engine `VERSION = 4`). 292 simulator checks.
 - **v1.4** (Nov 2, 2026): opener fix. With auto attack off, Next used to put Attack first even when there was enough rage for Heroic Strike (or another melee attack). That came from the v1.3 auto attack rule, which put Attack in front of every suggestion whenever auto attack was off. Now a usable, affordable melee attack stays first, since using it starts auto attack anyway, and Attack is only the fallback when nothing is usable. This applies to Leveling mode and to Arms, Fury and Protection at every level. The in-game group name now carries the version: **"Schizzle's Warrior Rotation v1.4"** (it comes from one `RELEASE` constant in `source/build.lua`, which also sets the description). Its internal ID is unchanged, so re-importing updates the existing group in place. New simulator checks bring the total to 290. Engine `VERSION = 4`, so it replaces the v1.3 engine if that one is still loaded.
 - **v1.3** (Nov 1, 2026): auto attack fix. Next shows Attack when auto attack is off in melee range, and it never shows a spell you can't afford: it shows the next affordable one, or Attack with a `RAGE` tag while rage builds. New main-hand/off-hand **swing timer** under the rage bar. The GCD swipe now runs on the Next and Next+1 icons (Heroic Strike and Cleave are off the GCD, so their real 1.5 s cooldown shows instead). The Next icon sparkles when the suggested spell is cast, and a new **Last Cast** icon shows what just went off. New "Show swing timer" and "Show last cast" options. Engine `VERSION = 3`.
