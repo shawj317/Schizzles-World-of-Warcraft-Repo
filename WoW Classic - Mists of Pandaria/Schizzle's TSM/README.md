@@ -1,6 +1,8 @@
 # Schizzle's TSM
 
-TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic. The groups work on any realm and region. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own strings in `groups/pets/`: one per subgroup, plus one for all pets. Ready-made **operations** (v2.2) are in `operations/`, either already attached to the full group tree or as an operations-only string.
+TradeSkillMaster (TSM4) group import strings for World of Warcraft: Mists of Pandaria Classic, by Jon Shaw (Schizzle). The groups work on any realm and region. There is one group per profession, covering all 15 professions, primary and secondary, from Classic through Pandaria. You can import a single profession or all of them at once with one string. Battle pets have their own strings in `groups/pets/`: one per subgroup, plus one for all pets. Ready-made **operations** (v2.2) are in `operations/`, either already attached to the full group tree or as an operations-only string.
+
+Use the groups when you want profession and pet lists ready to post, shop or craft, with each item in one place. You need TSM4 on MoP Classic.
 
 Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item, ItemSparse, SkillLineAbility, SpellEffect and SpellReagents, build 5.5.4.70631). The groups only contain items you can sell on the auction house. **No item appears in more than one group**, so the profession strings never conflict with each other.
 
@@ -24,7 +26,7 @@ Every item ID comes from the MoP Classic client data (wago.tools DB2 tables Item
 | First Aid | 25 | 2 | [`groups/professions/schizzles-tsm-first-aid.txt`](groups/professions/schizzles-tsm-first-aid.txt) | [docs/first-aid.md](docs/first-aid.md) | Bandages, anti-venoms |
 | Archaeology | 11 | 1 | [`groups/professions/schizzles-tsm-archaeology.txt`](groups/professions/schizzles-tsm-archaeology.txt) | [docs/archaeology.md](docs/archaeology.md) | Tradeable keystones only (see below) |
 | **All professions** | **5315** | 203 | [`groups/professions/schizzles-tsm-all-professions.txt`](groups/professions/schizzles-tsm-all-professions.txt) | (per-profession docs) | All 15 groups above, nested under one parent group **Schizzle's TSM** |
-| Battle Pets: High Value | 38 | 1 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](groups/pets/schizzles-tsm-pets-high-value.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Data-driven (v2.2): any pet whose realm value was at least 7,500g in the US realm snapshot used to build the list (1 Nov 2026) **and** whose region sale rate is at least 0.03, plus the TCG/promo pets (no other home). Realm value = realm market value, else realm historical, capped at 2x region market; pets with no realm price use 0.8x region market. Matched first, so these are never in another subgroup. Prices on your realm will differ, so move pets in or out as you like. |
+| Battle Pets: High Value | 38 | 1 | [`groups/pets/schizzles-tsm-pets-high-value.txt`](groups/pets/schizzles-tsm-pets-high-value.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Data-driven (v2.2): pets taken from a realm price snapshot dated 1 Nov 2026, plus the TCG/promo pets (no other home). Realm value = realm market value, else realm historical, capped at 2x region market; pets with no realm price use 0.8x region market. Matched first, so these are never in another subgroup. Prices on your realm will differ, so move pets in or out as you like. |
 | Battle Pets: Vendor Pets | 98 | 1 | [`groups/pets/schizzles-tsm-pets-vendor.txt`](groups/pets/schizzles-tsm-pets-vendor.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Pets and companion items bought from vendors (gold or reputation). Classic vendor-flip items such as the cat carriers and parrot cages. |
 | Battle Pets: Profession Pets | 33 | 1 | [`groups/pets/schizzles-tsm-pets-profession.txt`](groups/pets/schizzles-tsm-pets-profession.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Caged pets made by professions (Engineering, Tailoring, Jewelcrafting, Enchanting, Inscription, Archaeology), plus companion items not owned by a profession group. |
 | Battle Pets: World Drops & Quests | 37 | 1 | [`groups/pets/schizzles-tsm-pets-world-drops.txt`](groups/pets/schizzles-tsm-pets-world-drops.txt) | [docs/battle-pets.md](docs/battle-pets.md) | Old world through Cataclysm drops and quest rewards. |
@@ -53,7 +55,7 @@ Mailing operations can't be put in an import string. TSM leaves them out on purp
 ## How to import
 
 1. Type `/tsm`, open the **Groups** tab, and click **Import Group** at the top of the group tree.
-2. Open the `.txt` file you want, copy its whole contents (one line, no line breaks), paste it and confirm. TSM shows a summary of the groups and items before creating them.
+2. Open the `.txt` file you want on GitHub and click **Copy raw file** (or select the whole line yourself). Copy its whole contents (one line, no line breaks), paste it and confirm. TSM shows a summary of the groups and items before creating them.
 3. **Pick one approach. Don't use both:**
    - **Only some professions:** import just the per-profession files you want. Each one creates its own top-level group (e.g. **Alchemy**, **Fishing**).
    - **Everything:** import `schizzles-tsm-all-professions.txt`. This creates one parent group **Schizzle's TSM** with all 15 professions under it. Attach your operation to the parent and every subgroup inherits it, or override it per profession.
@@ -113,9 +115,9 @@ Since an item can only be in one group, each item goes to exactly one profession
     - Vendoring: Vendor Gear
 
     They come as one full group-tree string with the operations attached, plus an operations-only string. The strings were checked against TSM's own import code and formula compiler.
-  - **High Value is now data-driven.** It used to be hand-picked. A pet now goes in when its realm value (in the build snapshot) is at least 7,500g and its region sale rate is at least 0.03, plus the TCG/promo pets. That takes it from 45 to 38 entries: 11 kept, 34 moved back to their home subgroups, 27 added.
+  - **High Value is now data-driven.** It used to be hand-picked. A pet now goes in from the 1 Nov 2026 price snapshot, plus the TCG/promo pets. That takes it from 45 to 38 entries: 11 kept, 34 moved back to their home subgroups, 27 added.
   - **Pricing analysis.** Added [docs/pricing-analysis.md](docs/pricing-analysis.md), which compares realm and region prices.
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20TSM
+MIT, with an attribution requirement. See [LICENSE](LICENSE). Credit: Jon Shaw (Schizzle). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20TSM

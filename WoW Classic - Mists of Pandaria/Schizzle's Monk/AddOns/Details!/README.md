@@ -2,6 +2,8 @@
 
 A two-window Details! damage meter profile for Brewmaster Monks (and other tanks) in MoP Classic 5.5.x, by Jon Shaw (Schizzle), plus an optional Tank Mitigation custom display. There is no Windwalker profile yet.
 
+Window 1 is damage done and window 2 is damage taken. The windows are snapped together, so dragging one moves both. Tank avoidance recording is on. You need Details! for Mists of Pandaria Classic.
+
 | File | What it is |
 |---|---|
 | [Brewmaster Profile.txt](Brewmaster%20Profile.txt) | The profile import string (2 windows, linked side by side, 209 × 150 each; current v2.2 build, see the version history) |
@@ -22,7 +24,7 @@ The build and verify scripts used to produce these strings aren't included in th
 - **Tank avoidance recording is turned on** (`parser_options.tank_avoidance`), so Details records hits, blocks and absorbs on tanks as well as dodges and parries.
 
 ## Import the profile
-1. Type `/details options` and open the **Profiles** section.
+1. Type `/details options`. In the options window, open the **Profiles** section.
 2. Click **Import Profile**, paste the whole contents of `Brewmaster Profile.txt`, then confirm and give the profile a name (for example `Schizzle's Brewmaster Details! Profile`).
 3. `/reload` so the windows, snap links and tank-avoidance setting all apply cleanly.
 
@@ -102,4 +104,4 @@ Last resort: `/details reinstall` wipes every Details setting. After it, import 
 
 ## License
 
-MIT, with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../../AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/Details!
+MIT, with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). Credit: Jon Shaw (Schizzle). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/Details!

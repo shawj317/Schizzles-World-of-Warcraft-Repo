@@ -1,6 +1,6 @@
 # Schizzle's Warrior
 
-World of Warcraft: Mists of Pandaria Classic (5.5.x) addon setups for Warriors, by **Jon Shaw (Schizzle)**. Each addon has its own folder under `AddOns/`:
+World of Warcraft: Mists of Pandaria Classic (5.5.x) addon setups for Warriors, by **Jon Shaw (Schizzle)**. They cover the rotation, nameplates, the damage meter, item upgrade scores and the unit frames, and each piece imports on its own. Each addon has its own folder under `AddOns/`:
 
 | Folder | What it is | Status |
 |---|---|---|
@@ -14,4 +14,4 @@ Each folder's README has the import steps.
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). AI tools and agents, please read [AGENTS.md](../../AGENTS.md).
+MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). Credit: Jon Shaw (Schizzle).
