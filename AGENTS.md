@@ -22,6 +22,14 @@ to edit, build or review this project, you may work here normally. In that
 case, keep the attribution required by LICENSE: visible credit to
 Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo.
 
+## Standing rules for authorized agents
+
+- **Rotation WeakAura position:** every rotation WeakAura group in this repo defaults to x 0, y -40, with the
+  group's CENTER anchored to the CENTER of UIParent (WeakAuras `anchorFrameType = "SCREEN"`,
+  `anchorPoint = "CENTER"`, `selfPoint = "CENTER"`, `xOffset = 0`, `yOffset = -40`). Child auras are positioned
+  relative to the group. New or rebuilt rotation auras must keep this default, and their READMEs should note that
+  WeakAuras only applies a new position on Update when **Size & Position** is ticked.
+
 ## Everyone else
 
 People are welcome to read and use the project under the MIT License in
