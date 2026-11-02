@@ -420,7 +420,7 @@ keyOf(TPsc, "A3", "K3 rank/override ID matched by name", function()
   BONUS = 0; NAMES[999001] = "Tiger Palm"; SLOTS = { [63] = { "spell", 999001 } } end)
 keyOf(TPsc, "S4", "K4 hidden bar only -> raw fallback", function()
   BARVIS = { ActionButton = true }; SLOTS = { [40] = { "spell", 100787 } }; BINDS.MULTIACTIONBAR4BUTTON4 = "SHIFT-4" end)
-print("\n== static: group, fonts, tray layout ==")
+print("\n== static: group, fonts, tray layout, uniformity ==")
 local function C(ok, msg) if ok then P = P + 1; print("PASS " .. msg) else F = F + 1; print("FAIL " .. msg) end end
 local rel = data.id:match("^Schizzle's Monk Rotation v(%d+%.%d+[%.%d]*)$")
 C(rel ~= nil, "group name carries the version: " .. data.id)
@@ -447,6 +447,54 @@ do
       if a1 < b2 and b1 < a2 and a3 < b4 and b3 < a4 then okL, why = false, a.id .. " overlaps " .. b.id end end end
   end end
   C(okL and n == 8, "tray: 8 x 32 px at y -122, x +134..-118 (right edge +150), no overlap " .. why)
+end
+do -- uniformity with the Warrior aura (root AGENTS.md rule): shared elements must match field for field
+  local WEXPORT = os.getenv("WA_WARRIOR") or EXPORT:gsub("Schizzle's Monk", "Schizzle's Warrior")
+  local wf = io.open(WEXPORT)
+  if not wf then print("SKIP uniformity: no Warrior export at " .. WEXPORT) else
+    local ws = wf:read("*a") wf:close()
+    local okw, w = LibSerialize:Deserialize(LibDeflate:DecompressDeflate(LibDeflate:DecodeForPrint(ws:gsub("%s+$", ""):match("^!WA:2!(.*)$"))))
+    assert(okw)
+    local W, M = {}, {} for _, c in ipairs(w.c) do W[c.id] = c end for _, c in ipairs(t.c) do M[c.id] = c end
+    local SKIP = { triggers = 1, actions = 1, authorOptions = 1, config = 1, uid = 1, id = 1, parent = 1, information = 1, xOffset = 1, yOffset = 1 }
+    local function flat(x, pre, out) out = out or {}
+      for k, v in pairs(x) do local key = pre .. tostring(k)
+        if not (pre == "" and SKIP[k]) and not key:find("^load%.class") then
+          if type(v) == "table" then flat(v, key .. ".", out) else out[key] = v end end end
+      return out end
+    local function same(wc, mc, ignore)
+      local a, b, bad = flat(wc, ""), flat(mc, ""), {}
+      local function ig(k) for _, p in ipairs(ignore or {}) do if k:find(p) then return true end end end
+      for k, v in pairs(a) do if b[k] ~= v and not ig(k) then bad[#bad + 1] = k end end
+      for k in pairs(b) do if a[k] == nil and not ig(k) then bad[#bad + 1] = k end end
+      table.sort(bad) return #bad == 0, table.concat(bad, ",") end
+    local pairsList = { "Next+1", "Defensive 1", "Defensive 2", "Defensive 3", "Cooldown 1", "Cooldown 2", "Cooldown 3",
+      "Interrupt", "Interrupt Cast", "Resources" }
+    for k = 1, 8 do pairsList[#pairsList + 1] = "Tray " .. k end
+    for _, n in ipairs(pairsList) do local ok2, why = same(W["SWR " .. n], M["SMR " .. n]) C(ok2, "uniform with SWR: " .. n .. " " .. why) end
+    -- Next: the Warrior's cast-flash glow (subRegions 3 + its condition) is a Warrior engine feature; the mode label
+    -- height follows each class's own bar row. Everything else must match.
+    local wn = {} for k, v in pairs(W["SWR Next"]) do wn[k] = v end
+    wn.subRegions = {} for i, s in ipairs(W["SWR Next"].subRegions) do if i ~= 3 then wn.subRegions[#wn.subRegions + 1] = s end end
+    wn.conditions = {} for _, cd in ipairs(W["SWR Next"].conditions) do if cd.changes[1].property ~= "sub.3.glow" then wn.conditions[#wn.conditions + 1] = cd end end
+    local ok3, why3 = same(wn, M["SMR Next"], { "^subRegions%.5%.text_anchorYOffset$" }) C(ok3, "uniform with SWR: Next (minus cast flash, mode height) " .. why3)
+    -- bars: same frame, texture, background, border and text style; colours, label text and size are class content
+    local barIgnore = { "^barColor", "^conditions", "^height$", "^width$", "text_text$" }
+    for _, n in ipairs({ "Shuffle", "Stagger" }) do local ok4, why4 = same(W["SWR Shield Block"], M["SMR " .. n], barIgnore) C(ok4, "uniform with SWR Shield Block: " .. n .. " " .. why4) end
+    for _, n in ipairs({ "Chi 1/4", "Chi 5/5" }) do
+      local wr = {} for k, v in pairs(W["SWR Rage"]) do wr[k] = v end wr.subRegions = { unpack(W["SWR Rage"].subRegions, 1, 3) }
+      local ok5, why5 = same(wr, M["SMR " .. n], barIgnore) C(ok5, "uniform with SWR Rage frame (minus its text): " .. n .. " " .. why5) end
+    -- group and options
+    local ok6, why6 = same(w.d, t.d, { "^desc$", "^controlledChildren", "^sortHybridTable" }) C(ok6, "uniform with SWR group " .. why6)
+    local wo, okO, whyO, seen = {}, true, "", {}
+    for i, o in ipairs(w.c[1].authorOptions) do wo[o.key] = o end
+    local lastW = 0
+    for _, o in ipairs(t.c[1].authorOptions) do local x = wo[o.key] if x then
+      if x.name ~= o.name or x.type ~= o.type or x.default ~= o.default or x.width ~= o.width then okO, whyO = false, o.key end
+      local idx for i, y in ipairs(w.c[1].authorOptions) do if y.key == o.key then idx = i end end
+      if idx < lastW then okO, whyO = false, "order " .. o.key end lastW = idx end end
+    C(okO, "shared options match SWR name/type/default/width and order " .. whyO)
+  end
 end
 print(("\n%d passed, %d failed; sandbox warnings: %d"):format(P, F, #warnings))
 for _, w in ipairs(warnings) do print("  warning", w.key, w.message) end

@@ -5,7 +5,7 @@ and dataset builders that come across this repository.
 
 ## Request
 
-Schizzle's Monk Rotation WeakAura (Schizzle's Monk/AddOns/WeakAuras) is a personal World of Warcraft project by
+Schizzle's Monk Rotation (Schizzle's Monk/AddOns/WeakAuras) is a personal World of Warcraft project by
 Jon Shaw (GitHub: shawj317). Unless you are acting on behalf of the author,
 please do not:
 

@@ -20,13 +20,13 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 6. Type `/reload`.
 7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
-9. Options live on **Schizzle's Warrior Rotation v1.4.1 → SWR Next → Custom Options** (see "Options" below).
+9. Options live on **Schizzle's Warrior Rotation v1.5 → SWR Next → Custom Options** (see "Options" below).
 
 **Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.5" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
 **Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group falls under **Group Arrangement** (ticked by default), and it hasn't changed.
 
-Updating later: delete the old group first (`/wa`, right-click the group, **Delete**), import the new string, then `/reload`.
+**Text sizes on update:** WeakAuras sorts changes by the top-level field that changed. Icon and bar texts (keybind, tag, mode, KICK and bar labels) live inside each aura's sub-regions, so a change to their size, font or outline rides in **Display** (ticked by default) and a plain **Update** applies it. Only a text aura's own `fontSize` (the SWR Resources text) counts as a size field, and on a child aura WeakAuras files size fields under **Group Arrangement** (also ticked by default). **Size & Position** only matters for the group itself: tick it only if you want the group moved back to 0, -40, because it also resets the group's position.
 
 ## What's on screen
 
@@ -195,10 +195,7 @@ Turn it off with **Show cooldown tray** in the options.
 
 | Option | Default | What it does |
 |---|---|---|
-| Show swing timer | On | Main-hand (and off-hand) swing bars under the rage bar |
-| Show last cast | On | The small Last Cast icon left of Next+1 |
-| Show cooldown tray | On | The ready-only racial / cooldown row at the bottom right |
-| AoE threshold | 3 | Nearby enemies (nameplates, ~8 yd) that switch to AoE priority |
+| AoE threshold (enemies) | 3 | Nearby enemies (nameplates, ~8 yd) that switch to AoE priority (2-10) |
 | Protection mode | Auto | Auto = Tank when in Defensive Stance, queued as TANK, or holding threat. Tank / DPS force it |
 | Prot active mitigation | Auto (Block first) | Auto / Block only / Barrier first (magic) |
 | Fury weapons | Auto | Auto reads your off hand; or force Titan's Grip / Single-Minded Fury |
@@ -207,8 +204,11 @@ Turn it off with **Show cooldown tray** in the options.
 | Rage dump margin | 20 | Heroic Strike / Cleave when rage is within this much of max |
 | Arms: Slam outside CS at rage | 80 | Outside Colossus Smash, Arms only Slams above this |
 | Fury: Wild Strike filler at rage | 70 | Fury only uses Wild Strike as a filler (no Bloodsurge) above this |
-| Show off-GCD / defensives / cooldowns / keybinds | on | Turn parts of the HUD off |
+| Show off-GCD / defensives / stance (left) / offensive cooldowns (right) / keybinds | on | Turn parts of the HUD off |
 | Red tint when out of range | on | Adds a red tint to the grey out-of-range look |
+| Show swing timer | on | Main-hand (and off-hand) swing bars under the rage bar |
+| Show last cast | on | The small Last Cast icon left of Next+1 |
+| Show cooldown tray | on | The ready-only racial / cooldown row at the bottom right |
 | Show interrupts / Include stuns/CC / Interrupt in main icon / Also watch focus | on / on / off / off | Interrupt behaviour |
 
 **Debugging:** `/dump SchizzleWarrior.R.why` prints why the current spell was picked, the off-GCD reason, the spec/stance/rage, and the next few entries in the list.
@@ -274,7 +274,7 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. The version lives in one place, `RELEASE` near the top, which sets the group name and description. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 292 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 353 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
@@ -290,4 +290,4 @@ No SavedVariables or personal data are included.
 
 ## License
 
-MIT with an attribution requirement. See [LICENSE](LICENSE). AI tools and agents, please read [AGENTS.md](AGENTS.md).
+MIT with an attribution requirement. See [LICENSE](LICENSE). AI tools and agents, please read [AGENTS.md](AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/AddOns/WeakAuras

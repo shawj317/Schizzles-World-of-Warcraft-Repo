@@ -38,6 +38,17 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   is left out. Spec choice happens in engine code (auras load per class only). Text uses Fira Sans Condensed
   Medium with a subtle 1 px dark border, and a "Show cooldown tray" author option turns it off. Append the tray
   children after the existing ones so existing child IDs and uids stay unchanged.
+- **Class kit uniformity:** the Warrior and Monk kits (and every future class kit) stay visually and structurally
+  uniform. Shared rotation-aura elements (Next, Next+1, Defensive, Cooldown and Interrupt icons, Interrupt Cast bar,
+  Resources text, cooldown tray, status bars and their borders) use the same sizes, fonts, text sizes, outlines,
+  colours, glow and border settings, and the same sub-region order; load on class only (spec choice happens in engine
+  code); share option labels, defaults and order (class settings first, then the Show toggles, then interrupts); and
+  name the group "Schizzle's <Class> Rotation vX.Y" with fixed child names. READMEs follow the same section layout
+  and naming as the Warrior WeakAuras README (Install, What's on screen, Per spec, Cooldown tray, Options, Spell IDs,
+  Known limits, Source files, Version history, License). Only class content (spells, priorities, class-specific bars
+  and colours, geometry that follows each class's own rows) may differ, and a README or the simulator should say why.
+  When one kit gains a shared feature or style change, carry it to the others, and keep the Monk simulator's
+  uniformity checks against the Warrior export passing.
 
 ## Everyone else
 
