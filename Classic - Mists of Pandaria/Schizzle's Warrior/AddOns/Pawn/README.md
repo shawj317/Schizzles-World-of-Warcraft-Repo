@@ -99,4 +99,4 @@ PAWN_SRC=/path/to/Pawn lua verify.lua
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../../../LICENSE). Credit: Jon Shaw (Schizzle). Stat weights from WoWSims (MIT licence).
+MIT with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). Credit: Jon Shaw (Schizzle). Stat weights from WoWSims (MIT licence).

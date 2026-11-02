@@ -12,4 +12,4 @@ Each folder's README has the import steps. There are no Monk Pawn scales yet.
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../LICENSE). AI tools and agents, please read [AGENTS.md](../AGENTS.md).
+MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). AI tools and agents, please read [AGENTS.md](../../AGENTS.md).

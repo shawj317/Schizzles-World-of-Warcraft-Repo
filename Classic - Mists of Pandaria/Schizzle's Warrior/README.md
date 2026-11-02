@@ -13,4 +13,4 @@ Each folder's README has the import steps.
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../LICENSE). AI tools and agents, please read [AGENTS.md](../AGENTS.md).
+MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). AI tools and agents, please read [AGENTS.md](../../AGENTS.md).

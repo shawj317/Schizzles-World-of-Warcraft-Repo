@@ -100,4 +100,4 @@ Last resort: `/details reinstall` wipes every Details setting. After it, import 
 
 ## License
 
-MIT, with an attribution requirement. See the repository [LICENSE](../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/Schizzle's%20Monk/AddOns/Details!
+MIT, with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../../AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/Details!

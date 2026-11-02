@@ -96,4 +96,4 @@ DETAILS_SRC=/path/to/Details-Damage-Meter WA_TYPES=/path/to/WeakAuras/Types.lua 
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../../../LICENSE). Credit: Jon Shaw (Schizzle).
+MIT with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). Credit: Jon Shaw (Schizzle).
