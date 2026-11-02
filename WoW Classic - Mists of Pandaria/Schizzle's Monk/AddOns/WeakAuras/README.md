@@ -2,14 +2,14 @@
 
 A WeakAuras rotation helper for Monks in MoP Classic 5.5.x.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (19,902 chars, starts `!WA:2!`). Current version: **v5** (engine `VERSION = 5`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (20,018 chars, starts `!WA:2!`). Current version: **v5** (engine `VERSION = 5`). In-game group name: **"Schizzle's Monk Rotation v5"**.
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90).
 **Covers:** Brewmaster (tank or DPS) and Windwalker. Every spell is level-gated with `IsPlayerSpell`, so a spell only shows once your character knows it.
 **Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 87 cases (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds). WeakAuras' final import cleanup can only run in the game client.
 
 ## What it does
 
-The **Schizzle's Monk Rotation WeakAura** group has 22 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
+The **Schizzle's Monk Rotation v5** group has 22 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
 
 - **SMR Next** (56 px): the spell to press now. It shows the keybind (bottom right), the Tiger Palm reason tag (top left), the mode label above it, and a glow for high-priority picks.
 - **SMR Next+1** (34 px, under Next): the next different spell in the list.
@@ -27,11 +27,13 @@ The **Schizzle's Monk Rotation WeakAura** group has 22 auras. All of them read o
 
 1. Type `/wa` and click **Import**.
 2. Open `All-in-One Rotation.txt` on GitHub, click the **Copy raw file** button, then paste the whole string into the Import box and click **Import**.
-3. Accept the "Schizzle's Monk Rotation WeakAura" group.
+3. Accept the "Schizzle's Monk Rotation v5" group.
 4. Optional: move the whole HUD by dragging the group (default spot: screen centre, 190 px down).
-5. Options live on **Schizzle's Monk Rotation WeakAura → SMR Next → Custom Options** (see the Options section below).
+5. Options live on **Schizzle's Monk Rotation v5 → SMR Next → Custom Options** (see the Options section below).
 
-If you're replacing an older version, delete the old group first. Builds before the rename were called "Peanut Monk"; the renamed group has a new ID, so the import will not replace it on its own, and running both at once doubles every icon. The engine only loads once per session at a given version, so `/reload` after importing.
+**Updating from "Schizzle's Monk Rotation WeakAura":** the group's internal ID (uid) is unchanged, and WeakAuras matches imports by that ID, not by name. So importing this build opens WeakAuras' **Update** dialog for the existing group instead of adding a second one. Leave **Aura Names** ticked (the default) so the group takes the new name with the version in it. Only if it arrives as a separate copy should you delete the old group.
+
+If you're replacing a build from before the rename, delete the old group first. Builds before the rename were called "Peanut Monk"; the renamed group has a new ID, so the import will not replace it on its own, and running both at once doubles every icon. The engine only loads once per session at a given version, so `/reload` after importing.
 
 ## Layout (offsets from the group centre)
 
@@ -245,6 +247,7 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
 - **v5 (current):** **Tiger Palm as a pre-34 Brewmaster filler.** It's suggested at 1 Chi when nothing better is usable, ranked below Blackout Kick, Keg Smash, Jab and the refresh rule. The `filler` tag is unchanged.
 - **v5 move (Nov 1 2026):** same aura, moved to `Schizzle's Monk/AddOns/WeakAuras/` to match the Warrior layout. The import string was renamed from `schizzles-monk-rotation-weakaura.txt` to `All-in-One Rotation.txt`; its contents are unchanged.
 - **v5 rename (Nov 1 2026):** same logic as v5, renamed from "Peanut Monk" to "Schizzle's Monk Rotation WeakAura". Aura IDs went from `PM …` to `SMR …` and the engine global from `PeanutMonk` to `SchizzleMonk`, so this imports as a new group. Delete the old group.
+- **v5 name (Nov 2 2026):** same logic as v5. The in-game group is now called "Schizzle's Monk Rotation v5", so the name shows the version, and the description ends with "v5.". The group uid (`SchizzleMonkGroup`) and every child name and uid (`SMR …`) are unchanged, so re-importing updates the existing group in place. The child auras keep fixed names so they stay stable across versions.
 
 ## Caveats
 
