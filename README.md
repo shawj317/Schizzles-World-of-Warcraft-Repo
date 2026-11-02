@@ -12,6 +12,15 @@ World of Warcraft: Mists of Pandaria Classic (5.5.x) addon profiles and import s
 
 Each class folder has a README listing its addons, and each addon folder has its own README with import steps and version history. The `.txt` files are the import strings; copy everything in one and paste it into that addon's Import box.
 
+
+## WoW Forever
+
+Coming after launch. See [WoW Forever](WoW%20Forever/).
+
+## WoW Retail
+
+Coming later. See [WoW Retail](WoW%20Retail/).
+
 ## How to use this repo
 
 - Click a folder above, then click a `.txt` file and use the **Copy raw file** button to copy the import string. Each folder's README walks you through the import step by step.
