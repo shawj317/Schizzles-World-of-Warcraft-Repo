@@ -11,7 +11,7 @@ Three Details! damage meter profiles for Warriors in MoP Classic 5.5.x, one per 
 
 The Arms and Fury strings are identical: the layout is the same, and Details! takes the profile's name from what's typed at import. They are shipped as two files so each spec has its own profile to tweak.
 
-The look matches [Schizzle's Brewmaster Details! Profile](../../../schizzles-brewmaster-details-profile/) (v2) and the Warrior [Plater profiles](../Plater/).
+The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/AddOns/Details!/) (v2) and the Warrior [Plater profiles](../Plater/).
 
 ## What you get (all three profiles)
 - **Two windows, both 232 × 176**, snapped together edge to edge in the bottom right of the screen, about 190 px up so they clear the action bars. Drag either one and both move.
@@ -21,7 +21,7 @@ The look matches [Schizzle's Brewmaster Details! Profile](../../../schizzles-bre
 - **Window 2:**
   - **Arms and Fury:** Misc → Interrupts, so you can see who is kicking (and whether your Pummels landed). Damage Done in window 1 already shows your DPS in the per-second column.
   - **Protection:** Damage Taken, the same as the Brewmaster profile. The Protection profile also turns on **Record Tank Avoidance** (`parser_options.tank_avoidance`), so Details! records hits, blocks and absorbs on tanks as well as dodges and parries. This is an account-wide Details! setting; the Arms and Fury profiles don't change any account-wide settings.
-- For a tank-focused window 2, the optional **Tank Mitigation** custom display from the [Brewmaster profile folder](../../../schizzles-brewmaster-details-profile/) works for Protection Warriors too (it shows block amounts and dodge + parry rate).
+- For a tank-focused window 2, the optional **Tank Mitigation** custom display from the [Monk Details! folder](../../../Schizzle's%20Monk/AddOns/Details!/) works for Protection Warriors too (it shows block amounts and dodge + parry rate).
 
 ## Import
 1. Type `/details options` and open **Profiles**.

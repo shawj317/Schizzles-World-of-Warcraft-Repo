@@ -118,4 +118,4 @@ Since an item can only be in one group, each item goes to exactly one profession
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/schizzles-tsm
+MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20TSM

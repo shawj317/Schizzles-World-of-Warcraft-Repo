@@ -2,7 +2,7 @@
 
 A WeakAuras rotation helper for Monks in MoP Classic 5.5.x.
 
-**File:** `schizzles-monk-rotation-weakaura.txt` (19,902 chars, starts `!WA:2!`). Current version: **v5** (engine `VERSION = 5`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (19,902 chars, starts `!WA:2!`). Current version: **v5** (engine `VERSION = 5`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90).
 **Covers:** Brewmaster (tank or DPS) and Windwalker. Every spell is level-gated with `IsPlayerSpell`, so a spell only shows once your character knows it.
 **Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 87 cases (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds). WeakAuras' final import cleanup can only run in the game client.
@@ -26,7 +26,7 @@ The **Schizzle's Monk Rotation WeakAura** group has 22 auras. All of them read o
 ## Import
 
 1. Type `/wa` and click **Import**.
-2. Paste the whole contents of `schizzles-monk-rotation-weakaura.txt`, then click **Import**.
+2. Open `All-in-One Rotation.txt` on GitHub, click the **Copy raw file** button, then paste the whole string into the Import box and click **Import**.
 3. Accept the "Schizzle's Monk Rotation WeakAura" group.
 4. Optional: move the whole HUD by dragging the group (default spot: screen centre, 190 px down).
 5. Options live on **Schizzle's Monk Rotation WeakAura → SMR Next → Custom Options** (see the Options section below).
@@ -243,6 +243,7 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
   - **Tiger Palm audit:** each Palm is tagged refresh/filler/proc, and the refresh triggers at under 4 s of Tiger Power (`tpWindow`).
   - `/dump SchizzleMonk.R.why` debug info.
 - **v5 (current):** **Tiger Palm as a pre-34 Brewmaster filler.** It's suggested at 1 Chi when nothing better is usable, ranked below Blackout Kick, Keg Smash, Jab and the refresh rule. The `filler` tag is unchanged.
+- **v5 move (Nov 1 2026):** same aura, moved to `Schizzle's Monk/AddOns/WeakAuras/` to match the Warrior layout. The import string was renamed from `schizzles-monk-rotation-weakaura.txt` to `All-in-One Rotation.txt`; its contents are unchanged.
 - **v5 rename (Nov 1 2026):** same logic as v5, renamed from "Peanut Monk" to "Schizzle's Monk Rotation WeakAura". Aura IDs went from `PM …` to `SMR …` and the engine global from `PeanutMonk` to `SchizzleMonk`, so this imports as a new group. Delete the old group.
 
 ## Caveats
@@ -253,4 +254,4 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/schizzles-monk-rotation-weakaura
+MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20Monk/AddOns/WeakAuras

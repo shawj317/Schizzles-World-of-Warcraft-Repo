@@ -1,18 +1,21 @@
-# Schizzle's Plater Profile
+# Schizzle's Monk Plater Profile
 
 A Plater nameplate profile (in game: *Schizzle's Monk Plater Profile*) and five mods for Brewmaster and Windwalker Monks in MoP Classic 5.5.x. The profile's look works for any class; the threat, interrupt and Touch of Death mods are tuned for Monks.
 
-Files:
-- `schizzles-plater-profile.txt`: the full profile (look, colours, auras, threat colours)
-- `schizzles-plater-mods/schizzles-plater-mod-01-stance-aware-threat.txt`
-- `schizzles-plater-mods/schizzles-plater-mod-02-target-focus-highlight.txt`
-- `schizzles-plater-mods/schizzles-plater-mod-03-interrupt-ready-glow.txt`
-- `schizzles-plater-mods/schizzles-plater-mod-04-execute-touch-of-death.txt`
-- `schizzles-plater-mods/schizzles-plater-mod-05-threat-percent.txt`
+By Jon Shaw (Schizzle). One profile covers both specs: the Stance-Aware Threat mod switches between tank and DPS colours by stance.
+
+| File | What it is |
+|---|---|
+| [Brewmaster and Windwalker Profile.txt](Brewmaster%20and%20Windwalker%20Profile.txt) | The full profile (look, colours, auras, threat colours) for both specs |
+| [Mods/01 Stance-Aware Threat.txt](Mods/01%20Stance-Aware%20Threat.txt) | Schizzle's Stance-Aware Threat |
+| [Mods/02 Target and Focus Highlight.txt](Mods/02%20Target%20and%20Focus%20Highlight.txt) | Schizzle's Target & Focus Highlight |
+| [Mods/03 Interrupt Ready Glow.txt](Mods/03%20Interrupt%20Ready%20Glow.txt) | Schizzle's Interrupt Ready Glow |
+| [Mods/04 Execute and Touch of Death.txt](Mods/04%20Execute%20and%20Touch%20of%20Death.txt) | Schizzle's Execute & Touch of Death |
+| [Mods/05 Threat Percent.txt](Mods/05%20Threat%20Percent.txt) | Schizzle's Threat % |
 
 ## Import
-1. **Profile:** type `/plater`, open **Profiles**, choose **Import Profile**, paste the whole contents of `schizzles-plater-profile.txt`, give it a name (for example *Schizzle's Monk Plater Profile*) and confirm. Plater switches to it and reloads the UI.
-2. **Mods:** in `/plater`, open the **Modding** tab, click **Import**, paste one mod string, and click **Okay**. Repeat for each file. Each mod is enabled on import; you can turn it on or off with the checkbox in the mod list.
+1. **Profile:** type `/plater`, open **Profiles**, choose **Import Profile**, paste the whole contents of `Brewmaster and Windwalker Profile.txt`, give it a name (for example *Schizzle's Monk Plater Profile*) and confirm. Plater switches to it and reloads the UI.
+2. **Mods:** in `/plater`, open the **Modding** tab, click **Import**, paste one mod string from the `Mods/` folder, and click **Okay**. Repeat for each file. Each mod is enabled on import; you can turn it on or off with the checkbox in the mod list.
 3. Mod settings are in **Modding → (mod) → Options**. Type `/reload` after you turn the Stance-Aware Threat mod off.
 
 **Replacing the older build:** the profile and mods used to be called "Peanut Monk" and "Peanut - …". The renamed mods import as new mods, so delete the five old "Peanut - …" mods in the Modding tab, or both sets will run at once.
@@ -79,8 +82,9 @@ Tag row above the bar: threat % on the left, ToD in the centre, FOCUS on the rig
 
 ## Version history
 - **v1 (Nov 2026):** first release. Flat dark profile, stance-aware threat colours, and five mods: Stance-Aware Threat, Target & Focus Highlight, Interrupt Ready Glow, Execute & Touch of Death, Threat %.
+- **v1 move (Nov 1 2026):** same content, moved to `Schizzle's Monk/AddOns/Plater/` to match the Warrior layout. Files renamed: `schizzles-plater-profile.txt` → `Brewmaster and Windwalker Profile.txt`, and `schizzles-plater-mods/schizzles-plater-mod-0N-….txt` → `Mods/0N ….txt`. The import strings are unchanged.
 - **v1 rename (Nov 1 2026):** same content, renamed from "Peanut Monk" / "Peanut - …" to "Schizzle's Monk Plater Profile" / "Schizzle's …". Author field is now "Schizzle (Jon)".
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/schizzles-plater-profile
+MIT, with an attribution requirement. See the repository [LICENSE](../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../AGENTS.md). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20Monk/AddOns/Plater

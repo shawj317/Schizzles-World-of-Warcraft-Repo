@@ -1,10 +1,11 @@
-# Schizzle's Brewmaster Details! Profile
+# Schizzle's Monk Details! Profile (Brewmaster)
 
-A two-window Details! damage meter profile for Brewmaster Monks (and other tanks) in MoP Classic 5.5.x, plus an optional Tank Mitigation custom display.
+A two-window Details! damage meter profile for Brewmaster Monks (and other tanks) in MoP Classic 5.5.x, by Jon Shaw (Schizzle), plus an optional Tank Mitigation custom display. There is no Windwalker profile yet.
 
-Files:
-- `schizzles-brewmaster-details-profile.txt`: the profile import string (2 windows, linked side by side; current v2 build, see the v2 section)
-- `schizzles-tank-mitigation-details-display.txt`: an optional "Tank Mitigation" custom display
+| File | What it is |
+|---|---|
+| [Brewmaster Profile.txt](Brewmaster%20Profile.txt) | The profile import string (2 windows, linked side by side; current v2 build, see the v2 section) |
+| [Tank Mitigation Display.txt](Tank%20Mitigation%20Display.txt) | An optional "Tank Mitigation" custom display |
 
 The build and verify scripts used to produce these strings aren't included in this repo.
 
@@ -22,12 +23,12 @@ The build and verify scripts used to produce these strings aren't included in th
 
 ## Import the profile
 1. Type `/details options` and open the **Profiles** section.
-2. Click **Import Profile**, paste the whole contents of `schizzles-brewmaster-details-profile.txt`, then confirm and give the profile a name (for example `Schizzle's Brewmaster Details! Profile`).
+2. Click **Import Profile**, paste the whole contents of `Brewmaster Profile.txt`, then confirm and give the profile a name (for example `Schizzle's Brewmaster Details! Profile`).
 3. `/reload` so the windows, snap links and tank-avoidance setting all apply cleanly.
 
 ## Import the Tank Mitigation display (optional)
 1. Open the custom display manager: click the **sword icon** (display menu) on a window's title bar, hover **Custom**, and click **Manage Custom Displays**.
-2. Click **Import**, paste `schizzles-tank-mitigation-details-display.txt`, click **Import**, then click **Save**.
+2. Click **Import**, paste `Tank Mitigation Display.txt`, click **Import**, then click **Save**.
 3. To show it in window 2, open its sword icon → **Custom** → **Tank Mitigation**.
 
 What it shows:
@@ -71,7 +72,7 @@ Details doesn't export bookmarks in profiles, so set them up once by hand:
 
 ## v2 (Nov 1 2026): font change, plus where the bar options went
 
-**File:** `schizzles-brewmaster-details-profile.txt` (this is the v2 build). Import it the same way as v1. The tank custom display string hasn't changed.
+**File:** `Brewmaster Profile.txt` (this is the v2 build). Import it the same way as v1. The tank custom display string hasn't changed.
 
 **What changed from v1**
 - Font is now **Fira Sans Condensed Medium**, which WeakAuras registers. It's used for bar text (size 9), the title bar (size 11), tooltips (11) and menus.
@@ -94,8 +95,9 @@ Last resort: `/details reinstall` wipes every Details setting. After it, import 
 ## Version history
 - **v1 (Nov 2026):** two linked windows side by side, plus the optional Tank Mitigation custom display.
 - **v2 (Nov 1 2026):** font changed to Fira Sans Condensed Medium (bar text 9, title 11, tooltips 11, menus). Notes added on where the bar options moved (Options → Designer). This is the file shipped here.
+- **v2 move (Nov 1 2026):** same strings, moved to `Schizzle's Monk/AddOns/Details!/` to match the Warrior layout. Files renamed: `schizzles-brewmaster-details-profile.txt` → `Brewmaster Profile.txt`, `schizzles-tank-mitigation-details-display.txt` → `Tank Mitigation Display.txt`.
 - **v2 rename (Nov 1 2026):** files and docs renamed to "Schizzle's Brewmaster Details! Profile". The import string is the same; Details asks you to name the profile when you import it.
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/schizzles-brewmaster-details-profile
+MIT, with an attribution requirement. See the repository [LICENSE](../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../AGENTS.md). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20Monk/AddOns/Details!
