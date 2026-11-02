@@ -49,6 +49,8 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   and colours, geometry that follows each class's own rows) may differ, and a README or the simulator should say why.
   When one kit gains a shared feature or style change, carry it to the others, and keep the Monk simulator's
   uniformity checks against the Warrior export passing.
+  Exception: the BetterBlizzFrames unit-frame profile is Warrior only for now (Monk isn't in WoW Forever, so Jon
+  doesn't want a Monk one); don't port it to Monk unless he asks.
 
 ## Everyone else
 
