@@ -1,0 +1,1 @@
+( Pawn: v1: "Schizzle's Monk Mistweaver": Class=Monk, Spec=2, Intellect=1, HasteRating=1, Spirit=0.9, HitRating=0.9, SpellPower=0.79, CritRating=0.42, MasteryRating=0.13, MetaSocketEffect=160, IsCloth=X, IsMail=X, IsPlate=X, Stamina=0.01 )

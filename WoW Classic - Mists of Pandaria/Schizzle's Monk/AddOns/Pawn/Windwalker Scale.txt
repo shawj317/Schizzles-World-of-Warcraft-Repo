@@ -1,0 +1,1 @@
+( Pawn: v1: "Schizzle's Monk Windwalker": Class=Monk, Spec=3, Agility=1, HitRating=2.46, ExpertiseRating=2.11, MeleeDps=1.65, HasteRating=1.05, CritRating=0.83, MasteryRating=0.39, Ap=0.34, MetaSocketEffect=160, IsCloth=X, IsMail=X, IsPlate=X, Stamina=0.01, IsFrill=X )
