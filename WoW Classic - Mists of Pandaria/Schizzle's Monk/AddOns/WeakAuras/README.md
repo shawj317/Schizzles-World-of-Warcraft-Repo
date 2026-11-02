@@ -2,14 +2,14 @@
 
 A WeakAuras rotation helper for Monks in MoP Classic 5.5.x.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (19,853 chars, starts `!WA:2!`). Current version: **v5.1** (engine `VERSION = 5`). In-game group name: **"Schizzle's Monk Rotation v5.1"**.
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (20,946 chars, starts `!WA:2!`). Current version: **v5.2** (engine `VERSION = 6`). In-game group name: **"Schizzle's Monk Rotation v5.2"**.
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90).
 **Covers:** Brewmaster (tank or DPS) and Windwalker. Every spell is level-gated with `IsPlayerSpell`, so a spell only shows once your character knows it.
-**Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 87 cases (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds). WeakAuras' final import cleanup can only run in the game client.
+**Verified offline:** the custom code compiles in WeakAuras' own sandbox with 0 warnings, and the mock-API rotation simulator passes all 100 cases (levels 16 to 90, both specs, tank/DPS, AoE, procs, stances, range, interrupts, keybinds, cooldown tray). A separate layout check confirms the tray icons' size, positions, font and that they overlap nothing. WeakAuras' final import cleanup can only run in the game client.
 
 ## What it does
 
-The **Schizzle's Monk Rotation v5.1** group has 22 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
+The **Schizzle's Monk Rotation v5.2** group has 30 auras. All of them read one shared engine, the global `SchizzleMonk`, which lives in the SMR Next icon's On Init action. The engine works out the next spell 10 times a second and rescans your keybinds every 2 seconds.
 
 - **SMR Next** (56 px): the spell to press now. It shows the keybind (bottom right), the Tiger Palm reason tag (top left), the mode label above it, and a glow for high-priority picks.
 - **SMR Next+1** (34 px, under Next): the next different spell in the list.
@@ -20,6 +20,7 @@ The **Schizzle's Monk Rotation v5.1** group has 22 auras. All of them read one s
 - **SMR Interrupt** (44 px, red border and glow, "KICK" label) plus the **SMR Interrupt Cast** bar (cast name and %).
 - **SMR Shuffle** bar: Brewmaster, once Brewmaster Training is known.
 - **SMR Stagger** bar: green for Light, yellow for Moderate, red for Heavy, with the level name and % of max health.
+- **SMR Tray 1-8** (32 px, bottom right): the cooldown tray. Racials and big cooldowns outside the rotation, shown only when ready (see [Cooldown tray](#cooldown-tray)).
 
 **When it shows:** in combat, or when you have a hostile target, as Brewmaster or Windwalker. It loads for the Monk class only.
 
@@ -27,9 +28,9 @@ The **Schizzle's Monk Rotation v5.1** group has 22 auras. All of them read one s
 
 1. Type `/wa` and click **Import**.
 2. Open `All-in-One Rotation.txt` on GitHub, click the **Copy raw file** button, then paste the whole string into the Import box and click **Import**.
-3. Accept the "Schizzle's Monk Rotation v5.1" group.
+3. Accept the "Schizzle's Monk Rotation v5.2" group.
 4. Optional: move the whole HUD by dragging the group (default spot: x 0, y -40, the group's centre on the screen's centre, 40 px down).
-5. Options live on **Schizzle's Monk Rotation v5.1 → SMR Next → Custom Options** (see the Options section below).
+5. Options live on **Schizzle's Monk Rotation v5.2 → SMR Next → Custom Options** (see the Options section below).
 
 **Updating from "Schizzle's Monk Rotation WeakAura":** the group's internal ID (uid) is unchanged, and WeakAuras matches imports by that ID, not by name. So importing this build opens WeakAuras' **Update** dialog for the existing group instead of adding a second one. Leave **Aura Names** ticked (the default) so the group takes the new name with the version in it. Only if it arrives as a separate copy should you delete the old group.
 
@@ -52,6 +53,7 @@ If you're replacing a build from before the rename, delete the old group first. 
 | Next+1 | 34 px | y -50 |
 | Shuffle bar | 160x12 | y -80 |
 | Stagger bar | 160x10 | y -96 |
+| Cooldown tray 1-8 | 32 px | y -122, x +134 to -118 (36 px apart), filling leftward from the right edge at x +150 |
 
 The glow layer sits directly above the icon background, so keybind, tag and mode text always draw on top of it.
 
@@ -199,6 +201,29 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
   - Windwalker only: **Tigereye Brew** at the stack option (default 10), and **Energizing Brew** under 40% Energy;
   - **Chi Brew** with charges available and 2+ Chi of room.
 
+## Cooldown tray
+
+A row of small icons (32 px, about 57% of the Next icon) at the bottom right of the HUD, at y -122 under the Stagger bar. They show racials and big cooldowns that the rotation doesn't call for.
+
+- **Ready only:** an icon shows only when the spell is known (`IsPlayerSpell`) and off cooldown (the GCD doesn't count). On cooldown or not learned means not shown, so nothing sits there greyed out.
+- **Packs from the right:** slot 1 is at the right edge; ready spells fill leftward, up to 8, with no gaps.
+- **No duplicates:** anything the Next, Next+1, Interrupt, Defensive or Cooldown icons already show is left out at that moment. For example, Invoke Xuen moves to the Cooldown icons on a boss and leaves the tray, and Fortifying Brew moves to the Defensive icons at low health.
+- **Spec-aware:** the engine picks the list from your current spec. The tray shows at the same times as the rest of the HUD (in combat or with a hostile target).
+- **Order:** your racial first, then the spec list below.
+
+| Spec | Tray spells (in order) |
+|---|---|
+| Brewmaster | Fortifying Brew, Dampen Harm, Diffuse Magic, Zen Meditation, Avert Harm, Invoke Xuen, Nimble Brew, Leg Sweep, Ring of Peace, Charging Ox Wave, Tiger's Lust |
+| Windwalker | Touch of Karma, Fortifying Brew, Energizing Brew, Invoke Xuen, Dampen Harm, Diffuse Magic, Zen Meditation, Nimble Brew, Leg Sweep, Ring of Peace, Charging Ox Wave, Tiger's Lust |
+
+Talents show only if you took them. Left out on purpose: Touch of Death (needs a low-health target, so it lives on the Cooldown icons), Tigereye Brew and Elusive Brew (they're ready almost all the time but only worth pressing at the stack counts the Cooldown / Defensive icons already watch), Guard, Purifying Brew and Chi Brew (rotation side pops).
+
+Racials (every rank the client uses): Blood Fury (Orc), Berserking (Troll), Every Man for Himself (Human; Will to Survive in the MoP Classic client), Stoneform (Dwarf), Will of the Forsaken and Cannibalize (Undead), War Stomp (Tauren), Arcane Torrent (Blood Elf), Gift of the Naaru (Draenei), Escape Artist (Gnome), Shadowmeld (Night Elf), Darkflight (Worgen), Rocket Barrage and Rocket Jump (Goblin), Quaking Palm (Pandaren). Monks can be Human, Dwarf, Night Elf, Gnome, Draenei, Orc, Troll, Undead, Tauren, Blood Elf or Pandaren; the other races' racials are listed so the shared list stays the same as the Warrior aura.
+
+Spell IDs: Zen Meditation 115176, Avert Harm 115213, Nimble Brew 137562, Ring of Peace 116844, Charging Ox Wave 119392, Leg Sweep 119381, Tiger's Lust 116841, Fortifying Brew 115203, Dampen Harm 122278, Diffuse Magic 122783, Touch of Karma 122470, Energizing Brew 115288, Invoke Xuen 123904. Racials: Blood Fury 20572 / 33697 / 33702, Berserking 26297, Every Man for Himself 59752, Stoneform 20594, Will of the Forsaken 7744, Cannibalize 20577, War Stomp 20549, Arcane Torrent 69179 / 129597 / 28730 / 25046 / 50613 / 80483, Gift of the Naaru 28880 / 121093 / 59542-59548, Escape Artist 20589, Shadowmeld 58984, Darkflight 68992, Rocket Barrage 69041, Rocket Jump 69070, Quaking Palm 107079. Names were checked against Wowhead's MoP Classic tooltips.
+
+Turn it off with **Show cooldown tray** in the options.
+
 ## Options (SMR Next → Custom Options)
 
 | Option | Key | Default | Notes |
@@ -207,6 +232,7 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
 | Brewmaster mode | `bmMode` | Auto | Auto / Tank / DPS |
 | Show defensive pops (left) | `showDef` | on | |
 | Show offensive cooldowns (right) | `showCDs` | on | Touch of Death still shows |
+| Show cooldown tray | `showTray` | on | The ready-only racial / cooldown row at the bottom right |
 | Show keybinds | `showKeys` | on | |
 | Red tint when out of range | `tintOOR` | on | Out-of-range icons are always desaturated |
 | Show interrupts | `showInt` | on | |
@@ -251,6 +277,7 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
 - **v5 rename (Nov 1 2026):** same logic as v5, renamed from "Peanut Monk" to "Schizzle's Monk Rotation WeakAura". Aura IDs went from `PM …` to `SMR …` and the engine global from `PeanutMonk` to `SchizzleMonk`, so this imports as a new group. Delete the old group.
 - **v5 name (Nov 2 2026):** same logic as v5. The in-game group is now called "Schizzle's Monk Rotation v5", so the name shows the version, and the description ends with "v5.". The group uid (`SchizzleMonkGroup`) and every child name and uid (`SMR …`) are unchanged, so re-importing updates the existing group in place. The child auras keep fixed names so they stay stable across versions.
 - **v5.1 (Nov 2 2026):** the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group is renamed to "Schizzle's Monk Rotation v5.1" (same uid, so it updates in place), and the description ends with "v5.1.". No rotation changes (engine `VERSION = 5`). On Update, tick **Size & Position** to move the group.
+- **v5.2 (Nov 2 2026):** new **cooldown tray**, 8 small icons (32 px, auras `SMR Tray 1-8`) at the bottom right (y -122, growing leftward from x +150). It shows your racial and the spec's big cooldowns that aren't in the rotation, only while they are known and off cooldown, and never a spell another icon already shows. New "Show cooldown tray" option. Engine `VERSION = 6`. The group is renamed to "Schizzle's Monk Rotation v5.2" (same uid, and every existing child keeps its name and uid). **Updating:** WeakAuras offers **Update**. Leave **Add Missing Auras** ticked (default) to get the eight tray auras. Tick **Size & Position** and **Group Arrangement** if your group or icons were moved and you want the default layout back.
 
 ## Caveats
 

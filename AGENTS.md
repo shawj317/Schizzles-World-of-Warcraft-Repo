@@ -29,6 +29,15 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   `anchorPoint = "CENTER"`, `selfPoint = "CENTER"`, `xOffset = 0`, `yOffset = -40`). Child auras are positioned
   relative to the group. New or rebuilt rotation auras must keep this default, and their READMEs should note that
   WeakAuras only applies a new position on Update when **Size & Position** is ticked.
+- **Rotation WeakAura cooldown tray:** every rotation WeakAura includes a ready-only cooldown tray at the
+  bottom right of the HUD: 8 icon slots at about 57% of the Next icon size (32 px next to a 56 px Next), 36 px apart,
+  right edge at x +150 relative to the group, below every other child so nothing overlaps. The tray lists the
+  player's racial (every race's racials, shown only if known) and the spec's big cooldowns that are not rotation
+  suggestions. A spell shows only while it is known (`IsPlayerSpell`) and off cooldown (GCD ignored), slots pack
+  from the right edge leftward, and a spell the Next, Next+1, interrupt, defensive or cooldown icons already show
+  is left out. Spec choice happens in engine code (auras load per class only). Text uses Fira Sans Condensed
+  Medium with a subtle 1 px dark border, and a "Show cooldown tray" author option turns it off. Append the tray
+  children after the existing ones so existing child IDs and uids stay unchanged.
 
 ## Everyone else
 
