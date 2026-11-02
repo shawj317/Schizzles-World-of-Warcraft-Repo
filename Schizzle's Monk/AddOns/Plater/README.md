@@ -87,4 +87,4 @@ Tag row above the bar: threat % on the left, ToD in the centre, FOCUS on the rig
 
 ## License
 
-MIT, with an attribution requirement. See the repository [LICENSE](../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../AGENTS.md). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20Monk/AddOns/Plater
+MIT, with an attribution requirement. See the repository [LICENSE](../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/Schizzle's%20Monk/AddOns/Plater

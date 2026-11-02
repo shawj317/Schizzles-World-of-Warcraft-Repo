@@ -1,4 +1,4 @@
-# Schizzle's MoP Classic Addons
+# Schizzle's World of Warcraft Repo
 
 World of Warcraft: Mists of Pandaria Classic (5.5.x) addon profiles and import strings by **Jon Shaw (Schizzle)**. They're free for any player to download and import: Monk tools for Brewmaster (tank or DPS) and Windwalker, an all-in-one Warrior rotation aura with Warrior Plater, Details! and Pawn setups, and auction house groups and operations that work on any realm.
 

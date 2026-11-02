@@ -254,4 +254,4 @@ Every Tiger Palm suggestion carries a small tag in the icon's top-left corner:
 
 ## License
 
-MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/schizzles-mop-classic/tree/main/Schizzle's%20Monk/AddOns/WeakAuras
+MIT, with an attribution requirement. See [LICENSE](LICENSE). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/Schizzle's%20Monk/AddOns/WeakAuras
