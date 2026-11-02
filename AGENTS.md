@@ -51,6 +51,9 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   uniformity checks against the Warrior export passing.
   Exception: the BetterBlizzFrames unit-frame profile is Warrior only for now (Monk isn't in WoW Forever, so Jon
   doesn't want a Monk one); don't port it to Monk unless he asks.
+  The same goes for the BetterBlizzPlates nameplate profile (Warrior only; Jon is trying it as a Plater
+  replacement). Keep the Plater folder until he says otherwise, and keep its debuff list and glows in step with
+  the BetterBlizzFrames profile.
 
 ## Everyone else
 

@@ -64,7 +64,7 @@ To add or remove debuffs, open `/bbf` → **Buffs & Debuffs** (or type `/bbf wl 
 
 ## What the profile doesn't change
 - **Frame positions and sizes.** BetterBlizzFrames doesn't move the player, target, focus or party frames, the player castbar or the buff frame here; they stay where Blizzard (or you) put them. That keeps them clear of the rotation aura at 0, -40 from the screen centre, its cooldown tray, and the two Details! windows in the bottom right.
-- **Nameplates.** Plater owns them. BetterBlizzFrames has no nameplate or nameplate-castbar options of its own on MoP; the one nameplate-related option (dark mode on the class resource shown on nameplates) is set to **off** in the string.
+- **Nameplates.** Plater or BetterBlizzPlates owns them (see the [BetterBlizzPlates profile](../BetterBlizzPlates/)). BetterBlizzFrames has no nameplate or nameplate-castbar options of its own on MoP; the one nameplate-related option (dark mode on the class resource shown on nameplates) is set to **off** in the string.
 - **Your own buffs and debuffs** (top right) stay as Blizzard shows them. Buff filtering for the player is off.
 - **Action bar fonts, bar textures, chat filters, the minimap and Masque.** All left at BetterBlizzFrames' defaults.
 - **BetterBlizzFrames' own settings-window font** (a cosmetic option for the `/bbf` window). Not set.
