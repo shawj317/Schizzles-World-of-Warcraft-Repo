@@ -2,7 +2,7 @@
 
 Part of [Schizzle's TSM](../README.md). This is the analysis behind the [v2.2 operations](../operations/README.md) and the data-driven **Battle Pets > High Value** group.
 
-**Source:** the TSM desktop app's AuctionDB snapshot for a US Horde realm and the US region, taken 1 Nov 2026. No character names, gold totals or individual sales are published here.
+**Source:** the TSM desktop app's AuctionDB snapshot for a US Horde realm and the US region, taken 1 Nov 2026. Only AuctionDB market data (realm and region prices and sale rates) is used. No personal sales, character names or gold totals are published here.
 
 ## Realm vs region prices
 
@@ -44,7 +44,6 @@ So your realm is **not** uniformly cheaper or dearer than the region. It depends
 2. **Cap at 2× region market.** On thin items, one high listing can inflate the realm market. For example, Shadowgem showed 11.25g realm vs 1.07g region. The cap keeps that from becoming your floor.
 3. **Fall back to 0.8× region** only when the realm has no data at all.
 4. Bulk mats (Mining, Herbalism, Skinning) sell at a region rate of about 0.22–0.27. They justify a big post cap (1,000) and pricing at market. Gear-heavy professions sell at about 0.07 and pets at about 0.06, so gear and pets post one at a time for 48h.
-
 
 ## Battle pet prices and the High Value rule
 
