@@ -10,7 +10,7 @@ A two-window Details! damage meter profile for Brewmaster Monks (and other tanks
 The build and verify scripts used to produce these strings aren't included in this repo.
 
 ## What you get
-- **Two windows, both 232 × 176**, snapped together edge to edge in the bottom right corner of the screen (about 190 px up, so they clear the action bars). Window 1 is on the left and window 2 on the right. Drag either one and both move together.
+- **Two windows, both 211 × 150**, snapped together edge to edge in the bottom right corner of the screen (about 190 px up, so they clear the action bars). Window 1 is on the left and window 2 on the right. Drag either one and both move together.
   - **Window 1 shows Damage Done.**
   - **Window 2 shows Damage Taken.** Switch it in one click with bookmarks (see below) or the Tank Mitigation display.
 - **Dark flat look, matching the Plater set:**
@@ -94,9 +94,10 @@ Last resort: `/details reinstall` wipes every Details setting. After it, import 
 
 ## Version history
 - **v1 (Nov 2026):** two linked windows side by side, plus the optional Tank Mitigation custom display.
-- **v2 (Nov 1 2026):** font changed to Fira Sans Condensed Medium (bar text 9, title 11, tooltips 11, menus). Notes added on where the bar options moved (Options → Designer). This is the file shipped here.
+- **v2 (Nov 1 2026):** font changed to Fira Sans Condensed Medium (bar text 9, title 11, tooltips 11, menus). Notes added on where the bar options moved (Options → Designer).
 - **v2 move (Nov 1 2026):** same strings, moved to `Schizzle's Monk/AddOns/Details!/` to match the Warrior layout. Files renamed: `schizzles-brewmaster-details-profile.txt` → `Brewmaster Profile.txt`, `schizzles-tank-mitigation-details-display.txt` → `Tank Mitigation Display.txt`.
 - **v2 rename (Nov 1 2026):** files and docs renamed to "Schizzle's Brewmaster Details! Profile". The import string is the same; Details asks you to name the profile when you import it.
+- **v2.1 (Nov 2 2026):** both windows are now **211 × 150** (was 232 × 176). They stay snapped edge to edge at the bottom right, 24 px from the right edge and 190 px up. Everything else (fonts, bar text 9, title 11, displays) is unchanged. This is the file shipped here. The Tank Mitigation display has no window size, so it is unchanged.
 
 ## License
 
