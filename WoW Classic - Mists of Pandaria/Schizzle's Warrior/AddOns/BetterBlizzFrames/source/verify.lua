@@ -134,6 +134,41 @@ for _, unit in ipairs{ "target", "focus" } do
   check(not show(aura("Shadow Word: Pain", 589, false, 18)), unit .. ": other players' unlisted debuffs are hidden")
 end
 
+-- 8. BBF's own combat indicator (classics/modules/combat.lua BBF.CombatIndicator), in and out of combat
+local csrc, inFn = {}, false
+for line in io.lines(C.src .. "/classics/modules/combat.lua") do
+  if line:find("^function BBF.CombatIndicator%(unitFrame, unit%)") then inFn = true end
+  if inFn then csrc[#csrc + 1] = line end
+  if inFn and line == "end" then break end
+end
+check(csrc[1] and csrc[#csrc] == "end", "combat.lua BBF.CombatIndicator found")
+local function mock()
+  local o = { alpha = 1 }
+  return setmetatable(o, { __index = function(t, k)
+    if k == "SetAlpha" then return function(self, a) self.alpha = a end end
+    if k == "SetTexture" then return function(self, tex) self.texture = tex end end
+    if k == "IsVisible" then return function() return true end end
+    if k == "GetFrameLevel" then return function() return 1 end end
+    if k == "CreateTexture" or k == "CreateMaskTexture" then return function() return mock() end end
+    if k:find("^%u") then return function() end end -- other methods: no-ops; plain fields stay nil
+  end })
+end
+local inCombat = false
+local cenv = setmetatable({ BetterBlizzFramesDB = saved, BBF = { isTBC = false, GetOppositeAnchor = function() return "LEFT" end },
+  UnitAffectingCombat = function() return inCombat end, IsInInstance = function() return false, "none" end,
+  UnitIsPlayer = function() return true end, UnitBuff = function() return nil end, CreateFrame = function() return mock() end,
+  PlayerFrame = mock(), TargetFrame = mock(), FocusFrame = mock() }, { __index = _G })
+local cfn = assert(loadstring(table.concat(csrc, "\n"), "=combat.lua:CombatIndicator"))
+setfenv(cfn, cenv); cfn()
+for _, u in ipairs{ { cenv.PlayerFrame, "player" }, { cenv.TargetFrame, "target" }, { cenv.FocusFrame, "focus" } } do
+  inCombat = false; cenv.BBF.CombatIndicator(u[1], u[2])
+  check(u[1].combatIndicator and u[1].combatIndicator.alpha == 0, u[2] .. ": no combat indicator out of combat")
+  inCombat = true; cenv.BBF.CombatIndicator(u[1], u[2])
+  check(u[1].combatIndicator.alpha == 1 and u[1].combatIndicator.texture == "Interface\\Icons\\ABILITY_DUALWIELD", u[2] .. ": crossed swords in combat")
+  inCombat = false; cenv.BBF.CombatIndicator(u[1], u[2])
+  check(u[1].combatIndicator.alpha == 0, u[2] .. ": hidden again after combat")
+end
+
 print(("%d passed, %d failed"):format(pass, fail))
 if #notInForever > 0 then
   table.sort(notInForever)

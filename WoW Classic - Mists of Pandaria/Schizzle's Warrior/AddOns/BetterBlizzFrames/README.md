@@ -6,7 +6,7 @@ A BetterBlizzFrames profile for Warriors in MoP Classic 5.5.x by Jon Shaw (Schiz
 
 | File | In-game name | Built for |
 |---|---|---|
-| [Warrior Profile.txt](Warrior%20Profile.txt) | **Schizzle's Warrior v1** (BetterBlizzFrames has no profile names, so this is the name used in this README) | BetterBlizzFrames by Bodify, v2.2.0d (Mists build, Interface 50504) |
+| [Warrior Profile.txt](Warrior%20Profile.txt) | **Schizzle's Warrior v1.1** (BetterBlizzFrames has no profile names, so this is the name used in this README) | BetterBlizzFrames by Bodify, v2.2.0d (Mists build, Interface 50504) |
 
 The string works for all three specs. It goes with the [WeakAuras rotation](../WeakAuras/), [Plater profiles](../Plater/) and [Details! profiles](../Details!/) and doesn't move or overlap any of them.
 
@@ -31,7 +31,7 @@ The import replaces your BetterBlizzFrames settings with these ones; anything th
 - **Realm names hidden** on names, and no coloured name background on target and focus.
 - **Numbers shortened** (245k instead of 245000).
 - **Fira Sans Condensed Medium** for names (size 11), health and power numbers (size 10), party names and party status text (size 10), and castbar text.
-- **Combat indicator** on player, target and focus: crossed swords while the unit is in combat, a "sap" icon while it isn't. The red pulsing player frame glow is hidden, since the indicator covers it.
+- **Combat indicator** on player, target and focus: crossed swords while the unit is in combat, and nothing at all while it isn't. The red pulsing player frame glow is hidden, since the indicator covers it.
 - **Castbars:**
   - **Party castbars** on, with the spell icon and a timer.
   - Target and focus castbars show a **timer**.
@@ -92,7 +92,8 @@ BetterBlizzFrames runs on WoW Forever with a separate set of files (`forever/` i
   - every whitelist entry uses BetterBlizzFrames' current whitelist format;
   - WeakAuras registers the font;
   - a simulated import and `/reload` leaves every setting at the profile value;
-  - BetterBlizzFrames' own target/focus debuff filter (copied from `classics/modules/auras.lua` when the check runs) shows and glows the right debuffs and hides the rest.
+  - BetterBlizzFrames' own target/focus debuff filter (copied from `classics/modules/auras.lua` when the check runs) shows and glows the right debuffs and hides the rest;
+  - BetterBlizzFrames' own combat indicator code (copied from `classics/modules/combat.lua`) shows the crossed swords in combat and hides the icon out of combat on player, target and focus.
 
 ```
 cd source
@@ -101,6 +102,7 @@ BBF_SRC=/path/to/BetterBlizzFrames WA_TYPES=/path/to/WeakAuras/Types.lua lua ver
 ```
 
 ## Version history
+- **v1.1 (Nov 2 2026):** the combat indicator now shows only in combat. Out of combat it used to show a Sap icon; that is now turned off (`combatIndicatorShowSap = false`).
 - **v1 (Nov 2 2026):** first release. Dark mode, class colours, Fira Sans Condensed Medium, combat indicator, party castbars, clutter hiding, and target/focus debuff filtering with a Warrior whitelist and glows.
 
 ## License

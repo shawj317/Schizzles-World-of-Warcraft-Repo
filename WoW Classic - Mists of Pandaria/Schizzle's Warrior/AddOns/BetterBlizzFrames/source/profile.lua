@@ -1,4 +1,4 @@
--- Schizzle's Warrior BetterBlizzFrames profile (v1): the settings, as a plain table.
+-- Schizzle's Warrior BetterBlizzFrames profile (v1.1): the settings, as a plain table.
 -- Every key here is a real BetterBlizzFramesDB key on the Mists (classics/) code path;
 -- verify.lua checks that against BBF's defaults and code. Anything not listed keeps
 -- BBF's own default after the import.
@@ -54,8 +54,10 @@ return {
   changeUnitFrameValueFont = true, unitFrameValueFont = FONT, unitFrameValueFontSize = 10,
   changePartyFrameFont = true,    partyFrameFont = FONT,     partyFrameFontSize = 10, partyFrameStatusFontSize = 10,
 
-  -- Combat indicator (player, target, focus: BBF defaults)
+  -- Combat indicator (player, target, focus: BBF defaults), shown only while in combat:
+  -- crossed swords in combat, nothing out of combat (BBF's default shows a Sap icon then)
   combatIndicator = true,
+  combatIndicatorShowSap = false,
 
   -- Castbars: party castbars on, timers on, Pummel-ready icon on target/focus castbars
   showPartyCastbar = true,
