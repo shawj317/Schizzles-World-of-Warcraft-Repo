@@ -372,7 +372,7 @@ local group = {
   conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {},
   information = { saved = true },
-  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v1.3.",
+  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v1.4.",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

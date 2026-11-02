@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (28,756 chars, starts `!WA:2!`). Current version: **v1.3** (engine `VERSION = 3`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (29,058 chars, starts `!WA:2!`). Current version: **v1.4** (engine `VERSION = 4`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 278 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 287 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -54,8 +54,8 @@ All 23 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 
 **Colours on the icons:** desaturated (grey) means you're waiting on the GCD or a cooldown. Grey plus red tint means you're out of range. The Next icon never shows a spell you can't afford: it shows the next affordable one, or Attack (see below).
 
-**Auto attack (all modes and levels):** warriors build rage from white swings, so auto attack comes first.
-- Target in melee range and auto attack off (`IsCurrentSpell(6603)` is false): Next shows **Attack** with a glow and the `ATK` tag. The spell that would come next sits in Next+1.
+**Auto attack (all modes and levels):** warriors build rage from white swings, and any instant melee attack (Heroic Strike, Mortal Strike, Bloodthirst, Shield Slam, Victory Rush, Execute and so on) starts auto attack by itself.
+- Target in melee range and auto attack off (`IsCurrentSpell(6603)` is false): if a melee attack is learned, off cooldown and affordable, Next shows it, because using it starts auto attack too. Only when no melee attack is usable (for example under 30 rage at level 1) does Next show **Attack** with a glow and the `ATK` tag, with the waiting spell in Next+1.
 - Auto attack on, but not enough rage for the top suggestion: Next shows the next affordable ability. If nothing is affordable, it shows Attack in full colour with the `RAGE` tag ("building rage"), and the rage-starved spell waits in Next+1.
 - Out of melee range: the Charge / Heroic Throw logic is unchanged.
 - A wait on a real cooldown (e.g. Mortal Strike coming back) still shows the greyed-out spell with its swipe.
@@ -137,7 +137,7 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
   5. Thunder Clap on 2+ enemies, once learned.
   6. Heroic Strike at 30+ rage. It is the main attack while leveling, so it sits in the Next icon and the Off-GCD icon stays empty.
   7. Sunder Armor and Battle/Commanding Shout, once learned.
-  8. Otherwise Attack (`RAGE` tag) while rage builds, with Heroic Strike in Next+1. With auto attack off, Attack (`ATK`) comes before everything above whenever the target is in melee range.
+  8. Otherwise Attack (`RAGE` tag) while rage builds, with Heroic Strike in Next+1. With auto attack off and the target in melee range, Attack (`ATK`) shows only when none of the melee attacks above is usable; Heroic Strike at 30+ rage comes first and starts auto attack itself.
 - **Resources text:** stance and character level, e.g. `Battle  Lv 5`.
 - **Hidden in Leveling mode:** the trackers, the Colossus Smash bar and the Shield bars. The rage bar, the Battle Stance reminder, defensives and the interrupt icon still work with whatever is learned.
 - **Picking a spec at level 10** switches to the Arms, Fury or Protection priority on the next update. While a character is level 10-19 and still has few spec spells, the spec priority adds the same basics: Charge to close the gap, and Victory Rush or Heroic Strike when the spec spells are on cooldown.
@@ -232,12 +232,13 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 278 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 287 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.4** (Nov 2, 2026): opener fix. With auto attack off, Next used to put Attack first even when there was enough rage for Heroic Strike (or another melee attack). That came from the v1.3 auto attack rule, which put Attack in front of every suggestion whenever auto attack was off. Now a usable, affordable melee attack stays first, since using it starts auto attack anyway, and Attack is only the fallback when nothing is usable. This applies to Leveling mode and to Arms, Fury and Protection at every level. Nine new simulator checks (287 total). Engine `VERSION = 4`, so it replaces the v1.3 engine if that one is still loaded.
 - **v1.3** (Nov 1, 2026): auto attack fix. Next shows Attack when auto attack is off in melee range, and it never shows a spell you can't afford: it shows the next affordable one, or Attack with a `RAGE` tag while rage builds. New main-hand/off-hand **swing timer** under the rage bar. The GCD swipe now runs on the Next and Next+1 icons (Heroic Strike and Cleave are off the GCD, so their real 1.5 s cooldown shows instead). The Next icon sparkles when the suggested spell is cast, and a new **Last Cast** icon shows what just went off. New "Show swing timer" and "Show last cast" options. Engine `VERSION = 3`.
 - **v1.2** (Nov 1, 2026): the aura now works before level 10. A no-spec **Leveling** mode (Heroic Strike, Charge, Victory Rush, Execute and anything else learned) runs until a spec is picked, then the spec priority takes over without a `/reload`. Every aura loads for the class only (no spec condition). Trackers and the CS and Shield bars stay hidden until their spells are learned, and level 10-19 spec priorities add Charge, Victory Rush and Heroic Strike as fillers. Engine `VERSION = 2`, so it replaces an older engine that is still loaded.
 - **v1.1** (Nov 1, 2026): the in-game group is renamed to "Schizzle's Warrior Rotation" and the files moved to `Schizzle's Warrior/AddOns/WeakAuras/`, with the import string renamed to `All-in-One Rotation.txt`. The rotation hasn't changed (engine `VERSION = 1`).

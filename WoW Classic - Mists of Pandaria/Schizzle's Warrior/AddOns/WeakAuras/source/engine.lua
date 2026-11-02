@@ -4,7 +4,7 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 3
+local VERSION = 4
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -463,6 +463,9 @@ local AOE10 = { [ID.demo] = true, [ID.shock] = true, [ID.dshout] = true }
 local MELEE5 = { [ID.ms] = true, [ID.cs] = true, [ID.op] = true, [ID.slam] = true, [ID.exe] = true, [ID.hs] = true,
   [ID.cleave] = true, [ID.sslam] = true, [ID.rev] = true, [ID.dev] = true, [ID.sunder] = true, [ID.bt] = true,
   [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.attack] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
+-- instant melee attacks that start auto attack when used on a hostile target
+local SWINGS = {}
+for id in pairs(MELEE5) do if id ~= ID.attack and id ~= ID.pummel and id ~= ID.quaking then SWINGS[id] = true end end
 local function meleeCheck(yards)
   if WeakAuras and WeakAuras.CheckRange then return WeakAuras.CheckRange("target", yards, "<=") and true or false end
   if CheckInteractDistance then local ok = CheckInteractDistance("target", 3) if ok ~= nil then return ok and true or false end end
@@ -922,8 +925,18 @@ function E:Tick()
       if C_Spell and C_Spell.IsSpellUsable then local _, noMana = C_Spell.IsSpellUsable(e.id) if noMana then return true end end
       return false
     end
+    -- an instant melee attack (Heroic Strike, Mortal Strike, Victory Rush...) starts auto attack by itself, so when one is
+    -- usable it stays first and Attack is only the fallback (v1.4: Attack used to win even with rage for Heroic Strike)
+    local function usableMelee(e) return e and not e.wait and not starved(e) and SWINGS[e.id] and true or false end
     if S.attacking == false then
-      table.insert(list, 1, { id = ID.attack, glow = true, tag = "ATK", why = "start auto attack (white swings build rage)" })
+      if not usableMelee(list[1]) then
+        local pick
+        if not list[1] or list[1].wait or starved(list[1]) then
+          for i = 2, #list do if usableMelee(list[i]) then pick = i break end end
+        end
+        if pick then table.insert(list, 1, table.remove(list, pick))
+        else table.insert(list, 1, { id = ID.attack, glow = true, tag = "ATK", why = "start auto attack (white swings build rage)" }) end
+      end
     elseif not list[1] or starved(list[1]) then
       local pick
       for i = 2, #list do if not list[i].wait and not starved(list[i]) then pick = i break end end

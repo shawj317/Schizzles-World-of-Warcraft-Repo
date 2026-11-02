@@ -389,23 +389,38 @@ R("level 90 Arms unchanged: wait MS, HS stays off-GCD", { spec = 1, rage = 110, 
 print("\n== Auto attack ==")
 R("L1 not attacking, target in melee -> Attack", { noSpec = true, level = 1, rage = 0, notAttacking = true, knownOnly = L1,
   check = function(st) local x = st("SWR Next") return x.glow and x.tag == "ATK" and not x.waiting, "start attack" end }, "Attack")
-R("L1 not attacking, 30 rage -> Attack first, HS next", { noSpec = true, level = 1, rage = 30, notAttacking = true, knownOnly = L1,
-  check = function(st) return icon(st("SWR Next+1"), 78) and not st("SWR Next+1").waiting, "hs next" end }, "Attack")
+R("L1 not attacking, 30 rage -> Heroic Strike first (it starts auto attack)", { noSpec = true, level = 1, rage = 30, notAttacking = true, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return x.tag ~= "ATK" and not x.waiting, "hs, no ATK" end }, "HeroicStrike")
+R("L1 not attacking, 60 rage -> Heroic Strike first", { noSpec = true, level = 1, rage = 60, notAttacking = true, knownOnly = L1 }, "HeroicStrike")
+R("L1 not attacking, 29 rage -> Attack (HS unaffordable)", { noSpec = true, level = 1, rage = 29, notAttacking = true, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return x.glow and x.tag == "ATK", "start attack" end }, "Attack")
+R("L1 not attacking, 30 rage, HS on cooldown -> Attack", { noSpec = true, level = 1, rage = 30, notAttacking = true, cd = { [78] = 1.2 }, knownOnly = L1,
+  check = function(st) return st("SWR Next").tag == "ATK", "start attack" end }, "Attack")
+R("L1 not attacking, 40 rage, out of combat -> Heroic Strike opener", { noSpec = true, level = 1, rage = 40, notAttacking = true, combat = false, knownOnly = L1 }, "HeroicStrike")
+R("L7 not attacking, target 15%, 10 rage, Victorious -> Victory Rush (Execute unaffordable)", { noSpec = true, level = 7, rage = 10, thp = 15, notAttacking = true, buffs = { VIC }, knownOnly = L7 }, "VictoryRush")
 R("L1 attacking, 29 rage -> still Attack, never a grey HS", { noSpec = true, level = 1, rage = 29, knownOnly = L1,
   check = function(st) return st("SWR Next").tag == "RAGE" and not st("SWR Next").waiting, "building" end }, "Attack")
 R("L1 attacking, 30 rage -> Heroic Strike", { noSpec = true, level = 1, rage = 30, knownOnly = L1,
   check = function(st) return not st("SWR Next").waiting and not st("SWR Next").oorTint, "hs" end }, "HeroicStrike")
 R("L3 not attacking, 15 yd -> Charge (no Attack out of melee)", { noSpec = true, level = 3, rage = 0, dist = 15, notAttacking = true, knownOnly = L3 }, "Charge")
-R("L5 not attacking, Victorious -> Attack, then Victory Rush", { noSpec = true, level = 5, rage = 0, notAttacking = true, buffs = { VIC }, knownOnly = L5,
-  check = function(st) return icon(st("SWR Next+1"), 34428), "vr next" end }, "Attack")
+R("L5 not attacking, Victorious -> Victory Rush (free, starts auto attack)", { noSpec = true, level = 5, rage = 0, notAttacking = true, buffs = { VIC }, knownOnly = L5,
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "VictoryRush")
 R("L7 attacking, target 15%, 10 rage -> Attack building (Execute unaffordable)", { noSpec = true, level = 7, rage = 10, thp = 15, knownOnly = L7,
   check = function(st) return st("SWR Next").tag == "RAGE", "building" end }, "Attack")
-R("Arms 90 not attacking -> Attack, then Colossus Smash", { rage = 40, notAttacking = true,
-  check = function(st) return icon(st("SWR Next+1"), 86346), "cs next" end }, "Attack")
+R("Arms 90 not attacking, rage for CS -> Colossus Smash first", { rage = 40, notAttacking = true,
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "ColossusSmash")
+R("Arms 90 not attacking, CS unaffordable -> Mortal Strike, not Attack", { rage = 40, notAttacking = true, noMana = { [86346] = true },
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "MortalStrike")
 R("Arms 90 first pick unaffordable -> next affordable", { rage = 40, noMana = { [86346] = true } }, "MortalStrike")
 R("Arms 90 attacking -> no Attack prompt", { rage = 40 }, "ColossusSmash")
-R("Prot lv10 not attacking -> Attack, then Shield Slam", { spec = 3, level = 10, rage = 0, notAttacking = true, knownOnly = plus(B10, 23922),
-  check = function(st) return icon(st("SWR Next+1"), 23922), "ss next" end }, "Attack")
+R("Prot lv10 not attacking, 0 rage -> Shield Slam (costs no rage, starts auto attack)", { spec = 3, level = 10, rage = 0, notAttacking = true, knownOnly = plus(B10, 23922),
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "ShieldSlam")
+R("Fury lv10 not attacking -> Bloodthirst, not Attack", { spec = 2, level = 10, rage = 30, notAttacking = true, knownOnly = plus(B10, 23881),
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "Bloodthirst")
+R("Arms lv10 not attacking, MS on cd, 40 rage -> Heroic Strike, not Attack", { spec = 1, level = 10, rage = 40, notAttacking = true, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Next").tag ~= "ATK", "no ATK" end }, "HeroicStrike")
+R("Arms lv10 not attacking, MS on cd, 10 rage -> Attack", { spec = 1, level = 10, rage = 10, notAttacking = true, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Next").tag == "ATK", "start attack" end }, "Attack")
 
 print("\n== GCD swipe ==")
 do local n, n1 = byId["SWR Next"], byId["SWR Next+1"]
