@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
 -- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
-local RELEASE = "1.5"
+local RELEASE = "1.5.1"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 

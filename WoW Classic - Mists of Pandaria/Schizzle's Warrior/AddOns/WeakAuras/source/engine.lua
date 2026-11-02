@@ -4,7 +4,7 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 5
+local VERSION = 6
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -92,36 +92,98 @@ local function usable(id)
   return true
 end
 
--- aura scan by index (works on MoP Classic; GetPlayerAuraBySpellID does not)
-local function scan(unit, filter, out, now)
-  for k in pairs(out) do out[k] = nil end
-  if not UnitExists(unit) then return out end
-  local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+-- Aura lookup, self-contained: it never uses Blizzard's FrameXML aura helpers. Those route every call through a
+-- swappable "data provider"; when Edit Mode swaps in its sample provider (AURA_DATA_PROVIDER_SWITCH) that provider
+-- has no GetAuraDataBySpellName, so FindAuraByName raised "attempt to call a nil value" (v1.5 bug, fixed in v1.5.1).
+-- Order: C_UnitAuras.GetAuraDataByIndex, then the UnitAura / UnitBuff / UnitDebuff index loop; match by spell id,
+-- name only as a last resort. Every API is type-checked before it is called, and each scan runs protected, so a
+-- missing or broken API means "no aura", never a Lua error. WeakAuras' sandbox blocks pcall / xpcall, so the
+-- protection is a coroutine: coroutine.resume returns false instead of raising.
+local co_create, co_resume = coroutine.create, coroutine.resume
+local function protect(fn, ...) return co_resume(co_create(fn), ...) end
+local function rec(now, spellId, name, count, duration, expirationTime, points)
+  expirationTime = tonumber(expirationTime) or 0
+  return { rem = expirationTime > 0 and (expirationTime - now) or 999, exp = expirationTime, dur = tonumber(duration) or 0,
+           stacks = tonumber(count) or 0, points = points, id = spellId, name = name }
+end
+local function fromData(a, now)
+  if type(a) ~= "table" then return nil end
+  return rec(now, a.spellId, a.name, a.applications, a.duration, a.expirationTime, type(a.points) == "table" and a.points[1] or nil)
+end
+local function modernGetter()
+  local CU = C_UnitAuras
+  local f = type(CU) == "table" and CU.GetAuraDataByIndex
+  return type(f) == "function" and f or nil
+end
+local function legacyGetter(filter)
+  if type(UnitAura) == "function" then return UnitAura end
+  local f = (filter and filter:find("HARMFUL")) and UnitDebuff or UnitBuff
+  return type(f) == "function" and f or nil
+end
+-- one aura at index i via one API: a record or nil
+local function viaModern(get, unit, i, filter, now) return fromData(get(unit, i, filter), now) end
+local function viaLegacy(get, unit, i, filter, now)
+  -- legacy order: name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
+  local name, _, count, _, duration, expirationTime, _, _, _, spellId = get(unit, i, filter)
+  if name then return rec(now, spellId, name, count, duration, expirationTime, nil) end
+end
+local function fill(out, via, get, unit, filter, now)
   for i = 1, 40 do
-    local a = get and get(unit, i, filter)
-    if not a then break end
-    local rec = { rem = (a.expirationTime and a.expirationTime > 0) and (a.expirationTime - now) or 999,
-                  exp = a.expirationTime or 0, dur = a.duration or 0, stacks = a.applications or 0,
-                  points = type(a.points) == "table" and a.points[1] or nil }
-    if a.spellId then out[a.spellId] = rec end
-    if a.name and not out[a.name] then out[a.name] = rec end
+    local r = via(get, unit, i, filter, now)
+    if not r then break end
+    if r.id then out[r.id] = r end                           -- spell id first
+    if r.name and not out[r.name] then out[r.name] = r end   -- name only as a last-resort key
   end
+end
+local function wipe(out) for k in pairs(out) do out[k] = nil end end
+local function exists(unit) return UnitExists(unit) end
+local modernOk = {}   -- [unit .. filter] = true when the last scan came from C_UnitAuras.GetAuraDataByIndex
+local function scan(unit, filter, out, now)
+  wipe(out)
+  local key = unit .. filter
+  modernOk[key] = nil
+  local okE, ex = protect(exists, unit)
+  if not okE or not ex then return out end
+  local get = modernGetter()
+  if get and protect(fill, out, viaModern, get, unit, filter, now) then modernOk[key] = true return out end
+  wipe(out)
+  get = legacyGetter(filter)
+  if get and protect(fill, out, viaLegacy, get, unit, filter, now) then return out end
+  wipe(out)
   return out
 end
+-- E.auraAt: one aura at index i (same fallback order), for /dump debugging and the simulator
+local function auraAt(unit, i, filter, now)
+  local get = modernGetter()
+  if get then local ok, r = protect(viaModern, get, unit, i, filter, now) if ok then return r end end
+  get = legacyGetter(filter)
+  if get then local ok, r = protect(viaLegacy, get, unit, i, filter, now) if ok then return r end end
+  return nil
+end
+local function byIdGetter()
+  local CU = C_UnitAuras
+  local f = type(CU) == "table" and CU.GetPlayerAuraBySpellID
+  return type(f) == "function" and f or nil
+end
+local function viaById(get, id, now) return fromData(get(id), now) end
+E.auraAt, E.scan = auraAt, scan
 -- TDEBUFF = my debuffs on the target; TDEBUFF_ALL = anyone's (Weakened Blows / Weakened Armor are shared raid debuffs)
 local BUFF, DEBUFF, TDEBUFF, TDEBUFF_ALL = {}, {}, {}, {}
 local function auraId(tbl, id) return tbl[id] end
 local function aura(tbl, id)
   local r = tbl[id]
   if r then return r end
-  local n = spellName(id)
-  if n then r = tbl[n] end
-  if not r and tbl == BUFF and AuraUtil and AuraUtil.FindAuraByName and n then
-    local _, _, count, _, duration, expirationTime = AuraUtil.FindAuraByName(n, "player", "HELPFUL")
-    if expirationTime then
-      r = { rem = expirationTime > 0 and (expirationTime - GetTime()) or 999, exp = expirationTime, dur = duration or 0, stacks = count or 0 }
+  -- player buffs: when the buff scan could not use GetAuraDataByIndex, ask GetPlayerAuraBySpellID (if it exists)
+  if tbl == BUFF and type(id) == "number" and not modernOk.playerHELPFUL then
+    local get = byIdGetter()
+    if get then
+      local ok, hit = protect(viaById, get, id, GetTime())
+      if ok and hit then return hit end
     end
   end
+  -- last resort: match by name (rank / variant spell ids)
+  local n = spellName(id)
+  if n then r = tbl[n] end
   return r
 end
 local function rem(tbl, id) local r = aura(tbl, id) return r and r.rem or 0 end

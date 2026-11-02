@@ -85,17 +85,50 @@ _G.C_Spell = {
     return true end,
 }
 -- aura lists: { spellId, remaining, stacks, points }
-_G.C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
-  local list
-  if unit == "player" then list = (filter == "HELPFUL") and W.buffs or W.debuffs
-  elseif unit == "target" then
-    if filter == "HARMFUL|PLAYER" then list = W.tdebuffs else
-      list = {} for _, a in ipairs(W.tdebuffs) do list[#list + 1] = a end for _, a in ipairs(W.tdebuffsOther or {}) do list[#list + 1] = a end end
+local function auraList(unit, filter)
+  if unit == "player" then return (filter == "HELPFUL") and W.buffs or W.debuffs end
+  if unit == "target" then
+    if filter == "HARMFUL|PLAYER" then return W.tdebuffs end
+    local list = {} for _, a in ipairs(W.tdebuffs) do list[#list + 1] = a end for _, a in ipairs(W.tdebuffsOther or {}) do list[#list + 1] = a end
+    return list
   end
+end
+local function auraData(a)
+  return { spellId = a[1], name = NAMES[a[1]] or ("Spell" .. a[1]), expirationTime = now + a[2], duration = 20, applications = a[3] or 0, points = a[4] and { a[4] } or nil }
+end
+local CUA = { GetAuraDataByIndex = function(unit, i, filter)
+  local list = auraList(unit, filter)
   local a = list and list[i]
-  if a then return { spellId = a[1], name = NAMES[a[1]] or ("Spell" .. a[1]), expirationTime = now + a[2], duration = 20, applications = a[3] or 0, points = a[4] and { a[4] } or nil } end
+  if a then return auraData(a) end
 end }
-_G.AuraUtil = { FindAuraByName = function() return nil end }
+-- legacy API (old return order): name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
+local function legacyAura(unit, i, filter)
+  local list = auraList(unit, filter or "HELPFUL")
+  local a = list and list[i]
+  if a then return NAMES[a[1]] or ("Spell" .. a[1]), 1, a[3] or 0, nil, 20, now + a[2], "player", false, false, a[1] end
+end
+local function playerAuraBySpellID(id) for _, a in ipairs(W.buffs) do if a[1] == id then return auraData(a) end end end
+-- Blizzard's AuraUtil exactly as it fails in game: every call errors (Edit Mode's sample provider lacks GetAuraDataBySpellName).
+-- The engine must never touch it, so it stays broken for every scenario unless one sets api = "auraUtilNil".
+local function brokenAuraUtil() return setmetatable({}, { __index = function() return function() error("Interface/AddOns/Blizzard_FrameXMLUtil/AuraUtil.lua:25: attempt to call a nil value") end end }) end
+-- api modes for the aura lookup: nil = C_UnitAuras.GetAuraDataByIndex (MoP Classic / Forever); others exercise the fallbacks
+local API = {
+  auraUtilNil = function() _G.AuraUtil = nil end,
+  legacy = function() _G.C_UnitAuras = nil; _G.UnitAura = legacyAura end,
+  legacyBuffDebuff = function() _G.C_UnitAuras = {}; _G.UnitAura = nil
+    _G.UnitBuff = function(u, i, f) return legacyAura(u, i, "HELPFUL") end
+    _G.UnitDebuff = function(u, i, f) return legacyAura(u, i, (f and f:find("PLAYER")) and "HARMFUL|PLAYER" or "HARMFUL") end end,
+  indexErrors = function() _G.C_UnitAuras = { GetAuraDataByIndex = function() error("GetAuraDataByIndex boom") end }; _G.UnitAura = legacyAura end,
+  allErrors = function() local boom = function() error("boom") end
+    _G.C_UnitAuras = { GetAuraDataByIndex = boom, GetPlayerAuraBySpellID = boom }; _G.UnitAura = boom; _G.UnitBuff = boom; _G.UnitDebuff = boom end,
+  none = function() _G.C_UnitAuras = nil; _G.UnitAura = nil; _G.UnitBuff = nil; _G.UnitDebuff = nil; _G.AuraUtil = nil end,
+  byIdOnly = function() _G.C_UnitAuras = { GetPlayerAuraBySpellID = playerAuraBySpellID }
+    _G.UnitDebuff = function(u, i, f) return legacyAura(u, i, (f and f:find("PLAYER")) and "HARMFUL|PLAYER" or "HARMFUL") end end,
+}
+local function resetApi()
+  _G.C_UnitAuras = CUA; _G.UnitAura = nil; _G.UnitBuff = nil; _G.UnitDebuff = nil; _G.AuraUtil = brokenAuraUtil()
+end
+resetApi()
 _G.UnitExists = function(u) if u == "target" then return W.target end if u == "focus" then return W.cast and W.cast.unit == "focus" end return true end
 _G.UnitCanAttack = function() return true end
 _G.UnitIsDead = function() return false end
@@ -182,6 +215,10 @@ local function run(label, sc, expect)
         n = 1, spec = 1, stance = 2457, group = false, attacking = true }
   for k, v in pairs(sc) do W[k] = v end
   if sc.noSpec then W.spec = nil end   -- GetSpecialization() returns nil before level 10
+  resetApi()
+  if sc.api then API[sc.api]() end
+  local savedNames = {}
+  for id, n in pairs(sc.names or {}) do savedNames[id] = NAMES[id] or false; NAMES[id] = n end
   if sc.noStance then W.stance = nil end
   if sc.notAttacking then W.attacking = false end
   if sc.knownOnly then W.known = {} for _, id in ipairs(sc.knownOnly) do W.known[id] = true end
@@ -225,6 +262,8 @@ local function run(label, sc, expect)
   if sc.check then local okc, why = sc.check(st) if not okc then pass = false; line = line .. " CHECK FAILED: " .. tostring(why) end end
   print((pass and "PASS " or "FAIL ") .. line .. (expect and (" (expect " .. expect .. ")") or ""))
   if pass then P = P + 1 else F = F + 1 end
+  for id, n in pairs(savedNames) do NAMES[id] = n or nil end
+  resetApi()
 end
 local function has(st, side, sid) for i = 1, 3 do local x = st("SWR " .. side .. " " .. i) if x and x.icon == 100000 + sid then return true, x end end return false end
 local function icon(x, sid) return x and x.icon == 100000 + sid end
@@ -565,6 +604,39 @@ R("Show cooldown tray off -> empty", { rage = 40, talents = { ORC }, cfg = { sho
 R("tray icons: not desaturated, no glow, no timer", { rage = 40, talents = { ORC }, check = function(st)
     local x = st("SWR Tray 1") return x and not x.waiting and not x.glow and x.duration == 0 and x.tag == "", x and (tostring(x.waiting) .. tostring(x.glow) .. tostring(x.duration) .. "[" .. tostring(x.tag) .. "]") end }, "ColossusSmash")
 
+print("\n== aura lookup (v1.5.1: no AuraUtil; C_UnitAuras -> UnitAura/UnitBuff/UnitDebuff; every call protected) ==")
+do
+  local src = nextData.actions.init.custom
+  check(not src:find("AuraUtil", 1, true), "engine never references AuraUtil")
+  check(not src:find("[^%w_]x?pcall%s*%(") and not src:find("securecall", 1, true), "engine calls no pcall / xpcall / securecall (WeakAuras' sandbox blocks them)")
+  check(src:find("protect(fill, out, viaModern", 1, true) ~= nil and src:find("protect(fill, out, viaLegacy", 1, true) ~= nil and src:find("protect(viaById", 1, true) ~= nil,
+    "every aura API call runs protected (coroutine)")
+end
+local TFB2 = { { 60503, 10, 2 } }
+local OP = { rage = 40, tdebuffs = { CS }, cd = { [86346] = 14, [12294] = 3 }, buffs = TFB2 }
+local function with(base, extra) local o = {} for k, v in pairs(base) do o[k] = v end for k, v in pairs(extra) do o[k] = v end return o end
+local function resOk(st) return st("SWR Resources") ~= nil, "SWR Resources missing" end
+R("Jon's v1.5 error: AuraUtil broken (Edit Mode provider), Fury not enraged -> no error", { spec = 2, rage = 40, check = resOk }, nil)
+R("Jon's v1.5 error: AuraUtil broken, Arms buff misses -> no error", with(OP, { buffs = {}, check = resOk }), "Slam")
+R("AuraUtil nil -> same answer (Overpower on 2 TfB)", with(OP, { api = "auraUtilNil" }), "Overpower")
+R("C_UnitAuras missing -> UnitAura loop (TfB buff + CS debuff found)", with(OP, { api = "legacy" }), "Overpower")
+R("C_UnitAuras without GetAuraDataByIndex, no UnitAura -> UnitBuff/UnitDebuff", with(OP, { api = "legacyBuffDebuff" }), "Overpower")
+R("GetAuraDataByIndex errors -> falls back to UnitAura", with(OP, { api = "indexErrors" }), "Overpower")
+R("legacy: CS on target read from UnitAura -> Mortal Strike", { api = "legacy", rage = 40, tdebuffs = { CS }, cd = { [86346] = 14 } }, "MortalStrike")
+R("every aura API errors -> no Lua error, rotation still runs (no auras seen)", with(OP, { api = "allErrors", check = resOk }), nil)
+R("no aura API at all -> no Lua error", with(OP, { api = "none", check = resOk }), nil)
+R("no index API for buffs -> GetPlayerAuraBySpellID finds TfB", with(OP, { api = "byIdOnly" }), "Overpower")
+R("name match as last resort (buff carries another spell id, same name)",
+  with(OP, { buffs = { { 99999, 10, 2 } }, names = { [99999] = "Taste for Blood", [60503] = "Taste for Blood" } }), "Overpower")
+R("spellId beats name: two same-name auras, the exact id's stacks win",
+  with(OP, { buffs = { { 99999, 10, 1 }, { 60503, 10, 2 } }, names = { [99999] = "Taste for Blood", [60503] = "Taste for Blood" },
+    check = function() local E = getE() local n = E.stacks(E.BUFF, 60503) return n == 2, n end }), "Overpower")
+R("legacy return order read correctly (count, duration, expirationTime, spellId)", { api = "legacy", buffs = { { 60503, 7, 3 } }, rage = 40,
+  check = function() local E = getE() local r = E.auraAt("player", 1, "HELPFUL", now)
+    return r and r.id == 60503 and r.stacks == 3 and r.dur == 20 and math.abs(r.rem - 7) < 1e-6, r and (r.id .. "/" .. r.stacks .. "/" .. r.dur .. "/" .. r.rem) end }, nil)
+R("auraAt past the last aura -> nil (loop stops)", { api = "legacy", buffs = TFB2, rage = 40,
+  check = function() local E = getE() return E.auraAt("player", 2, "HELPFUL", now) == nil, "not nil" end }, nil)
+
 -- static layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -160, no overlap with anything else
 do
   local okL, why = true, ""
@@ -586,6 +658,8 @@ do
   check(last and last.id == "SWR Shield Barrier", "tray slots added after the existing children (order unchanged)")
 end
 
+do local n = 0 for _, w in ipairs(warnings) do if w.key == "SandboxForbidden" then n = n + 1 end end
+  check(n == 0, "no WeakAuras sandbox violations (" .. n .. ")") end
 do local E = getE() print("     /dump SchizzleWarrior.R.why -> main=" .. tostring(E.R.why.main) .. " | " .. tostring(E.R.why.mode)) end
 print(("\n%d passed, %d failed; sandbox warnings: %d"):format(P, F, #warnings))
 for _, w in ipairs(warnings) do print("  warning", w.key, w.message) end
