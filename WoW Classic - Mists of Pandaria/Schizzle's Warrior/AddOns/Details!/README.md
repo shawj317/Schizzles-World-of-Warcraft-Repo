@@ -11,10 +11,10 @@ Three Details! damage meter profiles for Warriors in MoP Classic 5.5.x, one per 
 
 The Arms and Fury strings are identical: the layout is the same, and Details! takes the profile's name from what's typed at import. They are shipped as two files so each spec has its own profile to tweak.
 
-The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/AddOns/Details!/) (v2.1) and the Warrior [Plater profiles](../Plater/).
+The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/AddOns/Details!/) (v2.2) and the Warrior [Plater profiles](../Plater/).
 
 ## What you get (all three profiles)
-- **Two windows, both 211 × 150**, snapped together edge to edge in the bottom right of the screen, about 190 px up so they clear the action bars. Drag either one and both move.
+- **Two windows, both 209 × 150**, snapped together edge to edge in the bottom right of the screen, about 190 px up so they clear the action bars. Drag either one and both move.
 - **Dark flat look:** Minimalistic skin base, near-black header, dark see-through body, "Details Flat" bars at height 18 with class colours and spec icons, and a thin 1 px black border around the bar area.
 - **Text:** Fira Sans Condensed Medium (WeakAuras registers it), bar text size 9 and title size 11. The right side of each bar shows **total, per second and percent**, with the percent in muted grey.
 - **Tooltips and menus:** the same font, tooltips at size 11 on a dark background.
@@ -97,6 +97,7 @@ DETAILS_SRC=/path/to/Details-Damage-Meter WA_TYPES=/path/to/WeakAuras/Types.lua 
 ## Version history
 - **v1 (Nov 1 2026):** three spec profiles (two 232 × 176 windows each) plus the spec-switch snippet.
 - **v1.1 (Nov 2 2026):** both windows in every profile are now **211 × 150** (was 232 × 176). They stay snapped edge to edge at the bottom right, 24 px from the right edge and 190 px up. Fonts, bar size 9, title 11 and displays are unchanged. Re-import the profile (or resize the windows by hand) to get the new size.
+- **v1.2 (Nov 2 2026):** both windows are now **209 × 150** (was 211 × 150), still snapped edge to edge at the same spot. Nothing else changed.
 
 ## License
 

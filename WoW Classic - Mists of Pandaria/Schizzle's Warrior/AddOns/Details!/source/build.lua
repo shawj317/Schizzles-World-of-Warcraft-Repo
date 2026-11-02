@@ -1,6 +1,6 @@
 -- Builds the three Schizzle's Warrior Details! profiles (Arms, Fury, Protection).
 -- Usage (from this folder):  lua build.lua      env: DETAILS_SRC, WA_TYPES (see common.lua), DETAILS_FONT, OUT_DIR
--- Style matches the Schizzle's Brewmaster Details! profile: two 211x150 Minimalistic windows snapped
+-- Style matches the Schizzle's Brewmaster Details! profile: two 209x150 Minimalistic windows snapped
 -- edge to edge at the bottom right, Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
 local HERE = (arg and arg[0] or ""):match("^(.*[/\\])") or "./"
 dofile(HERE .. "common.lua")
@@ -17,7 +17,7 @@ local KNOWN_FILES = {
 }
 local FONT_FILE = KNOWN_FILES[FONT] or "Fonts\\FRIZQT__.TTF"
 local FLAT, FLAT_FILE = "Details Flat", "Interface\\AddOns\\Details\\images\\bar_background"
-local W, H = 211, 150
+local W, H = 209, 150
 
 local function themedWindow()
   local w = deepcopy(R.instance)
