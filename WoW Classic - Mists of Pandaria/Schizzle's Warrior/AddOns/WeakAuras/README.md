@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (29,066 chars, starts `!WA:2!`). Current version: **v1.4** (engine `VERSION = 4`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (29,072 chars, starts `!WA:2!`). Current version: **v1.4.1** (engine `VERSION = 4`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 290 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 292 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -16,13 +16,15 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.4" group. Click **Import** again to accept it.
+5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.4.1" group. Click **Import** again to accept it.
 6. Type `/reload`.
-7. Target a training dummy. The HUD appears under the middle of your screen (190 px below centre).
+7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
-9. Options live on **Schizzle's Warrior Rotation v1.4 → SWR Next → Custom Options** (see "Options" below).
+9. Options live on **Schizzle's Warrior Rotation v1.4.1 → SWR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.4" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.4.1" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+
+**Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group falls under **Group Arrangement** (ticked by default), and it hasn't changed.
 
 Updating later: delete the old group first (`/wa`, right-click the group, **Delete**), import the new string, then `/reload`.
 
@@ -232,12 +234,13 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. The version lives in one place, `RELEASE` near the top, which sets the group name and description. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 290 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 292 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.4.1** (Nov 2, 2026): the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group name follows the version: "Schizzle's Warrior Rotation v1.4.1". On Update, tick **Size & Position** to apply the new position. No rotation changes (engine `VERSION = 4`). 292 simulator checks.
 - **v1.4** (Nov 2, 2026): opener fix. With auto attack off, Next used to put Attack first even when there was enough rage for Heroic Strike (or another melee attack). That came from the v1.3 auto attack rule, which put Attack in front of every suggestion whenever auto attack was off. Now a usable, affordable melee attack stays first, since using it starts auto attack anyway, and Attack is only the fallback when nothing is usable. This applies to Leveling mode and to Arms, Fury and Protection at every level. The in-game group name now carries the version: **"Schizzle's Warrior Rotation v1.4"** (it comes from one `RELEASE` constant in `source/build.lua`, which also sets the description). Its internal ID is unchanged, so re-importing updates the existing group in place. New simulator checks bring the total to 290. Engine `VERSION = 4`, so it replaces the v1.3 engine if that one is still loaded.
 - **v1.3** (Nov 1, 2026): auto attack fix. Next shows Attack when auto attack is off in melee range, and it never shows a spell you can't afford: it shows the next affordable one, or Attack with a `RAGE` tag while rage builds. New main-hand/off-hand **swing timer** under the rage bar. The GCD swipe now runs on the Next and Next+1 icons (Heroic Strike and Cleave are off the GCD, so their real 1.5 s cooldown shows instead). The Next icon sparkles when the suggested spell is cast, and a new **Last Cast** icon shows what just went off. New "Show swing timer" and "Show last cast" options. Engine `VERSION = 3`.
 - **v1.2** (Nov 1, 2026): the aura now works before level 10. A no-spec **Leveling** mode (Heroic Strike, Charge, Victory Rush, Execute and anything else learned) runs until a spec is picked, then the spec priority takes over without a `/reload`. Every aura loads for the class only (no spec condition). Trackers and the CS and Shield bars stay hidden until their spells are learned, and level 10-19 spec priorities add Charge, Victory Rush and Heroic Strike as fillers. Engine `VERSION = 2`, so it replaces an older engine that is still loaded.

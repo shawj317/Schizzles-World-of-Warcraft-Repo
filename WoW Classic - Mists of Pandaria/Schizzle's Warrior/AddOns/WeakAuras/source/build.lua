@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
 -- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
-local RELEASE = "1.4"
+local RELEASE = "1.4.1"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -364,10 +364,12 @@ children[#children + 1] = timedBar("SWR Shield Block", -118, { 0.3, 0.55, 1, 1 }
 children[#children + 1] = timedBar("SWR Shield Barrier", -133, { 0.95, 0.8, 0.2, 1 }, "sbar", "Shield Barrier",
   [[(up and s.amount) and string.format("Barrier %.1fk", s.amount / 1000) or "Shield Barrier"]])
 
+-- group default position: CENTER of the group on the screen's CENTER, 0 px across, 40 px down
+-- (child offsets are relative to the group, so they don't change)
 local group = {
   id = GROUP, uid = "SchizzleWarriorGroup", regionType = "group", internalVersion = INTERNAL, tocversion = TOC,
   controlledChildren = {}, anchorPoint = "CENTER", selfPoint = "CENTER", anchorFrameType = "SCREEN",
-  xOffset = 0, yOffset = -190, frameStrata = 1, border = false, borderColor = { 0, 0, 0, 1 }, backdropColor = { 1, 1, 1, 0.5 },
+  xOffset = 0, yOffset = -40, frameStrata = 1, border = false, borderColor = { 0, 0, 0, 1 }, backdropColor = { 1, 1, 1, 0.5 },
   borderEdge = "Square Full White", borderOffset = 4, borderInset = 1, borderSize = 2, borderBackdrop = "Blizzard Tooltip",
   scale = 1, alpha = 1, subRegions = {},
   triggers = { activeTriggerMode = -10, { trigger = { type = "aura2", names = {}, event = "Health", subeventPrefix = "SPELL",

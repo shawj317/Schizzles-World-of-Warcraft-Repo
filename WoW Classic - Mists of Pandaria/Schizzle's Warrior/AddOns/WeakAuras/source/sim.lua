@@ -50,6 +50,8 @@ local release = data.id:match("^Schizzle's Warrior Rotation v(%d+%.%d+[%.%d]*)$"
 check(release ~= nil, "group name carries the version: " .. data.id)
 check(release and (data.desc or ""):find("v" .. release:gsub("%.", "%%.") .. "%.$") ~= nil, "description ends with the same version")
 check(parentsOk, "every child's parent is the versioned group name")
+check(data.xOffset == 0 and data.yOffset == -40, "group default position 0, -40")
+check(data.anchorPoint == "CENTER" and data.selfPoint == "CENTER" and data.anchorFrameType == "SCREEN", "group anchored CENTER to screen CENTER")
 check(byId["SWR Next"] and byId["SWR Next"].uid == "SWRNext", "child ids/uids unversioned (stable across bumps)")
 WeakAuras.GetData = function(id) return byId[id] end
 Private.UIDtoID = function(uid) for id, d in pairs(byId) do if d.uid == uid then return id end end end
