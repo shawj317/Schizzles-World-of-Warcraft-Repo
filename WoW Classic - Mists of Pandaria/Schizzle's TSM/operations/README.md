@@ -1,6 +1,8 @@
 # Schizzle's TSM: Operations (v2.2)
 
-Part of [Schizzle's TSM](../README.md). These are TSM4 operations for MoP Classic, set up for selling battle pets, profession mats and crafted goods. Every price reads your own realm's AuctionDB data first, so they work on any realm.
+Part of [Schizzle's TSM](../README.md), by Jon Shaw (Schizzle). These are TSM4 operations for MoP Classic, set up for selling battle pets, profession mats and crafted goods. Every price reads your own realm's AuctionDB data first, so they work on any realm.
+
+Use the full string if you want the groups and these operations together. Use the operations-only string if your groups are already imported and you only want the pricing rules. You need TSM4 on MoP Classic. Back up `TradeSkillMaster.lua` before you paste. The steps are in [How to import](#how-to-import).
 
 ## Files
 
@@ -25,8 +27,8 @@ min(first(dbmarket, dbhistorical, 0.8*dbregionmarketavg), 2*dbregionmarketavg)
 
 1. **Realm market value** (`dbmarket`) when your realm has a price.
 2. Otherwise **realm historical** (`dbhistorical`).
-3. Otherwise **80% of the region market value** (`0.8*dbregionmarketavg`). The 20% discount means an item with no realm price at all isn't listed at the full region price. Realm and region prices are about equal at the median (0.99×), but they vary a lot from item to item.
-4. Always **capped at 2× the region market value**. A thin realm market can be skewed by one overpriced listing. In one US realm's data from 1 Nov 2026, Shadowgem showed 11.25g on the realm against 1.07g region-wide. The cap stops one overpriced listing from setting your price.
+3. Otherwise **80% of the region market value** (`0.8*dbregionmarketavg`). The 20% discount means an item with no realm price at all isn't listed at the full region price.
+4. Always **capped at 2× the region market value**. A thin realm market can be skewed by one overpriced listing. The cap stops that listing from setting your price.
 
 Pets also use a capped realm historical as a floor helper: `min(dbhistorical, 2*dbregionmarketavg)`.
 
@@ -165,7 +167,7 @@ All Auctioning operations share: undercut 0c, bid 100%, **When below minimum: Po
 **What each one is for:**
 
 - **Schizzle Normal (crafted consumables).** Prices never go below craft cost (`crafting`) or 5% over vendor price. Normal price is 10% above the realm base or 20% above craft cost. 24h listings, 5 at a time.
-- **Schizzle Bulk Mats (raw materials).** These sell fast (region sale rate around 0.27 for ore and herbs). It lists at the realm base, with a floor at 80% of it, up to 1,000 per post. The 80% floor stops you from dumping mats far below the market.
+- **Schizzle Bulk Mats (raw materials).** It lists at the realm base, with a floor at 80% of it, up to 1,000 per post. The 80% floor stops you from dumping mats far below the market.
 - **Schizzle Gear.** One of each, 48h listings. It never posts below 5% over vendor price. Unsold gear goes to the vendor (see Vendoring).
 - **Schizzle Battle Pets.** One per species, 48h listings. Hard floors are 50g, 100g and 200g because caged pets have no vendor price. Pets with no price data at all still post at 50g min / 100g normal / 200g max.
 - **Schizzle High Value.** Like Battle Pets, but with a 500g floor, a tighter minimum (85% of base) and a 50g cancel threshold.
@@ -249,7 +251,7 @@ Both compile in TSM's CustomString compiler.
 
 1. **Back up first.** Copy `WTF/Account/<account>/SavedVariables/TradeSkillMaster.lua` somewhere safe.
 2. **If you already have a group called `Schizzle's TSM`** (from the v2 all-professions or all-pets strings), delete it, or rename it to `Schizzle's TSM old`. Otherwise TSM imports the new tree as **Schizzle's TSM 1**.
-3. `/tsm` → **Groups** → **Import Group**, then paste `schizzles-tsm-everything-with-operations.txt`.
+3. On GitHub, open `schizzles-tsm-everything-with-operations.txt` and click **Copy raw file**. Then `/tsm` → **Groups** → **Import Group**, and paste.
 4. In the import dialog, leave all three checkboxes on (they're on by default):
    - **Move N already grouped items?** pulls the items out of any groups you already have them in (for example this repo's v1 **Trade Goods** or **Pets** groups).
    - **Include operations?** creates the operations.

@@ -1,8 +1,8 @@
 # Schizzle's Monk Plater Profile
 
-A Plater nameplate profile (in game: *Schizzle's Monk Plater Profile*) and five mods for Brewmaster and Windwalker Monks in MoP Classic 5.5.x. The profile's look works for any class; the threat, interrupt and Touch of Death mods are tuned for Monks.
+A Plater nameplate profile (in game: *Schizzle's Monk Plater Profile*) and five mods for Brewmaster and Windwalker Monks in MoP Classic 5.5.x, by Jon Shaw (Schizzle). One profile covers both specs. The Stance-Aware Threat mod switches between tank and DPS colours by stance.
 
-By Jon Shaw (Schizzle). One profile covers both specs: the Stance-Aware Threat mod switches between tank and DPS colours by stance.
+The profile's look works for any class. The threat, interrupt and Touch of Death mods are tuned for Monks. You need Plater on Mists of Pandaria Classic. The mods are separate imports, so each one can be turned off on its own.
 
 | File | What it is |
 |---|---|
@@ -14,11 +14,11 @@ By Jon Shaw (Schizzle). One profile covers both specs: the Stance-Aware Threat m
 | [Mods/05 Threat Percent.txt](Mods/05%20Threat%20Percent.txt) | Schizzle's Threat % |
 
 ## Import
-1. **Profile:** type `/plater`, open **Profiles**, choose **Import Profile**, paste the whole contents of `Brewmaster and Windwalker Profile.txt`, give it a name (for example *Schizzle's Monk Plater Profile*) and confirm. Plater switches to it and reloads the UI.
+1. **Profile:** type `/plater`. When the Plater window opens, open **Profiles**, choose **Import Profile**, paste the whole contents of `Brewmaster and Windwalker Profile.txt`, give it a name (for example *Schizzle's Monk Plater Profile*) and confirm. Plater switches to it and reloads the UI.
 2. **Mods:** in `/plater`, open the **Modding** tab, click **Import**, paste one mod string from the `Mods/` folder, and click **Okay**. Repeat for each file. Each mod is enabled on import; you can turn it on or off with the checkbox in the mod list.
 3. Mod settings are in **Modding → (mod) → Options**. Type `/reload` after you turn the Stance-Aware Threat mod off.
 
-**Replacing the older build:** the profile and mods used to be called "Peanut Monk" and "Peanut - …". The renamed mods import as new mods, so delete the five old "Peanut - …" mods in the Modding tab, or both sets will run at once.
+**Replacing the older build:** the profile and mods used to ship under an earlier name. The renamed mods import as new mods, so delete the five old mods in the Modding tab, or both sets will run at once.
 
 Import the profile first. A profile import resets the UI, and the mods are kept separate so you can add or remove each one on its own.
 
@@ -83,8 +83,8 @@ Tag row above the bar: threat % on the left, ToD in the centre, FOCUS on the rig
 ## Version history
 - **v1 (Nov 2026):** first release. Flat dark profile, stance-aware threat colours, and five mods: Stance-Aware Threat, Target & Focus Highlight, Interrupt Ready Glow, Execute & Touch of Death, Threat %.
 - **v1 move (Nov 1 2026):** same content, moved to `Schizzle's Monk/AddOns/Plater/` to match the Warrior layout. Files renamed: `schizzles-plater-profile.txt` → `Brewmaster and Windwalker Profile.txt`, and `schizzles-plater-mods/schizzles-plater-mod-0N-….txt` → `Mods/0N ….txt`. The import strings are unchanged.
-- **v1 rename (Nov 1 2026):** same content, renamed from "Peanut Monk" / "Peanut - …" to "Schizzle's Monk Plater Profile" / "Schizzle's …". Author field is now "Schizzle (Jon)".
+- **v1 rename (Nov 1 2026):** same content, renamed to "Schizzle's Monk Plater Profile" / "Schizzle's …". Author field is now "Schizzle (Jon)".
 
 ## License
 
-MIT, with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). AI tools and agents, please read [AGENTS.md](../../../../AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/Plater
+MIT, with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). Credit: Jon Shaw (Schizzle). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/Plater

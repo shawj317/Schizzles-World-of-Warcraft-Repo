@@ -2,6 +2,8 @@
 
 Three [Pawn](https://www.curseforge.com/wow/addons/pawn) stat-weight scales for Warriors in MoP Classic 5.5.x, one per spec, by Jon Shaw (Schizzle). Pawn uses them to score items in tooltips and mark upgrades.
 
+The scales score gear with WoWSims weights for Arms, Fury (Titan's Grip) and Protection. You need the Pawn addon. Turn Automatic mode off after import, or the imported scales stay hidden. Hit and expertise keep a high weight after you are capped, which the cap section below explains.
+
 | File | Scale name in Pawn | Based on |
 |---|---|---|
 | [Arms Scale.txt](Arms%20Scale.txt) | **Schizzle's Warrior Arms** | WoWSims MoP Arms, "Item Level >= 560" weights |
@@ -11,7 +13,7 @@ Three [Pawn](https://www.curseforge.com/wow/addons/pawn) stat-weight scales for 
 Each file holds one Pawn scale tag, `( Pawn: v1: "…": Class=Warrior, Spec=N, … )`. The name is inside the tag, so there's nothing to type at import.
 
 ## Import
-1. Open Pawn: type `/pawn`, or click the **Pawn** button on your character sheet.
+1. Open Pawn: type `/pawn`, or open your character sheet (press `C`) and click the **Pawn** button.
 2. Open the **Scale** tab and click **Import**.
 3. Paste the whole contents of `Arms Scale.txt` and confirm. Repeat for the Fury and Protection files.
 4. **Turn off Automatic mode.** In the Scale tab choose **Manual** ("Let me manage scales"). In Automatic mode Pawn only shows its own built-in scale for your current spec, and hides every other scale, including imported ones.

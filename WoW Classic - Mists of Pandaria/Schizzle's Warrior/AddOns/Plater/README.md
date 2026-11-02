@@ -1,6 +1,6 @@
 # Schizzle's Warrior Plater Profiles
 
-Three Plater nameplate profiles for Warriors in MoP Classic 5.5.x, one per spec, by Jon Shaw (Schizzle):
+Three Plater nameplate profiles for Warriors in MoP Classic 5.5.x, one per spec, by Jon Shaw (Schizzle). The plates match the rest of the kit: flat dark bars, tank or DPS threat colours, a glow when Pummel is ready, and a mark in Execute range. You need Plater on Mists of Pandaria Classic.
 
 | File | In-game profile name | Threat colours | Spec debuffs |
 |---|---|---|---|
@@ -13,7 +13,7 @@ All three share the same look and include the same five mods, so you only paste 
 The mods are also in [Mods/](Mods/) as separate strings, in case you want one of them in a different profile.
 
 ## Import
-1. Type `/plater`, open **Profiles**, choose **Import Profile**, and paste the whole contents of `Arms Profile.txt`.
+1. Type `/plater`. When the Plater window opens, open **Profiles**, choose **Import Profile**, and paste the whole contents of `Arms Profile.txt`.
 2. In the name box type **exactly** `Schizzle's Warrior Arms` and confirm. Plater switches to the new profile and reloads the UI.
 3. Repeat for `Fury Profile.txt` (name it `Schizzle's Warrior Fury`) and `Protection Profile.txt` (name it `Schizzle's Warrior Protection`).
 4. That's it. After the last reload the spec switcher moves you to the profile for the spec you're in. When it switches, Plater asks whether to reload; click **Yes**.
@@ -113,4 +113,4 @@ Above the bar: threat % on the left and EXE in the centre, with auras just above
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../../../../LICENSE).
+MIT with an attribution requirement. See the repository [LICENSE](../../../../LICENSE). Credit: Jon Shaw (Schizzle).

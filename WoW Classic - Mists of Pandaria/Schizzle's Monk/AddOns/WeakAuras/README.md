@@ -1,6 +1,8 @@
 # Schizzle's Monk Rotation
 
-An all-in-one WeakAuras rotation helper for Monks in MoP Classic 5.5.x: **Brewmaster (tank or DPS) and Windwalker in one import**.
+An all-in-one WeakAuras rotation helper for Monks in MoP Classic 5.5.x, by Jon Shaw (Schizzle): **Brewmaster (tank or DPS) and Windwalker in one import**. It shows the next button, Chi, Stagger, Shuffle, cooldowns and interrupts on one HUD, and it changes the priority list when you change spec or stance.
+
+You need WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). The font is Fira Sans Condensed Medium, which ships with WeakAuras.
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
@@ -22,15 +24,17 @@ An all-in-one WeakAuras rotation helper for Monks in MoP Classic 5.5.x: **Brewma
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
 9. Options live on **Schizzle's Monk Rotation v5.4 → SMR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Monk Rotation v5.4" now), so it changes with every release. The child auras keep fixed names ("SMR Next", "SMR Stagger" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has not changed since the rename from "Peanut Monk" (the group was called "Schizzle's Monk Rotation WeakAura" at first). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Monk Rotation v5.4" now), so it changes with every release. The child auras keep fixed names ("SMR Next", "SMR Stagger" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has not changed since the group was first named "Schizzle's Monk Rotation WeakAura". So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
 **Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's own x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group falls under **Group Arrangement** (ticked by default).
 
 **Text sizes on update:** WeakAuras sorts changes by the top-level field that changed. Icon and bar texts (keybind, tag, mode, KICK and bar labels) live inside each aura's sub-regions, so a change to their size, font or outline rides in **Display** (ticked by default) and a plain **Update** applies it. Only a text aura's own `fontSize` (the SMR Resources text) counts as a size field, and on a child aura WeakAuras files size fields under **Group Arrangement** (also ticked by default). **Size & Position** only matters for the group itself: tick it only if you want the group moved back to 0, -40, because it also resets the group's position.
 
-**Older builds:** builds before the rename were called "Peanut Monk". The renamed group has a new ID, so the import will not replace it on its own, and running both at once doubles every icon. Delete the "Peanut Monk" group first. The engine only loads once per session at a given version, so `/reload` after importing.
+**Older builds:** the group from before this rename has a different ID, so the import will not replace it on its own, and running both at once doubles every icon. Delete that older group first. The engine only loads once per session at a given version, so `/reload` after importing.
 
 ## What's on screen
+
+Read the table from top to bottom. The Position column is the offset inside the group.
 
 All 30 auras read one shared engine, the global `SchizzleMonk`, which lives in the **SMR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
@@ -205,8 +209,6 @@ A row of small icons (32 px, about 57% of the Next icon) under the HUD at y -122
 | Brewmaster | Fortifying Brew, Dampen Harm, Diffuse Magic, Zen Meditation, Avert Harm, Invoke Xuen, Nimble Brew, Leg Sweep, Ring of Peace, Charging Ox Wave, Tiger's Lust |
 | Windwalker | Touch of Karma, Fortifying Brew, Energizing Brew, Invoke Xuen, Dampen Harm, Diffuse Magic, Zen Meditation, Nimble Brew, Leg Sweep, Ring of Peace, Charging Ox Wave, Tiger's Lust |
 
-Talents show only if you took them. Left out on purpose: Touch of Death (needs a low-health target, so it lives on the Cooldown icons), Tigereye Brew and Elusive Brew (they're ready almost all the time but only worth pressing at the stack counts the Cooldown / Defensive icons already watch), Guard, Purifying Brew and Chi Brew (rotation side pops).
-
 Talent spells show only if you took the talent. Left out on purpose: Touch of Death (needs a low-health target, so it lives on the Cooldown icons), Tigereye Brew and Elusive Brew (they're ready almost all the time but only worth pressing at the stack counts the Cooldown / Defensive icons already watch), Guard, Purifying Brew and Chi Brew (rotation side pops).
 
 | Race | Racial |
@@ -295,7 +297,7 @@ All scripts need LibSerialize and LibDeflate on disk (`WA_LIBS`, default `/works
 - **v5.2** (Nov 2, 2026): new **cooldown tray**, 8 small icons (32 px, auras `SMR Tray 1-8`) at the bottom right (y -122, growing leftward from x +150). It shows your racial and the spec's big cooldowns that aren't in the rotation, only while they are known and off cooldown, and never a spell another icon already shows. New "Show cooldown tray" option. Engine `VERSION = 6`. The group is renamed to "Schizzle's Monk Rotation v5.2" (same uid, and every existing child keeps its name and uid). **Updating:** WeakAuras offers **Update**. Leave **Add Missing Auras** ticked (default) to get the eight tray auras. Tick **Size & Position** and **Group Arrangement** if your group or icons were moved and you want the default layout back.
 - **v5.1** (Nov 2, 2026): the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group is renamed to "Schizzle's Monk Rotation v5.1" (same uid, so it updates in place), and the description ends with "v5.1.". No rotation changes (engine `VERSION = 5`). On Update, tick **Size & Position** to move the group.
 - **v5 name** (Nov 2, 2026): same logic as v5. The in-game group is now called "Schizzle's Monk Rotation v5", so the name shows the version, and the description ends with "v5.". The group uid (`SchizzleMonkGroup`) and every child name and uid are unchanged, so re-importing updates the existing group in place. The child auras keep fixed names so they stay stable across versions.
-- **v5 rename** (Nov 1, 2026): same logic as v5, renamed from "Peanut Monk" to "Schizzle's Monk Rotation WeakAura". Aura IDs went from `PM …` to `SMR …` and the engine global from `PeanutMonk` to `SchizzleMonk`, so this imports as a new group. Delete the old group.
+- **v5 rename** (Nov 1, 2026): same logic as v5, renamed to "Schizzle's Monk Rotation WeakAura". Aura IDs went from `PM …` to `SMR …` and the engine global is `SchizzleMonk`, so this imports as a new group. Delete the old group.
 - **v5 move** (Nov 1, 2026): same aura, moved to `Schizzle's Monk/AddOns/WeakAuras/` to match the Warrior layout. The import string was renamed from `schizzles-monk-rotation-weakaura.txt` to `All-in-One Rotation.txt`; its contents are unchanged.
 - **v5:** **Tiger Palm as a pre-34 Brewmaster filler.** It's suggested at 1 Chi when nothing better is usable, ranked below Blackout Kick, Keg Smash, Jab and the refresh rule. The `filler` tag is unchanged.
 - **v4:** **out-of-range** desaturation and red tint (`tintOOR`), also on the interrupt icon. **Tiger Palm audit:** each Palm is tagged refresh/filler/proc, and the refresh triggers at under 4 s of Tiger Power (`tpWindow`). `/dump SchizzleMonk.R.why` debug info.
@@ -305,4 +307,4 @@ All scripts need LibSerialize and LibDeflate on disk (`WA_LIBS`, default `/works
 
 ## License
 
-MIT with an attribution requirement. See [LICENSE](LICENSE). AI tools and agents, please read [AGENTS.md](AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/WeakAuras
+MIT with an attribution requirement. See [LICENSE](LICENSE). Credit: Jon Shaw (Schizzle). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Monk/AddOns/WeakAuras

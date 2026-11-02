@@ -1,6 +1,8 @@
 # Schizzle's Warrior Details! Profiles
 
-Three Details! damage meter profiles for Warriors in MoP Classic 5.5.x, one per spec, by Jon Shaw (Schizzle), plus a small Auto Run Code snippet that switches between them when the spec changes.
+Three Details! damage meter profiles for Warriors in MoP Classic 5.5.x, one per spec, by Jon Shaw (Schizzle), plus a small Auto Run Code snippet that switches between them when the spec changes. Arms and Fury show damage done and interrupts. Protection shows damage done and damage taken.
+
+Details! on MoP Classic has no working per-spec profile option, so the snippet listens for spec changes itself. You need Details! for Mists of Pandaria Classic. The full reason, checked against the Details! source, is in [Spec switching](#spec-switching).
 
 | File | In-game profile name | Window 1 | Window 2 |
 |---|---|---|---|
@@ -24,7 +26,7 @@ The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/A
 - For a tank-focused window 2, the optional **Tank Mitigation** custom display from the [Monk Details! folder](../../../Schizzle's%20Monk/AddOns/Details!/) works for Protection Warriors too (it shows block amounts and dodge + parry rate).
 
 ## Import
-1. Type `/details options` and open **Profiles**.
+1. Type `/details options`. In the options window, open **Profiles**.
 2. Click **Import Profile** and paste the whole contents of `Arms Profile.txt`. When Details! asks for the profile name, type **exactly** `Schizzle's Warrior Arms`. Leave **Import Auto Run Scripts** unticked (the profiles don't carry any). Details! switches to the new profile.
 3. Repeat for `Fury Profile.txt` (name it `Schizzle's Warrior Fury`) and `Protection Profile.txt` (name it `Schizzle's Warrior Protection`).
 4. Pick the profile for the spec you're in now from the Profiles dropdown (or type `/details profile Schizzle's Warrior Protection`, etc.).

@@ -1,6 +1,8 @@
 # Schizzle's Warrior BetterBlizzFrames Profile
 
-A BetterBlizzFrames profile for Warriors in MoP Classic 5.5.x by Jon Shaw (Schizzle). It gives the default Blizzard unit frames (player, target, focus, party) a dark, class-coloured look in the same font as the rest of the kit, and filters target and focus debuffs down to the Warrior ones that matter, with glows.
+A BetterBlizzFrames profile for Warriors in MoP Classic 5.5.x, by Jon Shaw (Schizzle). It gives the default Blizzard unit frames (player, target, focus, party) a dark, class-coloured look in the same font as the rest of the kit, and it filters target and focus debuffs down to the Warrior ones that matter, with glows.
+
+This is the unit-frame piece of the Warrior kit. You need BetterBlizzFrames by Bodify, v2.2.0d (Mists build, Interface 50504). ElvUI's unit frames have to be off, because ElvUI replaces the Blizzard frames this profile styles.
 
 > **Heads-up:** this profile is built for Mists of Pandaria Classic (5.5.x). BetterBlizzFrames also runs on WoW Forever, and the profile is written to carry over (see [WoW Forever](#wow-forever)). It will be checked in game on Forever after that launches.
 

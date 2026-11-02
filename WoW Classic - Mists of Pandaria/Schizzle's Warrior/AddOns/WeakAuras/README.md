@@ -1,6 +1,8 @@
 # Schizzle's Warrior Rotation
 
-An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arms, Fury and Protection in one import**.
+An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x, by Jon Shaw (Schizzle): **Arms, Fury and Protection in one import**. It shows the next button, rage, swings, cooldowns and interrupts on one HUD, and it changes the priority list when you change spec. Before level 10 it runs a Leveling mode, so a new Warrior can use the same import.
+
+You need WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). The font is Fira Sans Condensed Medium, which ships with WeakAuras.
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
@@ -29,6 +31,8 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 **Text sizes on update:** WeakAuras sorts changes by the top-level field that changed. Icon and bar texts (keybind, tag, mode, KICK and bar labels) live inside each aura's sub-regions, so a change to their size, font or outline rides in **Display** (ticked by default) and a plain **Update** applies it. Only a text aura's own `fontSize` (the SWR Resources text) counts as a size field, and on a child aura WeakAuras files size fields under **Group Arrangement** (also ticked by default). **Size & Position** only matters for the group itself: tick it only if you want the group moved back to 0, -40, because it also resets the group's position.
 
 ## What's on screen
+
+Read the table from top to bottom. The Position column is the offset inside the group.
 
 All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
@@ -290,4 +294,4 @@ No SavedVariables or personal data are included.
 
 ## License
 
-MIT with an attribution requirement. See [LICENSE](LICENSE). AI tools and agents, please read [AGENTS.md](AGENTS.md). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/AddOns/WeakAuras
+MIT with an attribution requirement. See [LICENSE](LICENSE). Credit: Jon Shaw (Schizzle). Original repo: https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo/tree/main/WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/AddOns/WeakAuras

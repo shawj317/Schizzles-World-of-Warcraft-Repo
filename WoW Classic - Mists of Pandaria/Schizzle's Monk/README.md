@@ -1,6 +1,6 @@
 # Schizzle's Monk
 
-World of Warcraft: Mists of Pandaria Classic (5.5.x) addon setups for Brewmaster, Windwalker and Mistweaver Monks, by **Jon Shaw (Schizzle)**. Each addon has its own folder under `AddOns/`:
+World of Warcraft: Mists of Pandaria Classic (5.5.x) addon setups for Brewmaster, Windwalker and Mistweaver Monks, by **Jon Shaw (Schizzle)**. The WeakAura and Plater setups cover Brewmaster and Windwalker, the Details! profile is for Brewmaster, and the Pawn scales cover all three specs. Each piece imports on its own. Each addon has its own folder under `AddOns/`:
 
 | Folder | What it is | Status |
 |---|---|---|
@@ -9,7 +9,7 @@ World of Warcraft: Mists of Pandaria Classic (5.5.x) addon setups for Brewmaster
 | [AddOns/Details!](AddOns/Details!/) | **Schizzle's Monk Details! Profile**: a two-window Brewmaster damage meter (Damage Done plus Damage Taken with tank avoidance recording), plus an optional Tank Mitigation custom display. Import strings: [Brewmaster Profile.txt](AddOns/Details!/Brewmaster%20Profile.txt), [Tank Mitigation Display.txt](AddOns/Details!/Tank%20Mitigation%20Display.txt) | Available (v2.2, Brewmaster only) |
 | [AddOns/Pawn](AddOns/Pawn/) | **Schizzle's Monk Pawn scales**: simulation-based stat weights (WoWSims MoP) for Brewmaster, Windwalker and Mistweaver, for item upgrade scores. Scale tags: [Brewmaster Scale.txt](AddOns/Pawn/Brewmaster%20Scale.txt), [Windwalker Scale.txt](AddOns/Pawn/Windwalker%20Scale.txt), [Mistweaver Scale.txt](AddOns/Pawn/Mistweaver%20Scale.txt) | Available (v1) |
 
-Each folder's README has the import steps. The WeakAura and Plater setups cover Brewmaster and Windwalker, the Details! profile is for Brewmaster, and the Pawn scales cover all three specs.
+Each folder's README has the import steps.
 
 ## Version history
 - **Nov 1 2026:** Monk files reorganised under `AddOns/` to match the Warrior layout (WeakAuras v5, Plater v1, Details! v2).
@@ -17,4 +17,4 @@ Each folder's README has the import steps. The WeakAura and Plater setups cover 
 
 ## License
 
-MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). AI tools and agents, please read [AGENTS.md](../../AGENTS.md).
+MIT with an attribution requirement. See the repository [LICENSE](../../LICENSE). Credit: Jon Shaw (Schizzle).
