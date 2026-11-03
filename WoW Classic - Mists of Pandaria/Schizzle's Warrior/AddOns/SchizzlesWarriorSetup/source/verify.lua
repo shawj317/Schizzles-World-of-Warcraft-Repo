@@ -143,6 +143,34 @@ aceCheck("Questie", "QuestieConfig", true, D.Questie)
 aceCheck("GatherMate2", "GatherMate2DB", "Default", D.GatherMate2)
 aceCheck("TomTom", "TomTomDB", "Default", D.TomTom)
 check(SexyMap2DB["Testwarrior-Test Realm"] == "global" and deepEqual(D.SexyMap, SexyMap2DB.global), "SexyMap: character points at the new global profile")
+-- SexyMap v2 values (Jon's in-game setup)
+do
+	local S = SexyMap2DB.global
+	check(deepEqual(SexyMap2DB.global, D.SexyMap), "SexyMap: global profile is exactly the source file, both ways")
+	check(S.core.scale == 1.5 and S.core.point == "TOPRIGHT" and S.core.relpoint == "TOPRIGHT"
+		and math.abs(S.core.x + 4.38) < 0.01 and math.abs(S.core.y + 4.67) < 0.01, "SexyMap: 1.5x map in the top-right corner, about 4 px in")
+	check(S.core.lock == false and S.core.autoZoom == 15 and S.core.shape == 130871 and S.core.northTag == false, "SexyMap: unlocked, square, auto zoom out after 15 s, no north tag")
+	local bd = S.borders.backdrop
+	check(bd.show and bd.settings.bgFile == nil and bd.settings.edgeFile == "Interface\\Tooltips\\UI-Tooltip-Border" and bd.settings.edgeSize == 6
+		and bd.settings.tileSize == 0 and bd.scale == 1.03, "SexyMap: no fill, 6 px tooltip border, 3% larger than the map")
+	check(math.floor(bd.borderColor.r * 255 + 0.5) == 184 and math.floor(bd.borderColor.g * 255 + 0.5) == 115 and math.floor(bd.borderColor.b * 255 + 0.5) == 51, "SexyMap: border is bronze (184, 115, 51)")
+	local v = S.buttons.visibilitySettings
+	check(v.GameTimeFrame == "never" and v.MiniMapTracking == "always" and v.MinimapZoomIn == "never" and v.MinimapZoomOut == "never"
+		and v.MiniMapWorldMapButton == "never" and v.MiniMapMailFrame == "always", "SexyMap: calendar, zoom and world map hidden; tracking and mail shown")
+	local ldb = 0
+	for name, vis in pairs(v) do if name:find("^LibDBIcon10_") then ldb = ldb + 1; check(vis == "always", "SexyMap: " .. name .. " always shown") end end
+	check(ldb == 11, "SexyMap: 11 add-on buttons listed")
+	check(S.clock.fontsize == 9 and S.zonetext.fontsize == 9 and S.zonetext.yOffset == -18 and S.coordinates.fontSize == 8
+		and S.coordinates.yOffset == 9 and S.coordinates.updateRate == 0.1, "SexyMap: clock 9, zone 9 (18 px down), coordinates 8 (9 px up, 10 updates a second)")
+	check(S.clock.font == "Fira Sans Condensed Medium" and S.zonetext.font == S.clock.font and S.coordinates.font == S.clock.font, "SexyMap: font still Fira Sans Condensed Medium")
+	check(S.movers.moveDurability == true and S.movers.lockDurability == true and S.movers.moveBuffs == false and S.movers.moveObjectives == false, "SexyMap: durability figure movable and locked, other movers off")
+	local names = {}
+	local function scan(t) for k, x in pairs(t) do if type(k) == "string" then names[#names + 1] = k end; if type(x) == "table" then scan(x) end end end
+	scan(D.SexyMap)
+	local personal = false
+	for _, k in ipairs(names) do if k:find("%-") and not k:find("^LibDBIcon10_") then personal = true; print("     key with a dash: " .. k) end end
+	check(not personal and D.SexyMap.presets == nil, "SexyMap: no 'Name-Realm' keys or presets in the source file")
+end
 
 -- Bartender4: real code path against a recording mock of its AceDB object.
 local calls = {}
@@ -176,6 +204,13 @@ local function keysOf(t, out)
 	end
 	return out
 end
+-- LibDBIcon (in SexyMap's Libs) names each minimap button frame "LibDBIcon10_" .. icon name.
+local function ldbiNames()
+	local f = io.open(ADDONS .. "/SexyMap/Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua")
+	if not f then return false end
+	local s = f:read("*a"); f:close()
+	return s:find('CreateFrame("Button", "LibDBIcon10_"..name', 1, true) ~= nil
+end
 local IGNORE = { profile = 1, namespaces = 1, r = 1, g = 1, b = 1, a = 1, x = 1, y = 1, point = 1, scale = 1 }
 for _, spec in ipairs({ { "Bartender4", D.Bartender4 }, { "Prat-3.0", D["Prat 3.0"] }, { "SexyMap", D.SexyMap },
 	{ "Questie", D.Questie }, { "GatherMate2", D.GatherMate2 }, { "TomTom", D.TomTom } }) do
@@ -185,7 +220,12 @@ for _, spec in ipairs({ { "Bartender4", D.Bartender4 }, { "Prat-3.0", D["Prat 3.
 	else
 		local missing = {}
 		for k in pairs(keysOf(spec[2])) do
-			if not IGNORE[k] and not src:find(k, 1, true) then missing[#missing + 1] = k end
+			-- LibDBIcon minimap buttons are frames named "LibDBIcon10_" .. the add-on's icon name.
+			local ldb = k:match("^LibDBIcon10_(.+)$")
+			if ldb then
+				check(spec[1] == "SexyMap" and src:find('n:find("LibDBIcon")', 1, true) and ldbiNames(),
+					spec[1] .. ": " .. k .. " is a LibDBIcon button name SexyMap picks up")
+			elseif not IGNORE[k] and not src:find(k, 1, true) then missing[#missing + 1] = k end
 		end
 		table.sort(missing)
 		check(#missing == 0, spec[1] .. ": every setting key appears in the addon's code" .. (#missing > 0 and (" (missing: " .. table.concat(missing, ", ") .. ")") or ""))
