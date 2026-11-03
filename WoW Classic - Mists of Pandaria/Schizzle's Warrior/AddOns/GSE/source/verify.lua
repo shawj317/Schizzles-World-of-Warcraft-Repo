@@ -1,12 +1,13 @@
 -- Checks the GSE import string against sequence.lua, GSE's own source and the MoP Classic client's spell data.
 -- Usage: lua verify.lua
---   GSE_SRC  GSE source checkout (default /workspace/gse), read only: GSE is All Rights Reserved, nothing is copied.
+--   GSE_SRC  GSE source checkout at tag 3.3.36-a (default /workspace/gse-3336a), read only: GSE is All Rights
+--            Reserved, nothing is copied.
 --   DB2_DIR  MoP Classic 5.5.4 DB2 tables as CSV from wago.tools (SpellName, SpellLevels, SpellCategories,
 --            SpellCooldowns, SpellPower, SkillLineAbility; default /workspace/db2).
 local HERE = (arg and arg[0] and arg[0]:match("^(.*)/[^/]*$")) or "."
 local F = dofile(HERE .. "/gse_format.lua")
 local S = dofile(HERE .. "/sequence.lua")
-local GSE_SRC = os.getenv("GSE_SRC") or "/workspace/gse"
+local GSE_SRC = os.getenv("GSE_SRC") or "/workspace/gse-3336a"
 local DB2 = os.getenv("DB2_DIR") or "/workspace/db2"
 
 local pass, fail = 0, 0
@@ -53,15 +54,36 @@ local va, vb, vc = S.gseVersionString:match("^(%d+)%.(%d+)%.(%d+)$")
 check(S.gseVersionString == "3.3.36" and va and tonumber(va) * 1000 + tonumber(vb) * 100 + tonumber(vc) == S.gseVersion
   and S.gseVersion == 3336, "GSEVersion " .. S.gseVersion .. " is GSE " .. S.gseVersionString .. " (3.3.36-a parses to 3336)")
 local storage = readFile(GSE_SRC .. "/GSE/API/Storage.lua")
+local strings = readFile(GSE_SRC .. "/GSE/API/StringFunctions.lua")
+check(utils:find('actiontable.objectType == "VARIABLE"', 1, true) ~= nil and utils:find('["action"] = "updatevariable"', 1, true) ~= nil,
+  "GSE files a collection member with objectType VARIABLE as a variable")
+check(storage:find('if string.sub(value, 1, 1) == "=" then', 1, true) ~= nil,
+  "GSE replaces a macro line starting with = by what it returns")
+check(strings:find('return GSE.GetMacroBodyLeadChar(text) == "/"', 1, true) ~= nil,
+  "GSE runs a block as macro text only if its first line is a slash command")
+check(storage:find('local funct = active.funct', 1, true) ~= nil, "a variable's Lua is Versions[n].funct")
 check(storage:find("node.macro = node.macrotext", 1, true) ~= nil, "GSE stores macro text under 'macro'")
 
 check(data.type == "COLLECTION" and type(data.payload) == "table", "COLLECTION wrapper")
 local p = data.payload or {}
 local n = 0
 for _ in pairs(p.Sequences or {}) do n = n + 1 end
-check(n == #S.sequences and p.ElementCount == n, "ElementCount matches the sequence count")
-check(type(p.Macros) == "table" and next(p.Macros) == nil and type(p.Variables) == "table" and next(p.Variables) == nil,
-  "no macros or variables ride along")
+local nv = 0
+for _ in pairs(p.Variables or {}) do nv = nv + 1 end
+check(n == #S.sequences and nv == #S.variables and p.ElementCount == n + nv, "ElementCount counts the sequences and variables")
+check(type(p.Macros) == "table" and next(p.Macros) == nil, "no WoW macros ride along")
+for _, var in ipairs(S.variables) do
+  local v = (p.Variables or {})[var.name] or {}
+  local md = v.MetaData or {}
+  check(v.objectType == "VARIABLE" and v.name == var.name, var.name .. ": a VARIABLE member under its own name")
+  check(md.Name == var.name and md.Author == "Jon Shaw (Schizzle)" and md.SpecID == S.specID and md.Default == 1,
+    var.name .. ": MetaData")
+  check(#(v.Versions or {}) == 1 and v.Versions[1].funct == var.funct, var.name .. ": one version holding its Lua")
+  check(var.name:match("^[%u%d_]+$") and var.call == '=GSE.V["' .. var.name .. '"]()', var.name .. ": call syntax")
+  local ok, fn = pcall(function() return loadstring("return " .. var.funct)() end)
+  check(ok and type(fn) == "function" and fn() == var.returns, var.name .. ": its Lua returns " .. var.returns)
+  check(not var.returns:find("\n") and var.returns:match("^/%a+"), var.name .. ": returns one slash command")
+end
 
 -- 3. Spell data from the MoP Classic client
 local function csv(name, key, fields)
@@ -123,6 +145,16 @@ for id, name in pairs({["6673"] = "Battle Shout", ["6343"] = "Thunder Clap", ["7
 end
 
 -- 4. Each sequence matches sequence.lua and keeps to the hardware-event rules
+-- The blocks as v1.1 shipped them, before targeting moved into SCHIZ_TARGET. Filled in, v1.2 must run the same text.
+local V11 = {
+  SCHIZ_WAR_L8 = {
+    "/cleartarget [dead][help]\n/targetenemy [noexists][dead][help]\n/startattack\n/cast [mod:shift] Charge\n" ..
+      "/cast Victory Rush\n/cast [combat] Blood Fury\n/cast Heroic Strike",
+    "/cleartarget [dead][help]\n/targetenemy [noexists][dead][help]\n/startattack\n/cast [mod:shift] Charge\n" ..
+      "/cast Execute\n/cast Heroic Strike",
+  },
+  SCHIZ_WAR_L8_CHG = {"/cleartarget [dead][help]\n/targetenemy [noexists][dead][help]\n/cast Charge\n/startattack"},
+}
 local sheet = readFile(HERE .. "/../Level 8 Sequences (readable).md")
 for _, def in ipairs(S.sequences) do
   local seq = (p.Sequences or {})[def.name] or {}
@@ -141,11 +173,21 @@ for _, def in ipairs(S.sequences) do
   for i, b in ipairs(def.blocks) do
     local a = (v.Actions or {})[i] or {}
     local where = def.name .. " block " .. i
+    local runs = F.expand(b.macro, S.variables)
     check(validTypes[a.Type] and a.type == "macro" and a.macro == b.macro, where .. ": macro Action matches source")
-    check(#b.macro <= 255, where .. ": " .. #b.macro .. " of 255 characters")
-    check(sheet:find("```\n" .. b.macro .. "\n```", 1, true) ~= nil, where .. ": readable sheet is current")
+    check(b.macro:match("^/%a+") ~= nil, where .. ": first line is a slash command, so GSE reads it as macro text")
+    local calls = 0
+    for _, var in ipairs(S.variables) do
+      local _, c = b.macro:gsub(var.call:gsub("%p", "%%%0"), "")
+      calls = calls + c
+    end
+    check(calls == 1, where .. ": calls " .. S.variables[1].name .. " once")
+    check(runs == V11[def.name][i], where .. ": with the variable filled in it is exactly the v1.1 text")
+    check(#runs <= 255, where .. ": " .. #runs .. " of 255 characters once filled in")
+    check(sheet:find("```\n" .. b.macro .. "\n```", 1, true) ~= nil and sheet:find("```\n" .. runs .. "\n```", 1, true) ~= nil,
+      where .. ": readable sheet is current")
     local gcdCasts = 0
-    for line in (b.macro .. "\n"):gmatch("([^\n]*)\n") do
+    for line in (runs .. "\n"):gmatch("([^\n]*)\n") do
       check(line:match("^/%a+") ~= nil, where .. ": '" .. line .. "' is a slash command")
       local spell = line:match("^/cast%s*%b[]%s*(.+)$") or line:match("^/cast%s+(.+)$")
       if spell then
@@ -163,7 +205,7 @@ end
 local private = {}
 for w in (os.getenv("PRIVATE_WORDS") or ""):gmatch("[^,]+") do private[#private + 1] = w end
 for _, path in ipairs({"/../Schizzle's Warrior Level 8.txt", "/../Level 8 Sequences (readable).md", "/sequence.lua",
-                       "/../README.md"}) do
+                       "/../README.md", "/gse_sim.lua"}) do
   local s = readFile(HERE .. path)
   local clean = true
   for _, w in ipairs(private) do if s:find(w, 1, true) then clean = false end end

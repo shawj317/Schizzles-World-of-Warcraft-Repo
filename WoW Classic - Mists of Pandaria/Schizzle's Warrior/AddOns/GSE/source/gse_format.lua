@@ -135,4 +135,17 @@ function M.decode(str)
   return M.uncbor(raw), raw
 end
 
+-- What a block's macro text becomes once its variable lines are filled in, the way GSE describes it: a line that
+-- starts with "=" and calls GSE.V["NAME"]() is replaced by what that variable returns. Our own code, for checking.
+function M.expand(macro, variables)
+  local byName = {}
+  for _, var in ipairs(variables or {}) do byName[var.name] = var.returns end
+  local out = {}
+  for line in (macro .. "\n"):gmatch("([^\n]*)\n") do
+    local name = line:match('^=GSE%.V%["([%w_]+)"%]%(%)$')
+    out[#out + 1] = name and assert(byName[name], "unknown variable " .. name) or line
+  end
+  return table.concat(out, "\n")
+end
+
 return M

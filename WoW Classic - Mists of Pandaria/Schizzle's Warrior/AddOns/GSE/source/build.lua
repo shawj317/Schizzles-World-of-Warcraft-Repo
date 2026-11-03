@@ -23,11 +23,22 @@ local function sequenceTable(def)
   }
 end
 
+-- A GSE variable as a collection member. objectType "VARIABLE" is what GSE's collection importer files as a variable
+-- (anything else in the Variables list is read as a sequence); name is the key it is stored under.
+local function variableTable(var)
+  return {
+    objectType = "VARIABLE", name = var.name, LastUpdated = S.lastUpdated,
+    MetaData = {Author = S.author, Default = 1, Name = var.name, Notes = var.note, SpecID = S.specID},
+    Versions = {{funct = var.funct}},
+  }
+end
+
 local function build()
-  local seqs, count = {}, 0
+  local seqs, vars, count = {}, {}, 0
+  for _, var in ipairs(S.variables) do vars[var.name] = variableTable(var); count = count + 1 end
   for _, def in ipairs(S.sequences) do seqs[def.name] = sequenceTable(def); count = count + 1 end
   return {type = "COLLECTION",
-    payload = {ElementCount = count, Macros = {}, Sequences = seqs, Variables = {}}}
+    payload = {ElementCount = count, Macros = {}, Sequences = seqs, Variables = vars}}
 end
 
 local export = F.encode(build())
@@ -40,16 +51,41 @@ local lines = {
   "GSE plays one block per key press, in order, then starts again from the top.",
   "",
 }
+for _, var in ipairs(S.variables) do
+  lines[#lines + 1] = "## Variable " .. var.name
+  lines[#lines + 1] = ""
+  lines[#lines + 1] = var.note .. " Blocks call it with the line `" .. var.call .. "`; GSE puts the result there:"
+  lines[#lines + 1] = ""
+  lines[#lines + 1] = "```"
+  lines[#lines + 1] = var.returns
+  lines[#lines + 1] = "```"
+  lines[#lines + 1] = ""
+  lines[#lines + 1] = "Its Lua, as it appears under Variables in `/gse`:"
+  lines[#lines + 1] = ""
+  lines[#lines + 1] = "```lua"
+  lines[#lines + 1] = var.funct
+  lines[#lines + 1] = "```"
+  lines[#lines + 1] = ""
+end
 for _, def in ipairs(S.sequences) do
   lines[#lines + 1] = "## " .. def.name .. " (version \"" .. def.label .. "\")"
   lines[#lines + 1] = ""
   lines[#lines + 1] = def.note
   lines[#lines + 1] = ""
   for i, b in ipairs(def.blocks) do
-    lines[#lines + 1] = ("### Block %d: %s (%d of 255 characters)"):format(i, b.title, #b.macro)
+    local runs = F.expand(b.macro, S.variables)
+    lines[#lines + 1] = ("### Block %d: %s (%d of 255 characters once the variable is filled in)"):format(i, b.title, #runs)
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "As stored in GSE:"
     lines[#lines + 1] = ""
     lines[#lines + 1] = "```"
     lines[#lines + 1] = b.macro
+    lines[#lines + 1] = "```"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "What it runs:"
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "```"
+    lines[#lines + 1] = runs
     lines[#lines + 1] = "```"
     lines[#lines + 1] = ""
   end

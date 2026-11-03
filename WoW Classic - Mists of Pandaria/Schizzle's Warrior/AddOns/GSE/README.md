@@ -4,8 +4,8 @@ Two sequences for [GSE: Sequences, Variables, Macros](https://www.curseforge.com
 
 | File | What it is |
 |---|---|
-| [Schizzle's Warrior Level 8.txt](Schizzle's%20Warrior%20Level%208.txt) | The import string. It's a GSE collection that holds both sequences. |
-| [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md) | The same sequences as plain macro text, block by block. |
+| [Schizzle's Warrior Level 8.txt](Schizzle's%20Warrior%20Level%208.txt) | The import string. It's a GSE collection that holds both sequences and the **SCHIZ_TARGET** variable they share. |
+| [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md) | The same sequences block by block, as stored in GSE and with the variable filled in. |
 | [source/](source/) | The build and verify scripts (see "Source files"). |
 
 | Sequence | Key | What it does |
@@ -38,16 +38,41 @@ In Mists of Pandaria, Warriors learn their abilities automatically as they level
 **Not available yet at level 8**, although older guides list them early: Defensive Stance (9), Taunt (12), Sunder Armor (16), Thunder Clap (20), Heroic Throw (22) and Battle Shout (42). In MoP, Thunder Clap and Battle Shout come much later than in Vanilla.
 
 ## How the main sequence plays
-Every block starts with the same three lines:
+Every block starts by sorting out the target. In GSE each block holds these two lines:
+```
+/cleartarget [dead][help]
+=GSE.V["SCHIZ_TARGET"]()
+```
+GSE fills in the second line from the **SCHIZ_TARGET** variable (see below), so what WoW runs is:
 ```
 /cleartarget [dead][help]
 /targetenemy [noexists][dead][help]
-/startattack
 ```
-These drop a dead or friendly target, pick the nearest enemy in front of you if you have none, and turn on auto-attack.
+This drops a dead or friendly target and picks the nearest enemy in front of you if you have none. The main blocks then run `/startattack` to turn on auto-attack.
 
 - **Block 1:** `/cast [mod:shift] Charge`, then Victory Rush, then `/cast [combat] Blood Fury`, then Heroic Strike.
 - **Block 2:** `/cast [mod:shift] Charge`, then Execute, then Heroic Strike.
+
+SCHIZ_WAR_L8_CHG uses the same two targeting lines, then `/cast Charge`, then `/startattack`.
+
+## The SCHIZ_TARGET variable
+A GSE variable is a small piece of Lua that GSE runs when it builds a sequence. Out of combat, GSE rebuilds sequences whenever you zone, change target or change talents. A macro line that starts with `=` and calls the variable (`=GSE.V["SCHIZ_TARGET"]()`) is replaced by the text the variable returns. GSE counts that returned text toward the 255-character limit. SCHIZ_TARGET returns one line:
+```
+/targetenemy [noexists][dead][help]
+```
+All three blocks call it, so changing the targeting rule in this one place changes it in both sequences.
+
+GSE variables are their own kind of element, stored next to sequences. They aren't stored inside a sequence. This variable is filed under Warrior, like the sequences. It is part of the same import string: importing the collection adds SCHIZ_TARGET together with both sequences, so there's nothing extra to import.
+
+**Why `/cleartarget` isn't in the variable too:** GSE 3.3.36 runs a block as macro text only when the block's first line is a slash command. A block whose first line is a variable call is read as the name of a WoW macro, and pressing it does nothing. So each block keeps `/cleartarget [dead][help]` as its first line. `/startattack` also stays in the blocks, because the Charge opener uses it after Charge and the main blocks use it before.
+
+**To change it:** `/gse`, then **Variables > SCHIZ_TARGET**. Edit the line inside the quotes in the Implementation box, keeping the `function()`, `return` and `end` around it, and click Save:
+```lua
+function()
+  return "/targetenemy [noexists][dead][help]"
+end
+```
+For example, `/targetenemy [noexists][dead][help][noharm]` would also swap away from targets you can't attack. To return more than one line, put `\n` between the lines inside the quotes. Never start a block with the variable line. The Current Value field in the editor shows what it returns. The new text takes effect the next time GSE rebuilds the sequences, which happens when you zone or change target; `/reload` also works.
 
 At level 8 your only GCD abilities are Victory Rush and Execute, and both are usable only some of the time. So most of your damage comes from auto-attacks and Heroic Strike. Execute comes before Heroic Strike in block 2, so when the target is low, the rage goes to Execute first. Full text: [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md).
 
@@ -55,9 +80,11 @@ At level 8 your only GCD abilities are Victory Rush and Execute, and both are us
 1. Install **GSE: Sequences, Variables, Macros** from CurseForge, gse.tools or the GSE GitHub releases (version **3.3.36** or newer; older GSE refuses these sequences) and log in to your Warrior.
 2. Open `Schizzle's Warrior Level 8.txt` on GitHub, click **Raw**, and copy everything, from the leading `!GSE3!` to the end.
 3. In game, type `/gse` to open the Sequence Editor, then click **Import** in the tree on the left.
-4. Paste the string and click **Import**. GSE shows the collection with **SCHIZ_WAR_L8** and **SCHIZ_WAR_L8_CHG** ticked. Click **Import** again.
+4. Paste the string and click **Import**. GSE shows the collection with the sequences **SCHIZ_WAR_L8** and **SCHIZ_WAR_L8_CHG** and the variable **SCHIZ_TARGET**, all ticked. Leave all three ticked (the sequences need the variable) and click **Import** again.
 5. Both sequences are stamped for GSE 3.3.36 (GSEVersion 3336), so GSE 3.3.36 imports them without the "created with an older version of GSE" note. A newer GSE may show that note; it is only a note, and both still import.
-6. Both sequences now appear under **Sequences > Warrior**. They're class-wide (class ID 1), so they're already there at level 1 and stay after you choose a spec at level 10.
+6. Both sequences now appear under **Sequences > Warrior**, and the variable under **Variables**. They're class-wide (class ID 1), so they're already there at level 1 and stay after you choose a spec at level 10.
+
+**Updating from an older version:** import the new string the same way; there's no need to delete anything first. The variable is new, so it's simply added. For each sequence that's already there, GSE opens its compare window. Choose **Replace**. Replace keeps the same sequence, so the buttons and keys it's bound to stay. Merge would add a second version to the old sequence, and Rename would make a copy, so don't use either.
 
 ## Put them on keys
 Either way works with this kit's Bartender4 bars:
@@ -77,7 +104,7 @@ Blood Fury is the Orc racial. On any other race that line simply does nothing. T
 When you learn a new ability, add it to **SCHIZ_WAR_L8**. Duplicate the sequence first (type a new name in the Configuration node and click Save) if you want to keep the level 8 version. To add a block:
 1. `/gse`, then **Sequences > Warrior > SCHIZ_WAR_L8**, then open **1 - Leveling**.
 2. Click **Add block** next to the block you want it to follow, choose **Action**, and pick **Macro**.
-3. Paste the same three opening lines, then `/cast [mod:shift] Charge`, then **one** GCD ability. You can add `/cast Heroic Strike` at the end as the rage dump.
+3. Paste the same opening lines (`/cleartarget [dead][help]`, `=GSE.V["SCHIZ_TARGET"]()`, `/startattack`), then `/cast [mod:shift] Charge`, then **one** GCD ability. You can add `/cast Heroic Strike` at the end as the rage dump.
 4. Watch the character counter (255 is the limit), then click **Save**. GSE saves when you're out of combat.
 
 Rules of thumb:
@@ -101,7 +128,7 @@ When the new abilities arrive (levels from the 5.5.4 client data):
 Here's a level 10 Arms block as an example. Add it twice, after each of the existing blocks:
 ```
 /cleartarget [dead][help]
-/targetenemy [noexists][dead][help]
+=GSE.V["SCHIZ_TARGET"]()
 /startattack
 /cast [mod:shift] Charge
 /cast Mortal Strike
@@ -113,9 +140,10 @@ The kit's [WeakAuras rotation](../WeakAuras/) also has a Leveling mode for level
 
 ## Typing it in by hand
 If the import string won't paste, build the sequences in the editor (Raw Edit is a Patron feature, so this uses the normal block editor):
-1. `/gse`, click **New Sequence**, and name it `SCHIZ_WAR_L8`. In Configuration, set Specialisation / Class ID to **Warrior** and click Save.
-2. Open the version node. Using **Add block > Action > Macro**, make one block for each block in [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md) and paste each block's text. Click Save.
-3. Repeat for `SCHIZ_WAR_L8_CHG`, which has one block.
+1. `/gse`, create a new variable named `SCHIZ_TARGET`, paste the Lua from "The SCHIZ_TARGET variable" into Implementation and click Save. (Or skip the variable and paste each block's "What it runs" text instead.)
+2. Click **New Sequence** and name it `SCHIZ_WAR_L8`. In Configuration, set Specialisation / Class ID to **Warrior** and click Save.
+3. Open the version node. Using **Add block > Action > Macro**, make one block for each block in [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md) and paste each block's "As stored in GSE" text. Click Save.
+4. Repeat for `SCHIZ_WAR_L8_CHG`, which has one block.
 
 ## Known limits
 - **Not yet tested in game.** The import string was built offline. It was checked against GSE's own import code and the 5.5.4 client's spell data (see "Source files"), but nobody has pressed the key in game yet.
@@ -125,20 +153,26 @@ If the import string won't paste, build the sequences in the editor (Raw Edit is
 - **Victory Rush and Execute often aren't usable.** A press on their block then does nothing new; auto-attack and Heroic Strike keep going. That's expected at level 8.
 
 ## Source files
-- `source/sequence.lua`: the sequences as plain data (macro text per block, names and metadata).
+- `source/sequence.lua`: the sequences and the variable as plain data (macro text per block, the variable's Lua, names and metadata).
 - `source/gse_format.lua`: Jon's own reader and writer for GSE's `!GSE3!` strings. The format is `!GSE3!` followed by Base64 of Deflate-compressed CBOR, the same as WoW's `C_EncodingUtil` defaults that GSE uses. No GSE code is copied: GSE is "All Rights Reserved", so its source is only read to check the format. Decoding two real GSE exports and writing them back with this encoder produced the same data.
 - `source/build.lua`: writes the import string and the readable sheet. Run `lua build.lua` with LibDeflate on disk (`WA_LIBS`, default `/workspace`).
-- `source/verify.lua`: 107 checks. It runs on the export, on a checkout of the GSE source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
+- `source/verify.lua`: 127 checks. It runs on the export, on a checkout of the GSE 3.3.36-a source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
   - the string decodes and re-encodes to the same text
   - the collection and the current `Versions` format that GSE needs (GSE now refuses the old `Macros` format)
+  - the SCHIZ_TARGET variable is in the collection the way GSE's importer files variables, every block calls it once after a slash-command first line, and with it filled in every block is exactly the v1.1 text
   - the block types, that MoP's interface is in GSE.toc, and that the GSEVersion is 3336, which is how GSE's own version parser reads 3.3.36 (so 3.3.36 shows no older-version note)
   - each spell's ID, level (8 or lower), skill line and GCD status
   - no more than one GCD ability per block
   - every block stays within 255 characters
   - the readable sheet is up to date
   - nothing personal is in the files (names to look for go in the `PRIVATE_WORDS` environment variable, so the list itself never ships)
+- `source/gse_sim.lua`: 21 checks that run GSE 3.3.36-a's own import and compile code on the export, offline. Run it from a GSE checkout at tag 3.3.36-a: `cd <checkout> && lua <this folder>/source/gse_sim.lua`. GSE's code is loaded from that checkout, not copied. It checks that:
+  - the import files SCHIZ_TARGET as a variable before the two sequences, with no older-version notice and no dialogs
+  - GSE compiles every block to the filled-in text, within 255 characters, with no missing-variable message
+  - a block that started with the variable line wouldn't run as macro text
 
 ## Version history
+- **v1.2** (Nov 3 2026): the target-picking line moved into the shared GSE variable **SCHIZ_TARGET**, which every block calls and which comes in the same import. With the variable filled in, every block runs exactly the v1.1 text. Still stamped for GSE 3.3.36 (GSEVersion 3336).
 - **v1.1** (Nov 3 2026): stamped for GSE 3.3.36 (GSEVersion 3336 instead of 3330), so GSE 3.3.36 no longer says the sequences come from an older version. GSE 3.3.36 or newer is now required. The macros are unchanged.
 - **v1** (Nov 3 2026): first release, with the level 8 main sequence (Victory Rush and Execute blocks, Heroic Strike rage dump, Blood Fury, Shift-Charge) and a Charge opener.
 
