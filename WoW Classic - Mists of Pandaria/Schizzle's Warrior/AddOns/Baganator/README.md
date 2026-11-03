@@ -10,7 +10,7 @@ A Baganator profile for the non-ElvUI Warrior kit in MoP Classic 5.5.x by Jon Sh
 
 ## Install (step by step)
 1. Install **Baganator** and **Syndicator**, and turn off ElvUI's bags (the kit turns ElvUI off). Log in.
-2. If Baganator shows its welcome window, click **Choose** under **Single Bag**.
+2. If Baganator shows its welcome window, click **Choose** under **Single bag**.
 3. Type `/bgr`. The **Customise Baganator** window opens on **General**.
 4. Under the **Profiles** dropdown, click **Import**.
 5. Paste the whole contents of `Warrior Profile.txt` (one line starting with `{`) into **Paste your import string here** and click **Import**.
