@@ -8,6 +8,13 @@ local FONT = os.getenv("DETAILS_FONT") or "Fira Sans Condensed Medium"
 local fails, checks = 0, 0
 local function check(cond, msg) checks = checks + 1 if not cond then fails = fails + 1 print("FAIL: " .. msg) end end
 check(R.skinsOk, "Details skins.lua loaded: " .. tostring(R.skinsErr))
+local W_EXPECT, H_EXPECT, MARGIN = 250, 175, 4
+local attrSrc = readfile(SRC .. "functions/attributes.lua")
+local TITLE = tonumber(readfile(SRC .. "classes/class_instance_snap.lua"):match("local TITLE_BAR_HEIGHT = (%d+)"))
+check(TITLE == 20, "Details title bar height is 20 (window 1 sits on top of window 2's title bar)")
+check(attrSrc:find("DETAILS_SUBATTRIBUTE_DAMAGEDONE = 1", 1, true) and attrSrc:find("DETAILS_SUBATTRIBUTE_DAMAGETAKEN = 3", 1, true) and attrSrc:find("DETAILS_ATTRIBUTE_DAMAGE = 1", 1, true),
+  "Details: Damage = 1, Damage Done = 1, Damage Taken = 3")
+check(not readfile(SRC .. "locales/Details-enUS.lua"):lower():find("mitigation", 1, true), "Details has no built-in display named mitigation (so Damage Taken is used)")
 
 -- media registered by Details (boot.lua) and by WeakAuras (Types.lua)
 local media = {font = {}, statusbar = {}, background = {}, border = {}}
@@ -82,11 +89,24 @@ for _, spec in ipairs(SPECS) do
     check(w.row_info.height == 18 and w.row_info.textR_show_data[2] and w.row_info.textR_show_data[3], tag .. "bar height 18, DPS and percent shown")
     check(w.sub_atributo_last[w.atributo] == w.sub_atributo, tag .. "remembered sub-display matches")
   end
+  check(prof.disable_stretch_from_toolbar == true, tag .. "locked windows don't stretch from the title bar")
   check(prof.tooltip.fontface == FONT and prof.tooltip.fontsize == 11 and prof.font_faces.menus == FONT, tag .. "tooltip and menu font")
   ---------------------------------------------------------------- 4. displays
   local w1, w2 = prof.instances[1], prof.instances[2]
   check(w1.atributo == 1 and w1.sub_atributo == 1, tag .. "window 1 = Damage Done")
   check(w2.atributo == spec.w2[1] and w2.sub_atributo == spec.w2[2], tag .. "window 2 display")
+  check(w2.atributo == 1 and w2.sub_atributo == 3, tag .. "window 2 = Damage Taken (closest built-in to tank mitigation)")
+  for i, w in ipairs(prof.instances) do
+    for _, pos in ipairs({w.posicao.normal, w.__pos.normal, w.__pos.solo}) do
+      check(pos.w == W_EXPECT and pos.h == H_EXPECT, ("%swindow %d is %dx%d"):format(tag, i, W_EXPECT, H_EXPECT))
+    end
+    check(w.__locked == true, tag .. "window " .. i .. " locked")
+    check(w.toolbar_side == 1, tag .. "window " .. i .. " title bar on top")
+    check(w.libwindow.point == "BOTTOMRIGHT" and w.libwindow.x == -MARGIN and w.libwindow.scale == 1, tag .. "window " .. i .. " right edge 4 px from the screen's right edge")
+  end
+  check(w2.libwindow.y == MARGIN, tag .. "window 2 bottom edge 4 px up")
+  check(w1.libwindow.y == MARGIN + H_EXPECT + TITLE, tag .. "window 1 sits right on top of window 2's title bar")
+  check(w1.__snapV == true and w1.__snapH == false and w1.__snap[2] == 2 and w2.__snap[4] == 1, tag .. "stacked snap: 1 above 2")
   ---------------------------------------------------------------- 5. simulate ImportProfile + ApplyProfile
   local D = {}
   local data = decode(pstr)
@@ -117,10 +137,14 @@ for _, spec in ipairs(SPECS) do
     windows[index] = inst
   end
   check(windows[1].ativa and windows[2].ativa, tag .. "both windows open after import")
-  check(windows[1].snap[3] == 2 and windows[2].snap[1] == 1, tag .. "windows snapped 1<->2")
+  check(windows[1].snap[2] == 2 and windows[2].snap[4] == 1, tag .. "windows snapped 1 above 2")
+  -- profiles.lua: instance.isLocked = skin.__locked, then instance:LockInstance(instance.isLocked)
+  check(readfile(SRC .. "functions/profiles.lua"):find("instance.isLocked = skin.__locked", 1, true) ~= nil, tag .. "Details applies __locked on profile load")
+  check(windows[1].__locked and windows[2].__locked, tag .. "both windows locked after import")
   check(windows[2].atributo == spec.w2[1] and windows[2].sub_atributo == spec.w2[2], tag .. "window 2 display survives merge")
   local lw1, lw2 = windows[1].libwindow, windows[2].libwindow
-  check(lw1.x == lw2.x - windows[2].posicao.normal.w and lw1.y == lw2.y, tag .. "windows touch edge to edge")
+  check(lw1.x == lw2.x and lw1.y == lw2.y + windows[2].posicao.normal.h + TITLE, tag .. "windows touch edge to edge, stacked")
+  check(lw1.y + H_EXPECT + TITLE <= 400, tag .. "top of the stack at most 400 px up (tooltip sits above it)")
 end
 check(strings.arms == strings.fury, "Arms and Fury strings are identical (same layout; the name is typed at import)")
 

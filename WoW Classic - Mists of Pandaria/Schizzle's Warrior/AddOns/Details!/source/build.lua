@@ -1,7 +1,7 @@
 -- Builds the three Schizzle's Warrior Details! profiles (Arms, Fury, Protection).
 -- Usage (from this folder):  lua build.lua      env: DETAILS_SRC, WA_TYPES (see common.lua), DETAILS_FONT, OUT_DIR
--- Style matches the Schizzle's Brewmaster Details! profile: two 209x150 Minimalistic windows snapped
--- edge to edge at the bottom right, Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
+-- Two locked 250x175 Minimalistic windows stacked in the bottom-right corner, 4 px from the right and
+-- bottom edges (window 1 on top, window 2 below), Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
 local HERE = (arg and arg[0] or ""):match("^(.*[/\\])") or "./"
 dofile(HERE .. "common.lua")
 local R = dofile(HERE .. "defaults.lua")
@@ -17,7 +17,8 @@ local KNOWN_FILES = {
 }
 local FONT_FILE = KNOWN_FILES[FONT] or "Fonts\\FRIZQT__.TTF"
 local FLAT, FLAT_FILE = "Details Flat", "Interface\\AddOns\\Details\\images\\bar_background"
-local W, H = 209, 150
+local W, H = 250, 175
+local TITLE_BAR = 20 -- Details' title bar sits above the bar area (class_instance_snap.lua TITLE_BAR_HEIGHT)
 
 local function themedWindow()
   local w = deepcopy(R.instance)
@@ -70,18 +71,20 @@ local function themedWindow()
   return w
 end
 
--- anchor both windows to the bottom right of the screen, window 1 on the left
-local RIGHT_MARGIN, BOTTOM_MARGIN = -24, 190
+-- stack both windows in the bottom-right corner: window 2 at the bottom, window 1 on top of its title bar
+local RIGHT_MARGIN, BOTTOM_MARGIN = -4, 4
 local function placeWindow(w, id, atributo, sub)
-  local xRight = RIGHT_MARGIN - (id == 1 and W or 0)
-  w.libwindow = {point = "BOTTOMRIGHT", x = xRight, y = BOTTOM_MARGIN, scale = 1}
+  local xRight = RIGHT_MARGIN
+  local yBottom = BOTTOM_MARGIN + (id == 1 and (H + TITLE_BAR) or 0)
+  w.libwindow = {point = "BOTTOMRIGHT", x = xRight, y = yBottom, scale = 1}
   local uiW, uiH = 1365, 768 -- fallback CENTER offsets in case libwindow is ignored
-  local cx, cy = uiW / 2 + xRight - W / 2, BOTTOM_MARGIN + H / 2 - uiH / 2
+  local cx, cy = uiW / 2 + xRight - W / 2, yBottom + H / 2 - uiH / 2
   local pos = {normal = {x = cx, y = cy, w = W, h = H}, solo = {x = cx, y = cy, w = W, h = H}}
   w.posicao, w.__pos = deepcopy(pos), deepcopy(pos)
-  w.__was_opened, w.__locked = true, false
-  w.__snapH, w.__snapV = true, false
-  w.__snap = (id == 1) and {[3] = 2} or {[1] = 1} -- 1 left, 3 right; value = neighbour window id
+  w.__was_opened = true
+  w.__locked = true -- locked: no dragging, no resize grips (Details:LockInstance)
+  w.__snapH, w.__snapV = false, true
+  w.__snap = (id == 1) and {[2] = 2} or {[4] = 1} -- 2 = window below me, 4 = window above me
   w.atributo, w.sub_atributo = atributo, sub
   -- last sub-display remembered per attribute (damage, heal, energy, misc, custom)
   w.sub_atributo_last = {1, 1, 1, 1, 1}
@@ -109,6 +112,7 @@ local function buildProfile(spec)
   profile.time_type = 2
   profile.update_speed = 0.2
   profile.use_row_animations = true
+  profile.disable_stretch_from_toolbar = true -- a locked window doesn't stretch when its title bar is dragged
   profile.instances = {
     placeWindow(themedWindow(), 1, 1, 1),                 -- Damage Done
     placeWindow(themedWindow(), 2, spec.w2[1], spec.w2[2]),

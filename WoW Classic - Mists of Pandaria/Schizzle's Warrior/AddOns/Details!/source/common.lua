@@ -41,8 +41,8 @@ function writefile(p, s) local f = assert(io.open(p, "wb")) f:write(s) f:close()
 
 -- spec key -> output file, in-game profile name, specialization ID, window 2 display {attribute, sub-attribute}
 SPECS = {
-  {key = "arms", file = "Arms Profile.txt", name = "Schizzle's Warrior Arms", specId = 71, w2 = {4, 3}},       -- Misc > Interrupts
-  {key = "fury", file = "Fury Profile.txt", name = "Schizzle's Warrior Fury", specId = 72, w2 = {4, 3}},       -- Misc > Interrupts
-  {key = "prot", file = "Protection Profile.txt", name = "Schizzle's Warrior Protection", specId = 73, w2 = {1, 3}}, -- Damage > Damage Taken
+  {key = "arms", file = "Arms Profile.txt", name = "Schizzle's Warrior Arms", specId = 71, w2 = {1, 3}},       -- Damage > Damage Taken (closest built-in to tank mitigation)
+  {key = "fury", file = "Fury Profile.txt", name = "Schizzle's Warrior Fury", specId = 72, w2 = {1, 3}},       -- Damage > Damage Taken (closest built-in to tank mitigation)
+  {key = "prot", file = "Protection Profile.txt", name = "Schizzle's Warrior Protection", specId = 73, w2 = {1, 3}}, -- Damage > Damage Taken (closest built-in to tank mitigation)
 }
 SWITCH_FILE = "Spec Switch Code.lua"

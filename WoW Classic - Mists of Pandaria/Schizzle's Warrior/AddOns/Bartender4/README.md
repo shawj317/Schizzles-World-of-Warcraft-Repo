@@ -34,7 +34,7 @@ All positions are from the bottom centre of the screen, in UI units. Bars are at
 
 - **Off:** bag bar (Baganator shows bags), pet bar, Blizzard art, reputation bar.
 - **Empty buttons are hidden**, so a bar you don't fill takes no space.
-- **Clear areas:** nothing sits in the WeakAuras area (170 px either side of the screen centre, from 220 px below to 120 px above it; the tray's bottom is about 168 px up from the bottom of the screen) or in the Details! corner (bottom right, 190 px up).
+- **Clear areas:** nothing sits in the WeakAuras area (170 px either side of the screen centre, from 220 px below to 120 px above it; the tray's bottom is about 168 px up from the bottom of the screen) or above the Details! stack (bottom right, 4 px in; see the [Details! README](../Details!/) for the two spots where bar 5 and the micro menu come close).
 - **Hotkeys** in Fira Sans Condensed Medium 12, Warrior tan; stack counts 13, white; macro names hidden.
 - **Out of range:** the whole button turns red.
 - **Self-cast and focus-cast keys** follow Blizzard's settings (Esc > Interface > Combat), as in Bartender4's defaults.
