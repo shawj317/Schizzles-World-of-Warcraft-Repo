@@ -75,3 +75,13 @@ LICENSE, including its Attribution section. If you are unsure whether you
 are authorized, assume you are not and leave this repository alone.
 
 Thank you for respecting the author's wishes.
+
+## Development
+
+This repository is import strings for WeakAuras, Plater, Details!, and TradeSkillMaster. There is no server to start. The offline check is:
+
+```bash
+python3 tools/verify_imports.py
+```
+
+It needs Lua 5.1 (`lua5.1` on PATH, the same language as the Mists of Pandaria Classic client) and LibSerialize 1.2.3 at `/usr/local/share/schizzles-mop-classic/LibSerialize.lua` (override with `LIBSERIALIZE_LUA`). The Cloud Agent install step provides both. The checker decodes every import string, compiles the WeakAura, Plater, and Details! Lua with `lua5.1`, and checks the TSM group counts against the READMEs.
