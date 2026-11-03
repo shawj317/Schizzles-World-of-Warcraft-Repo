@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
 -- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
-local RELEASE = "1.5.1"
+local RELEASE = "1.6"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -97,12 +97,10 @@ local ANIM = { start = { type = "none", duration_type = "seconds", easeType = "n
                main = { type = "none", duration_type = "seconds", easeType = "none", easeStrength = 3 },
                finish = { type = "none", duration_type = "seconds", easeType = "none", easeStrength = 3 } }
 
--- rage bar, then the swing timer under it (main hand 6 px, off hand 4 px)
-local RAGE_Y, RAGE_H = 62, 10
-local SW_H, OH_H = 6, 4
-local SW_Y = RAGE_Y - RAGE_H / 2 - 1 - SW_H / 2
-local OH_Y = SW_Y - SW_H / 2 - 1 - OH_H / 2
-local MODE_TOP = OH_Y - OH_H / 2
+-- rage bar. v1.6 halved it (80 x 5 px, was 160 x 10) and removed the swing timer that sat under it
+local BAR_W = 80
+local RAGE_Y, RAGE_H = 62, 5
+local MODE_TOP = RAGE_Y - RAGE_H / 2
 local function icon(id, size, x, y, pick, withMode)
   -- glow sits right after the background so every text draws above it
   local subs = { { type = "subbackground" }, glowSub(size >= 50 and "buttonOverlay" or "Pixel") }
@@ -111,7 +109,6 @@ local function icon(id, size, x, y, pick, withMode)
   if size >= 34 then subs[#subs + 1] = text("%tag", "INNER_TOPLEFT", size >= 50 and 10 or 8, 1, -1, { 0.6, 0.9, 1, 1 }, "OUTLINE") end
   if withMode then
     -- centred in the gap between the icon top (+size/2) and the bottom of the rage bar
-    -- centred in the gap between the icon top (+size/2) and the bottom of the off-hand swing bar
     local m = text("%mode", "CENTER", 14, 0, (size / 2 + MODE_TOP) / 2, { 1, 0.82, 0, 1 }, "THICKOUTLINE")
     m.text_selfPoint = "CENTER"
     subs[#subs + 1] = m
@@ -159,7 +156,6 @@ nextIcon.authorOptions = {
   { type = "toggle", key = "showCDs", name = "Show offensive cooldowns (right)", default = true, width = 1 },
   { type = "toggle", key = "showKeys", name = "Show keybinds", default = true, width = 1 },
   { type = "toggle", key = "tintOOR", name = "Red tint when out of range", default = true, width = 1, useDesc = true, desc = "Out-of-range icons are always desaturated; this also tints them red so they differ from GCD/rage grey." },
-  { type = "toggle", key = "showSwing", name = "Show swing timer", default = true, width = 1, useDesc = true, desc = "Main-hand swing bar under the rage bar, plus an off-hand bar when dual wielding." },
   { type = "toggle", key = "showLast", name = "Show last cast", default = true, width = 1, useDesc = true, desc = "Small icon left of Next+1 showing the spell that just went off (green border = it was the suggested spell)." },
   { type = "toggle", key = "showTray", name = "Show cooldown tray", default = true, width = 1, useDesc = true, desc = "Small icons under the HUD (bottom right, filling leftward) for racials and big cooldowns that are learned and off cooldown. They hide while on cooldown, and never repeat a spell the rotation is already showing." },
   { type = "toggle", key = "showInt", name = "Show interrupts", default = true, width = 1 },
@@ -168,7 +164,7 @@ nextIcon.authorOptions = {
   { type = "toggle", key = "intFocus", name = "Also watch focus casts", default = false, width = 1 },
 }
 nextIcon.config = { aoe = 3, protMode = 1, amMode = 1, fuMode = 1, shout = 1, dpsStance = 1, dumpMargin = 20, slamRage = 80, wildRage = 70,
-  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showSwing = true, showLast = true, showTray = true, showInt = true, intCC = true, intMain = false, intFocus = false }
+  showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showLast = true, showTray = true, showInt = true, intCC = true, intMain = false, intFocus = false }
 children[#children + 1] = nextIcon
 children[#children + 1] = icon("SWR Next+1", 34, 0, -50, "R.next2", false)
 local off = icon("SWR Off-GCD", 34, 40, -50, "R.off", false)
@@ -216,10 +212,10 @@ end
 local function border(r, g, b) return { type = "subborder", border_visible = true, border_edge = "Square Full White",
   border_color = { r or 0, g or 0, b or 0, 1 }, border_offset = 1, border_size = 1, anchor_area = "bar" } end
 
--- rage bar (orange when Heroic Strike / Cleave should dump rage)
+-- rage bar (orange when Heroic Strike / Cleave should dump rage). Since v1.6 it only shows in combat with rage above 0.
 local RAGE_TSU = HEAD .. [[
   local r = R.show and R.rage
-  if not r then
+  if not r or not (R.S and R.S.combat) or not (r.v > 0) then
 ]] .. hide() .. [[
 
   end
@@ -229,43 +225,13 @@ local RAGE_TSU = HEAD .. [[
     dump = r.dump and true or false, ragetext = tostring(r.v) }
   return true
 end]]
-local rb = bar("SWR Rage", 160, RAGE_H, 0, RAGE_Y, { 0.85, 0.15, 0.1, 1 }, { 0.12, 0.12, 0.12, 0.85 })
+local rb = bar("SWR Rage", BAR_W, RAGE_H, 0, RAGE_Y, { 0.85, 0.15, 0.1, 1 }, { 0.12, 0.12, 0.12, 0.85 })
 rb.subRegions[#rb.subRegions + 1] = border()
-rb.subRegions[#rb.subRegions + 1] = text("Rage", "INNER_LEFT", 9, 2, 0)
-rb.subRegions[#rb.subRegions + 1] = text("%ragetext", "INNER_RIGHT", 9, -2, 0)
+-- the bar is too thin for text inside: the rage number sits just right of it (the red bar is the label)
+rb.subRegions[#rb.subRegions + 1] = text("%ragetext", "OUTER_RIGHT", 8, 3, 0)
 rb.triggers = trig(RAGE_TSU, "{ dump = 'bool', value = true, total = true, ragetext = 'string' }")
 rb.conditions = { { check = { trigger = 1, variable = "dump", value = 1 }, changes = { { property = "barColor", value = { 1, 0.55, 0.05, 1 } } } } }
 children[#children + 1] = rb
-
--- swing timer (white swings; Heroic Strike / Cleave are instant in MoP, not on-next-swing)
-local function swingTSU(hand)
-  return HEAD .. [[
-  local s = R.show and R.swing and R.swing.]] .. hand .. [[
-
-  if not s then
-]] .. hide() .. [[
-
-  end
-  local st = allstates[""]
-  if st and st.show and st.expirationTime == s.exp and st.up == s.up then return false end
-  allstates[""] = { show = true, changed = true, up = s.up, progressType = s.up and "timed" or "static",
-    value = 0, total = 1, duration = s.up and s.dur or 0, expirationTime = s.exp, autoHide = false,
-    swingtext = s.up and string.format("%.1f", s.dur) or "" }
-  return true
-end]]
-end
-local sw = bar("SWR Swing Timer", 160, SW_H, 0, SW_Y, { 0.95, 0.95, 0.95, 1 }, { 0.1, 0.1, 0.1, 0.8 })
-sw.inverse = true -- fills up towards the next swing
-sw.subRegions[#sw.subRegions + 1] = border()
-sw.subRegions[#sw.subRegions + 1] = text("Swing", "OUTER_LEFT", 8, -2, 0, { 0.85, 0.85, 0.85, 1 })
-sw.triggers = trig(swingTSU("mh"), "{ up = 'bool', swingtext = 'string', expirationTime = true, duration = true }")
-children[#children + 1] = sw
-local so = bar("SWR Swing Timer OH", 160, OH_H, 0, OH_Y, { 0.7, 0.8, 1, 1 }, { 0.1, 0.1, 0.1, 0.8 })
-so.inverse = true
-so.subRegions[#so.subRegions + 1] = border()
-so.subRegions[#so.subRegions + 1] = text("OH", "OUTER_LEFT", 7, -2, 0, { 0.7, 0.8, 1, 1 })
-so.triggers = trig(swingTSU("oh"), "{ up = 'bool', swingtext = 'string', expirationTime = true, duration = true }")
-children[#children + 1] = so
 
 -- interrupt icon (red pixel glow + red border, cast-time swipe) and cast bar
 local INT_TSU = HEAD .. [[
@@ -385,13 +351,14 @@ local group = {
   controlledChildren = {}, anchorPoint = "CENTER", selfPoint = "CENTER", anchorFrameType = "SCREEN",
   xOffset = 0, yOffset = -40, frameStrata = 1, border = false, borderColor = { 0, 0, 0, 1 }, backdropColor = { 1, 1, 1, 0.5 },
   borderEdge = "Square Full White", borderOffset = 4, borderInset = 1, borderSize = 2, borderBackdrop = "Blizzard Tooltip",
-  scale = 1, alpha = 1, subRegions = {},
+  -- v1.6: Group Scale 0.8 and Group Alpha 0.8 (the group's own options; children keep their sizes and scale with it)
+  scale = 0.8, alpha = 0.8, subRegions = {},
   triggers = { activeTriggerMode = -10, { trigger = { type = "aura2", names = {}, event = "Health", subeventPrefix = "SPELL",
     subeventSuffix = "_CAST_START", spellIds = {}, unit = "player", debuffType = "HELPFUL" }, untrigger = {} } },
   conditions = {}, load = LOADFOR(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {},
   information = { saved = true },
-  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10, a swing timer and a GCD swipe. v" .. RELEASE .. ".",
+  desc = "Schizzle's Warrior Rotation: all-in-one Arms / Fury (TG + SMF) / Protection rotation helper for MoP Classic. Switches with your spec automatically, with a Leveling mode before level 10 and a GCD swipe. v" .. RELEASE .. ".",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

@@ -4,14 +4,13 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 6
+local VERSION = 7
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
 end
 local OLD = SchizzleWarrior
-local E = { v = VERSION, cfg = aura_env.config or {}, last = 0, R = {}, keys = {}, keysByName = {}, keysrc = {}, keysAt = -99,
-  swing = { mh = { s = 0, d = 0 }, oh = { s = 0, d = 0 } } }
+local E = { v = VERSION, cfg = aura_env.config or {}, last = 0, R = {}, keys = {}, keysByName = {}, keysrc = {}, keysAt = -99 }
 SchizzleWarrior = E
 
 -- spell IDs verified against MoP Classic client data (build 5.5.4.70631)
@@ -948,22 +947,14 @@ local function trackers(S)
   return t
 end
 
--- auto attack, swing timer and cast feedback ------------------------------------
--- Heroic Strike / Cleave are instant, off-GCD attacks in MoP (not "on next swing"), so the swing timer is just
--- your white swings: main hand, plus off hand when dual wielding.
+-- auto attack and cast feedback ------------------------------------------------
+-- (the swing timer was removed in v1.6, so the engine no longer listens to the combat log or attack speed)
 local function autoAttacking()
   if IsCurrentSpell then return IsCurrentSpell(ID.attack) and true or false end
   if C_Spell and C_Spell.IsCurrentSpell then return C_Spell.IsCurrentSpell(ID.attack) and true or false end
   return nil -- API missing: never nag about auto attack
 end
 E.autoAttacking = autoAttacking
-function E:Swing(hand, now)
-  local mh, oh
-    if UnitAttackSpeed then mh, oh = UnitAttackSpeed("player") end
-  local d = hand == "oh" and oh or mh
-  if d and d > 0 then self.swing[hand] = { s = now, d = d } end
-  self.last = -1
-end
 function E:Cast(id, now)
   local R = self.R or {}
   local hit = false
@@ -976,26 +967,7 @@ function E:Cast(id, now)
 end
 function E:OnEvent(event, ...)
   local now = GetTime()
-  if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-    if not CombatLogGetCurrentEventInfo then return end
-    local info = { CombatLogGetCurrentEventInfo() }
-    local sub, src = info[2], info[4]
-    if src == nil or src ~= (UnitGUID and UnitGUID("player")) then return end
-    if sub == "SWING_DAMAGE" then self:Swing(info[21] and "oh" or "mh", now)
-    elseif sub == "SWING_MISSED" then self:Swing(info[13] and "oh" or "mh", now) end
-  elseif event == "UNIT_ATTACK_SPEED" then
-    local unit = ...
-    if unit ~= "player" then return end
-    local mh, oh
-    if UnitAttackSpeed then mh, oh = UnitAttackSpeed("player") end
-    for hand, d in pairs({ mh = mh, oh = oh }) do
-      local w = self.swing[hand]
-      if d and w and w.d > 0 and w.s + w.d > now then
-        local frac = (now - w.s) / w.d -- keep the same progress, new speed
-        w.s, w.d = now - frac * d, d
-      end
-    end
-  elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+  if event == "UNIT_SPELLCAST_SUCCEEDED" then
     local unit, _, id = ...
     if unit == "player" and id then self:Cast(id, now) end
   end
@@ -1003,17 +975,9 @@ end
 if CreateFrame then
   local f = (OLD and OLD.frame) or CreateFrame("Frame")
   f:UnregisterAllEvents()
-  f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-  f:RegisterEvent("UNIT_ATTACK_SPEED")
   f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
   f:SetScript("OnEvent", function(_, ev, ...) E:OnEvent(ev, ...) end)
   E.frame = f
-end
-local function swingState(hand, now, attacking)
-  local w = E.swing[hand]
-  local up = w and w.d > 0 and (w.s + w.d) > now
-  if not up and not attacking then return nil end
-  return { up = up and true or false, start = up and w.s or 0, dur = up and w.d or 0, exp = up and (w.s + w.d) or 0 }
 end
 
 -- one evaluation per 0.1 s shared by every aura
@@ -1082,20 +1046,19 @@ function E:Tick()
   for i, e in ipairs(left) do R.left[i] = entry(e, S, true) end
   for i, e in ipairs(right) do R.right[i] = entry(e, S, true) end
   R.tray = tray(S, R)
-  local wrong = (S.prot and S.tank and S.stance ~= ID.def) or (not S.prot and S.stance == ID.def)
   R.mode = specName .. (S.aoe and (" AoE " .. S.n) or "") .. (S.exec and " EXEC" or "")
   R.rage = { v = S.rage, max = S.rageMax, dump = S.rage >= S.dump }
+  -- resources line: spec counters only (no stance or level text since v1.6; the left-side stance reminder
+  -- still flags a wrong stance). Leveling has no counters, so the line is hidden there.
   local res
-  if S.arms then res = string.format("%s  TfB %d", stanceName, stacks(BUFF, ID.tfb))
-  elseif S.fury then res = string.format("%s  RB %d  MC %d", stanceName, S.rbc or 0, S.mc or 0)
+  if S.arms then res = string.format("TfB %d", stacks(BUFF, ID.tfb))
+  elseif S.fury then res = string.format("RB %d  MC %d", S.rbc or 0, S.mc or 0)
   elseif S.prot then
     local c, mx
     if known(ID.sblock) then c, mx = charges(ID.sblock) end
-    res = string.format("%s  Block %s", stanceName, c and (c .. "/" .. (mx or 2)) or "-")
-  else
-    res = string.format("%s  Lv %d", stanceName, S.level)
+    res = string.format("Block %s", c and (c .. "/" .. (mx or 2)) or "-")
   end
-  R.res = res and (wrong and ("! " .. res) or res) or nil
+  R.res = res
   R.trk = trackers(S)
   if not S.prot and known(ID.cs) then
     local a = aura(TDEBUFF, ID.cs)
@@ -1110,12 +1073,7 @@ function E:Tick()
     local ba = aura(BUFF, ID.sbarrier)
     R.sbar = { rem = ba and ba.rem or 0, exp = ba and ba.exp or 0, dur = ba and ba.dur or 6, amount = ba and ba.points or nil }
   end
-  -- swing timer + cast feedback
-  if E.cfg.showSwing ~= false then
-    local oh
-    if UnitAttackSpeed then oh = select(2, UnitAttackSpeed("player")) end
-    R.swing = { mh = swingState("mh", now, S.attacking), oh = oh and swingState("oh", now, S.attacking) or nil }
-  end
+  -- cast feedback
   local lc = self.lastCast
   if lc then
     local age = now - lc.t

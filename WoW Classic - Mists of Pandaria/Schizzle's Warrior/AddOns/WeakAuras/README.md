@@ -4,11 +4,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (32,181 chars, starts `!WA:2!`). Current version: **v1.5.1** (engine `VERSION = 6`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (31,164 chars, starts `!WA:2!`). Current version: **v1.6** (engine `VERSION = 7`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 353 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the swing timer, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 364 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the rage bar visibility, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -16,30 +16,30 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.5.1" group. Click **Import** again to accept it.
+5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.6" group. Click **Import** again to accept it.
 6. Type `/reload`.
 7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
-9. Options live on **Schizzle's Warrior Rotation v1.5.1 → SWR Next → Custom Options** (see "Options" below).
+9. Options live on **Schizzle's Warrior Rotation v1.6 → SWR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.5.1" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.6" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
-**Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group falls under **Group Arrangement** (ticked by default), and it hasn't changed.
+**Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group (their positions and sizes) falls under **Group Arrangement** (ticked by default).
+
+**Group Scale and Alpha:** the whole group is drawn at **Scale 0.8** and **Alpha 0.8** (80% size, 80% opacity; on the group's **Display** tab as Group Scale and Group Alpha). Alpha rides in **Display**, so a plain Update applies it. Scale is in **Size & Position**, so tick that box on Update to get the 0.8 scale (it also moves the group back to 0, -40).
 
 **Text sizes on update:** WeakAuras sorts changes by the top-level field that changed. Icon and bar texts (keybind, tag, mode, KICK and bar labels) live inside each aura's sub-regions, so a change to their size, font or outline rides in **Display** (ticked by default) and a plain **Update** applies it. Only a text aura's own `fontSize` (the SWR Resources text) counts as a size field, and on a child aura WeakAuras files size fields under **Group Arrangement** (also ticked by default). **Size & Position** only matters for the group itself: tick it only if you want the group moved back to 0, -40, because it also resets the group's position.
 
 ## What's on screen
 
-All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
+All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
 | Element | Size | Position | What it shows |
 |---|---|---|---|
 | **SWR Interrupt** + "KICK" | 44 px | y +126 | Pummel when the target is casting something interruptible (red glow), with the cast-time swipe |
 | **SWR Interrupt Cast** | 120x10 | y +98 | Name and % of the cast you should kick |
-| **SWR Resources** | 12 pt | y +76 | Stance name and spec counters (see each spec below). Starts with `!` when you're in the wrong stance |
-| **SWR Rage** | 160x10 | y +62 | Rage bar with the number. It turns orange when you're close to the rage cap and should dump rage |
-| **SWR Swing Timer** | 160x6 | y +53 | Main-hand white swing: fills up until the next swing lands (combat log `SWING_DAMAGE` / `SWING_MISSED`, speed from `UnitAttackSpeed`). Full and still while auto attack is on but no swing has landed yet |
-| **SWR Swing Timer OH** | 160x4 | y +47 | Off-hand swing, only when dual wielding (Fury) |
+| **SWR Resources** | 12 pt | y +76 | Spec counters (see each spec below). No stance name or level; hidden in Leveling mode, which has no counters |
+| **SWR Rage** | 80x5 | y +62 | Rage bar, with the rage number just to its right. Shown only **in combat with more than 0 rage**; hidden otherwise. It turns orange when you're close to the rage cap and should dump rage |
 | Mode label | 14 pt gold | above Next | `ARMS`, `FURY TG`, `FURY SMF`, `PROT TANK`, `PROT DPS` or `LEVELING`, plus `AoE n` and `EXEC` |
 | **SWR Next** | 56 px | 0, 0 | The ability to press now, with its keybind, a reason tag (top left), and a glow for high-priority picks. A GCD swipe runs over it after each GCD spell, and a short white sparkle plays when the suggested spell goes off |
 | **SWR Defensive 1-3** | 36 px | x -52 / -92 / -132 | Stance reminder, Prot active mitigation, and defensives when your health drops |
@@ -63,7 +63,7 @@ All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 - Out of melee range: the Charge / Heroic Throw logic is unchanged.
 - A wait on a real cooldown (e.g. Mortal Strike coming back) still shows the greyed-out spell with its swipe.
 
-**Heroic Strike is not on-next-swing in MoP.** It has been an instant attack since patch 4.0.1. Since 5.0.4 it is off the global cooldown, with a 1.5 s cooldown shared with Cleave. So the swing timer has nothing to do with Heroic Strike: it only shows white swings. Heroic Strike and Cleave never get the GCD swipe or grey-out; their own 1.5 s cooldown shows as a swipe instead.
+**Heroic Strike is not on-next-swing in MoP.** It has been an instant attack since patch 4.0.1. Since 5.0.4 it is off the global cooldown, with a 1.5 s cooldown shared with Cleave. Heroic Strike and Cleave never get the GCD swipe or grey-out; their own 1.5 s cooldown shows as a swipe instead.
 
 ## Per spec
 
@@ -80,7 +80,7 @@ All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 - **AoE (3+ by default):** Sweeping Strikes > Thunder Clap to spread Deep Wounds (Blood and Thunder) > Bladestorm/Dragon Roar/Shockwave > CS > Mortal Strike > Whirlwind at 4+ > Overpower > Slam under Sweeping Strikes.
 - **Off-GCD:** Heroic Strike near the rage cap (Cleave on 2+ targets). In execute phase only when rage is capped, so rage goes into Execute.
 - **Trackers:** Colossus Smash on target, Taste for Blood stacks, Sudden Death (Sudden Execute during execute), Enrage.
-- **Resources text:** stance name and `TfB n`.
+- **Resources text:** `TfB n` (Taste for Blood stacks).
 
 ### Fury (Titan's Grip and Single-Minded Fury)
 
@@ -101,7 +101,7 @@ All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 - **Berserker Rage** shows on the right when you're not Enraged and not in CS.
 - **Off-GCD:** Heroic Strike near the rage cap, or with 60+ rage in the CS window.
 - **Trackers:** Colossus Smash, Enrage (red glow when missing in combat), Raging Blow! charges, and Bloodsurge (Meat Cleaver on 2+ targets).
-- **Resources text:** stance, `RB n`, `MC n`.
+- **Resources text:** `RB n  MC n` (Raging Blow charges, Meat Cleaver stacks).
 
 ### Protection
 
@@ -125,7 +125,7 @@ All 31 auras read one shared engine, the global `SchizzleWarrior`, which lives i
   - Weakened Blows and Weakened Armor on the target, from anyone (red glow when missing).
   - Ultimatum.
   - Sword and Board.
-- **Resources text:** stance and `Block n/2` charges.
+- **Resources text:** `Block n/2` (Shield Block charges).
 - **Prot DPS mode:** for off-tanking or soloing. It skips active mitigation and dumps rage into Heroic Strike at 60+.
 
 ### Leveling (levels 1-9, no spec)
@@ -141,7 +141,7 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
   6. Heroic Strike at 30+ rage. It is the main attack while leveling, so it sits in the Next icon and the Off-GCD icon stays empty.
   7. Sunder Armor and Battle/Commanding Shout, once learned.
   8. Otherwise Attack (`RAGE` tag) while rage builds, with Heroic Strike in Next+1. With auto attack off and the target in melee range, Attack (`ATK`) shows only when none of the melee attacks above is usable; Heroic Strike at 30+ rage comes first and starts auto attack itself.
-- **Resources text:** stance and character level, e.g. `Battle  Lv 5`.
+- **Resources text:** hidden. Leveling mode has no counters to show, and the stance and level are no longer printed.
 - **Hidden in Leveling mode:** the trackers, the Colossus Smash bar and the Shield bars. The rage bar, the Battle Stance reminder, defensives and the interrupt icon still work with whatever is learned.
 - **Picking a spec at level 10** switches to the Arms, Fury or Protection priority on the next update. While a character is level 10-19 and still has few spec spells, the spec priority adds the same basics: Charge to close the gap, and Victory Rush or Heroic Strike when the spec spells are on cooldown.
 - **Taunt** is not suggested. It only matters in groups, and threat calls are left to the player.
@@ -206,7 +206,6 @@ Turn it off with **Show cooldown tray** in the options.
 | Fury: Wild Strike filler at rage | 70 | Fury only uses Wild Strike as a filler (no Bloodsurge) above this |
 | Show off-GCD / defensives / stance (left) / offensive cooldowns (right) / keybinds | on | Turn parts of the HUD off |
 | Red tint when out of range | on | Adds a red tint to the grey out-of-range look |
-| Show swing timer | on | Main-hand (and off-hand) swing bars under the rage bar |
 | Show last cast | on | The small Last Cast icon left of Next+1 |
 | Show cooldown tray | on | The ready-only racial / cooldown row at the bottom right |
 | Show interrupts / Include stuns/CC / Interrupt in main icon / Also watch focus | on / on / off / off | Interrupt behaviour |
@@ -267,19 +266,26 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - **Range:** the enemy count uses nameplates, so turn on enemy nameplates for the AoE switch to work.
 - **Shield Barrier absorb:** the amount comes from the aura's points value. If the client doesn't report it, the bar just says "Shield Barrier".
 - **Leveling spell levels:** the level 5 (Victory Rush) and level 7 (Execute) unlocks come from guide text, not from client data. The Leveling mode reads `IsPlayerSpell`, so a different unlock level only changes when the spell first appears.
-- **Swing timer:** it restarts on each landed or missed white swing and rescales on haste changes. Parry haste and swing resets are not modelled, and the bar shows a static full bar until the first swing after auto attack starts.
 - **Stance swaps** (for example Defensive Stance for a big hit as DPS) are your call. The left-side reminder only nudges you back.
 
 ## Source files (`source/`)
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. The version lives in one place, `RELEASE` near the top, which sets the group name and description. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 353 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 364 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
 
+- **v1.6** (Nov 3, 2026): a smaller, quieter HUD.
+  - The rage bar is half the size (80x5, was 160x10). Its number moved to the right of the bar, and the "Rage" label is gone.
+  - The rage bar shows only in combat with more than 0 rage. Out of combat, or at 0 rage, it is hidden (the engine's custom trigger checks both, so every child keeps the same load settings as before).
+  - The swing timer is removed for all specs: the SWR Swing Timer and SWR Swing Timer OH auras, the "Show swing timer" option and the engine's swing tracking are gone. Nothing sat below the bars, so no gap is left; the mode label is re-centred between the Next icon and the smaller rage bar.
+  - The Resources text no longer shows the stance name or the level (for example `Battle  Lv 8`), and no longer starts with `!` in the wrong stance. The stance reminder icon on the left still glows when you're in the wrong stance.
+  - The group draws at Group Scale 0.8 and Group Alpha 0.8.
+  - Engine `VERSION = 7`, so it replaces a v1.5.1 engine that is still loaded. 364 simulator checks.
+  - **Updating:** import and click **Update**. Keep the default ticks (Group Arrangement applies the new bar size; Add Missing Auras and the removal of the two swing auras happen on their own) and also tick **Size & Position** to get the 0.8 scale. That also moves the group back to 0, -40. Then `/reload`.
 - **v1.5.1** (Nov 2, 2026): bug fix for `Lua error in Aura 'SWR Resources' … AuraUtil.lua:25: attempt to call a nil value`. When a buff wasn't found by the aura scan, the engine fell back to Blizzard's `AuraUtil.FindAuraByName`. That helper calls through a swappable data provider, and Edit Mode's sample provider (swapped in by `AURA_DATA_PROVIDER_SWITCH`) has no `GetAuraDataBySpellName`, so the call failed. The engine no longer uses AuraUtil at all. Its own lookup tries `C_UnitAuras.GetAuraDataByIndex`, then a `UnitAura` / `UnitBuff` / `UnitDebuff` index loop (plus `C_UnitAuras.GetPlayerAuraBySpellID` for player buffs when the index API is missing). It matches by spell ID, and by name only as a last resort. Every API is type-checked and runs protected (through a coroutine, since WeakAuras' sandbox blocks `pcall`), so a missing or broken API means "no aura" and never a Lua error. Engine `VERSION = 6`. 371 simulator checks, including AuraUtil missing or erroring, C_UnitAuras missing, and GetAuraDataByIndex erroring. **Updating:** re-import with WeakAuras' default Update ticks. **Actions** (which holds the engine) must stay ticked. Size & Position can stay unticked.
 - **v1.5** (Nov 2, 2026): new **cooldown tray**, 8 small icons (32 px) at the bottom right (y -160, growing leftward from x +150). It shows your racial and the spec's big cooldowns that aren't in the rotation, only while they are known and off cooldown, and never a spell another icon already shows. New "Show cooldown tray" option. Engine `VERSION = 5`. 353 simulator checks. **Updating:** the existing child auras keep their IDs, so WeakAuras offers **Update**. Leave **Add Missing Auras** ticked (default) to get the eight SWR Tray auras. Tick **Size & Position** and **Group Arrangement** if your group or icons were moved and you want the default layout back.
 - **v1.4.1** (Nov 2, 2026): the group's default position is now x 0, y -40 (was 0, -190), anchored CENTER to the screen's CENTER. The child auras keep their positions relative to the group. The group name follows the version: "Schizzle's Warrior Rotation v1.4.1". On Update, tick **Size & Position** to apply the new position. No rotation changes (engine `VERSION = 4`). 292 simulator checks.

@@ -6,7 +6,7 @@ A BetterBlizzPlates profile for Warriors in MoP Classic 5.5.x by Jon Shaw (Schiz
 
 | File | In-game name | Built for |
 |---|---|---|
-| [Warrior Profile.txt](Warrior%20Profile.txt) | **Schizzle's Warrior v1** (BetterBlizzPlates has no profile names, so this is the name used in this README) | BetterBlizzPlates by Bodify, v2.2.3c (Mists build, Interface 50504) |
+| [Warrior Profile.txt](Warrior%20Profile.txt) | **Schizzle's Warrior v2** (BetterBlizzPlates has no profile names, so this is the name used in this README) | BetterBlizzPlates by Bodify, v2.2.3c (Mists build, Interface 50504) |
 
 The string works for all three specs. It goes with the [WeakAuras rotation](../WeakAuras/), [BetterBlizzFrames profile](../BetterBlizzFrames/) and [Details! profiles](../Details!/). BetterBlizzPlates doesn't need BetterBlizzFrames; they are separate add-ons that work side by side.
 
@@ -19,6 +19,8 @@ The string works for all three specs. It goes with the [WeakAuras rotation](../W
 6. Click **Import**. BetterBlizzPlates prints that the import worked and asks to reload.
 7. Click to reload, or type `/reload`. The new look applies after the reload.
 
+**Updating from an older version:** do the same steps with the new `Warrior Profile.txt`. The whole profile is replaced, so there is nothing to tick or delete first.
+
 The import replaces your BetterBlizzPlates settings with these ones; anything the profile doesn't set goes back to BetterBlizzPlates' defaults. It also replaces your BetterBlizzPlates **aura whitelist** with the Warrior list below.
 
 **Only want the debuff list?** Paste the same string into the **Aura Whitelist** box on the same page instead. That imports just the whitelist and leaves your other settings alone.
@@ -29,6 +31,7 @@ The import replaces your BetterBlizzPlates settings with these ones; anything th
 - **Dark look:** flat "Minimalist" bar texture, a near-black solid background behind the health bar, black borders, and a **white border on your target**.
 - **Class colours on enemy players.** Enemy NPCs keep Blizzard's red (hostile) and yellow (neutral) colours.
 - **Size:** enemy health bars 136 wide and 14 tall. Realm names are hidden, and so are the level and the elite dragon.
+- **Names on their own row.** The enemy's name sits centred above the bar, high enough to clear the health numbers (for example `240 100%`). Those numbers are Blizzard's, not BetterBlizzPlates': Blizzard draws them when the health options under Esc > Options > Nameplates are on. With the Legacy, Thin, Health Focus and Cast Focus nameplate styles they sit just above the bar on the right; with Classic, Modern or Block they sit inside the bar. The debuff icons sit above the name.
 - **Fira Sans Condensed Medium** for names, castbar text and the other nameplate text.
 - **Threat colours**, by role. BetterBlizzPlates treats you as a tank when you are in **Protection spec**, and as DPS in Arms or Fury. Threat colours show in dungeons, raids and the open world, on mobs that are in combat; mobs out of combat keep the normal colours. Battlegrounds and arenas use the normal colours.
 
@@ -98,6 +101,7 @@ BetterBlizzPlates runs on WoW Forever with a separate set of files (`forever/` i
   - every whitelist entry uses BetterBlizzPlates' whitelist format;
   - WeakAuras registers the font;
   - a simulated import and `/reload` leaves every setting at the profile value;
+  - the enemy name is lifted clear of Blizzard's health numbers, using the offsets in BetterBlizzPlates' name and debuff code, and the debuff row keeps its gap above the name;
   - BetterBlizzPlates' own enemy debuff filter (copied from `classics/modules/auras.lua` when the check runs) shows and glows the right debuffs and hides the rest.
 
 ```
@@ -108,6 +112,8 @@ BBP_SRC=/path/to/BetterBlizzPlates WA_TYPES=/path/to/WeakAuras/Types.lua lua ver
 
 ## Version history
 - **v1 (Nov 2 2026):** first release. Dark look, enemy class colours, Fira Sans Condensed Medium, role-aware threat colours and threat %, castbars with Pummel tracking, Execute indicator at 20%, and enemy debuff filtering with the Warrior whitelist and glows.
+
+- **v2 (Nov 3 2026):** the enemy name no longer overlaps the health numbers. BetterBlizzPlates centres the name just above the bar, and with the Legacy nameplate style Blizzard's health numbers (`240 100%`) sit in the same spot. The name is now 16 px higher, on its own row (`fakeNameYPos` 16), and the debuff icons move up by the same 16 px (`nameplateAurasYPos` 16) to keep their gap above the name.
 
 ## License
 

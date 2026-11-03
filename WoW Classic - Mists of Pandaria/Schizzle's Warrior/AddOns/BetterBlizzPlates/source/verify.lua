@@ -172,6 +172,28 @@ check(show(aura("Mortal Wounds", 115804, false, 10)), "Mortal Wounds from anyone
 check(show(aura("Some Boss Debuff", 999001, true, 20)), "any debuff you cast shows (Only mine)")
 check(not show(aura("Shadow Word: Pain", 589, false, 18)), "other players' unlisted debuffs are hidden")
 
+-- 6. Enemy name vs Blizzard's health text (v2). The numbers come from the code that draws them:
+-- BBP.RepositionName puts the name's BOTTOM at the bar TOP + fakeNameYPos + 5, and the debuff
+-- row (modules/auras.lua) sits at the bar top + 10 + nameplateAurasYPos, icons from 13 px up.
+-- Blizzard (Blizzard_NamePlateUnitFrame.lua, 5.5.4) puts the health text's bottom at the bar
+-- top + 2 in the Legacy/Thin/focus styles, 12 px font x 1.25 at the Large size.
+local bbpMain = C.readfile(C.src .. "/classics/BetterBlizzPlates.lua")
+local bbpAuras = C.readfile(C.src .. "/classics/modules/auras.lua")
+check(bbpMain:find('frame.name:SetPoint(db.fakeNameAnchor, frame.healthBar.topNameAnchor or frame.healthBar, db.fakeNameAnchorRelative, db.fakeNameXPos, db.fakeNameYPos + 5)', 1, true),
+  "BBP anchors the enemy name at fakeNameYPos + 5 above the bar")
+check(bbpAuras:find("local yPos = 10 + BetterBlizzPlatesDB.nameplateAurasYPos", 1, true) and bbpAuras:find("verticalOffset - 13", 1, true),
+  "BBP's debuff row sits at 10 + nameplateAurasYPos, icons 13 px up")
+local d = C.classicsDefaults
+check(d.fakeNameAnchor == "BOTTOM" and d.fakeNameAnchorRelative == "TOP" and profile.fakeNameAnchor == nil,
+  "name stays centred: BOTTOM of the name on the TOP of the bar")
+local healthTop = 2 + 12 * 1.25 + 2 -- bottom offset + Large font + line padding
+local nameBottom = profile.fakeNameYPos + 5
+local nameTop = nameBottom + 13 * 1.25 -- generous name line height
+local iconsBottom = 10 + profile.nameplateAurasYPos + 13
+check(nameBottom >= healthTop, ("name bottom (+%d) clears the health text top (+%d)"):format(nameBottom, healthTop))
+check(iconsBottom >= nameBottom + 13, "debuff icons keep the same gap above the name as BBP's default")
+check(nameBottom - 5 == profile.nameplateAurasYPos, "name and debuff row move up by the same amount")
+
 print(("%d passed, %d failed"):format(pass, fail))
 if #notInForever > 0 then
   table.sort(notInForever)

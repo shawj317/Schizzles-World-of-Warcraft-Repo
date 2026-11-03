@@ -68,8 +68,6 @@ _G.UnitLevel = function() return W.level or 90 end
 _G.IsCurrentSpell = function(id) if id == 6603 then return W.attacking end return false end
 _G.UnitAttackSpeed = function() return W.mhSpeed or 2.6, W.ohSpeed end
 _G.UnitGUID = function(u) if u == "player" then return "Player-1-1" end return "Creature-0-1" end
-local CLEU = {}
-_G.CombatLogGetCurrentEventInfo = function() return unpack(CLEU) end
 _G.IsPlayerSpell = function(id) return W.known[id] and true or false end
 _G.C_SpellBook = { IsSpellKnown = function(id) return W.known[id] and true or false end }
 local NAMES = {}
@@ -296,7 +294,7 @@ R("rage 110, 2 targets -> Cleave off-GCD", { rage = 110, n = 2, tdebuffs = { CS 
   check = function(st) return icon(st("SWR Off-GCD"), 845), "Cleave" end }, nil)
 R("rage 60 -> no off-GCD", { rage = 60, check = function(st) return st("SWR Off-GCD") == nil, "none" end }, nil)
 R("Arms in Defensive Stance -> Battle Stance reminder (left)", { rage = 40, stance = 71,
-  check = function(st) local okb, x = has(st, "Defensive", 2457) return okb and x.glow and st("SWR Resources").res:find("^!") ~= nil, "stance" end }, "ColossusSmash")
+  check = function(st) local okb, x = has(st, "Defensive", 2457) return okb and x.glow and not st("SWR Resources").res:find("Battle") and not st("SWR Resources").res:find("^!"), "stance" end }, "ColossusSmash")
 R("boss, CS ready -> Recklessness + Skull Banner + Avatar", { rage = 40, boss = true, talents = { 107574 },
   check = function(st) return has(st, "Cooldown", 1719) and has(st, "Cooldown", 107574) and has(st, "Cooldown", 114207), "cds" end }, "ColossusSmash")
 R("boss, CS 15s away -> hold Recklessness", { rage = 40, boss = true, cd = { [86346] = 15 },
@@ -383,8 +381,8 @@ local L7 = { 2457, 78, 1250619, 34428, 5308 }
 local VIC = { 32216, 15 }
 local function lev(st) local x = st("SWR Next") return x and x.mode:find("^LEVELING") ~= nil, x and x.mode end
 local function noSpecBars(st) return st("SWR Colossus Smash") == nil and st("SWR Shield Block") == nil and st("SWR Shield Barrier") == nil and st("SWR Tracker 1") == nil and st("SWR Tracker 4") == nil end
-R("L1 attacking, 0 rage -> Attack (building rage), HS next", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
-  check = function(st) local x = st("SWR Next") return lev(st) and not x.waiting and x.tag == "RAGE" and icon(st("SWR Next+1"), 78) and st("SWR Rage") ~= nil and st("SWR Resources").res == "Battle  Lv 1" and noSpecBars(st), st("SWR Resources") and st("SWR Resources").res end }, "Attack")
+R("L1 attacking, 0 rage -> Attack (building rage), HS next, rage bar hidden at 0 rage", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
+  check = function(st) local x = st("SWR Next") return lev(st) and not x.waiting and x.tag == "RAGE" and icon(st("SWR Next+1"), 78) and st("SWR Rage") == nil and st("SWR Resources") == nil and noSpecBars(st), st("SWR Resources") and st("SWR Resources").res end }, "Attack")
 R("L1 GetSpecialization 0, 30 rage -> Heroic Strike", { spec = 0, level = 1, rage = 30, knownOnly = L1,
   check = function(st) return lev(st) and not st("SWR Next").waiting and st("SWR Off-GCD") == nil, "hs main, no off-GCD copy" end }, "HeroicStrike")
 R("L1 spec 5 (initial) counts as no spec", { spec = 5, level = 1, rage = 30, knownOnly = L1, check = lev }, "HeroicStrike")
@@ -480,38 +478,6 @@ R("GCD running, Heroic Strike in Next stays bright (off-GCD)", { noSpec = true, 
 R("Heroic Strike 1.5 s cooldown is shown (not mistaken for the GCD)", { noSpec = true, level = 1, rage = 60, cd = { [78] = 0.5 }, knownOnly = L1,
   check = function(st) local x = st("SWR Next") return x.waiting and x.duration == 1.5 and x.tag ~= "RAGE", x.duration end }, "HeroicStrike")
 
-print("\n== Swing timer ==")
-local function cl(sub, src, off)
-  local t = { now, sub, false, src }
-  for i = 5, 21 do t[i] = false end
-  if sub == "SWING_DAMAGE" then t[21] = off or false else t[13] = off or false end
-  for i = 1, 21 do CLEU[i] = t[i] end
-end
-local function reset(E) E.swing.mh = { s = 0, d = 0 }; E.swing.oh = { s = 0, d = 0 } end
-local function sw(st, h) return st(h == "oh" and "SWR Swing Timer OH" or "SWR Swing Timer") end
-R("L1 main-hand SWING_DAMAGE -> 2.6 s swing bar", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
-  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
-  check = function(st) local b = sw(st) return b and b.up and b.duration == 2.6 and math.abs(b.expirationTime - (now + 2.6)) < 1e-6 and sw(st, "oh") == nil, b and b.duration end }, "Attack")
-R("swing bar keeps running between ticks", { noSpec = true, level = 1, rage = 0, knownOnly = L1, dt = 1,
-  check = function(st) local b = sw(st) return b and b.up and math.abs(b.expirationTime - (now + 1.6)) < 1e-6, b and b.expirationTime end }, "Attack")
-R("SWING_MISSED counts as a swing", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
-  before = function(E) reset(E) cl("SWING_MISSED", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
-  check = function(st) local b = sw(st) return b and b.up, "missed" end }, "Attack")
-R("someone else's swing is ignored", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
-  before = function(E) reset(E) cl("SWING_DAMAGE", "Creature-0-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
-  check = function(st) local b = sw(st) return b and not b.up, "static ready bar" end }, "Attack")
-R("not attacking, no swing -> swing bar hidden", { noSpec = true, level = 1, rage = 0, notAttacking = true, knownOnly = L1,
-  before = function(E) reset(E) end, check = function(st) return sw(st) == nil, "hidden" end }, "Attack")
-R("Fury dual wield: main + off-hand bars", { spec = 2, rage = 40, weap = TG, mhSpeed = 3.6, ohSpeed = 3.4,
-  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") cl("SWING_MISSED", "Player-1-1", true) E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
-  check = function(st) local a, b = sw(st), sw(st, "oh") return a and b and a.up and b.up and a.duration == 3.6 and b.duration == 3.4, "mh/oh" end }, nil)
-R("UNIT_ATTACK_SPEED rescales the running swing", { noSpec = true, level = 1, rage = 0, knownOnly = L1, mhSpeed = 4,
-  before = function(E) reset(E) E.swing.mh = { s = now - 1, d = 2 } E:OnEvent("UNIT_ATTACK_SPEED", "player") end,
-  check = function(st) local b = sw(st) return b and b.duration == 4 and math.abs(b.expirationTime - (now + 2)) < 1e-6, b and b.duration end }, "Attack")
-R("swing timer option off -> hidden", { noSpec = true, level = 1, rage = 0, knownOnly = L1, cfg = { showSwing = false },
-  before = function(E) reset(E) cl("SWING_DAMAGE", "Player-1-1") E:OnEvent("COMBAT_LOG_EVENT_UNFILTERED") end,
-  check = function(st) return sw(st) == nil, "off" end }, "Attack")
-
 print("\n== Cast feedback ==")
 R("setup: HS suggested", { noSpec = true, level = 1, rage = 30, knownOnly = L1 }, "HeroicStrike")
 R("HS cast while suggested -> Next pulses, Last Cast = HS (green)", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
@@ -542,6 +508,10 @@ print("\n== Range / GCD / keybinds ==")
 R("out of range -> red tint", { rage = 40, oor = { [86346] = true }, check = function(st) local x = st("SWR Next") return x.oor and x.oorTint, "oor" end }, "ColossusSmash")
 R("GCD -> desaturated", { rage = 40, gcd = 0.7, check = function(st) return st("SWR Next").waiting, "gcd" end }, "ColossusSmash")
 R("keybind read from action bar", { rage = 40, check = function(st) return st("SWR Next").keybind == "S2", st("SWR Next").keybind end }, "ColossusSmash")
+R("rage bar: in combat, 40 rage -> shown", { rage = 40, check = function(st) local b = st("SWR Rage") return b and b.value == 40 and b.ragetext == "40", "rage" end }, nil)
+R("rage bar: in combat, 0 rage -> hidden", { rage = 0, check = function(st) return st("SWR Rage") == nil, "hidden" end }, nil)
+R("rage bar: out of combat with a hostile target, 40 rage -> hidden", { rage = 40, combat = false,
+  check = function(st) return st("SWR Next") ~= nil and st("SWR Rage") == nil, "hidden" end }, nil)
 R("rage bar orange near cap", { rage = 105, check = function(st) local b = st("SWR Rage") return b and b.dump and b.value == 105 and b.total == 120, "rage" end }, nil)
 print("\n== Cooldown tray ==")
 -- tray(st) -> list of spell ids in slots 1..8, or false if a hidden slot sits between shown ones (not packed)
@@ -656,6 +626,30 @@ do
   check(okL and r1, "tray layout (8 x 32 px at y -160, right edge +150, no overlap) " .. why)
   local last = t.c[#t.c - 8]
   check(last and last.id == "SWR Shield Barrier", "tray slots added after the existing children (order unchanged)")
+end
+
+-- v1.6 layout: rage bar halved (80 x 5 px), its number just right of it, swing timer gone,
+-- no stance or level text in the resources line, group still at CENTER 0,-40 with Group Scale / Alpha 0.8
+do
+  local by = {} for _, c in ipairs(t.c) do by[c.id] = c end
+  local rg = by["SWR Rage"]
+  check(rg.width == 80 and rg.height == 5 and rg.xOffset == 0 and rg.yOffset == 62, "rage bar halved (80x5 at 0,62) " .. rg.width .. "x" .. rg.height)
+  check(by["SWR Swing Timer"] == nil and by["SWR Swing Timer OH"] == nil and #t.c == 29, "swing timer auras removed (" .. #t.c .. " children)")
+  local swingOpt = false
+  for _, o in ipairs(by["SWR Next"].authorOptions) do if o.key == "showSwing" then swingOpt = true end end
+  check(not swingOpt and by["SWR Next"].config.showSwing == nil, "no swing timer option left")
+  local function texts(c) local o = {} for _, r in ipairs(c.subRegions) do if r.type == "subtext" then o[#o + 1] = r end end return o end
+  local rt = texts(rg)
+  check(#rt == 1 and rt[1].text_text == "%ragetext" and rt[1].anchor_point == "OUTER_RIGHT", "rage number outside the thin bar (right)")
+  -- the Next icon's mode label sits centred between the icon top and the rage bar bottom (no gap left by the swing bars)
+  local nx = by["SWR Next"]
+  local modeY for _, r in ipairs(nx.subRegions) do if r.text_text == "%mode" then modeY = r.text_anchorYOffset end end
+  check(modeY and math.abs(modeY - (nx.height / 2 + (rg.yOffset - rg.height / 2)) / 2) < 1e-9, "mode label centred under the rage bar " .. tostring(modeY))
+  local res = by["SWR Resources"]
+  check(res.yOffset - res.fontSize / 2 > rg.yOffset + rg.height / 2, "resources line clear above the rage bar")
+  check(data.xOffset == 0 and data.yOffset == -40 and data.anchorPoint == "CENTER", "group still at CENTER 0,-40")
+  check(data.id:find("v1%.6$") ~= nil, "group name carries v1.6")
+  check(data.scale == 0.8 and data.alpha == 0.8, "Group Scale 0.8 and Group Alpha 0.8 " .. tostring(data.scale) .. " " .. tostring(data.alpha))
 end
 
 do local n = 0 for _, w in ipairs(warnings) do if w.key == "SandboxForbidden" then n = n + 1 end end

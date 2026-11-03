@@ -1,4 +1,4 @@
--- Schizzle's Warrior BetterBlizzPlates profile (v1): the settings, as a plain table.
+-- Schizzle's Warrior BetterBlizzPlates profile (v2): the settings, as a plain table.
 -- Every key here is a real BetterBlizzPlatesDB key on the Mists (classics/) code path;
 -- verify.lua checks that against BBP's defaults and code. Anything not listed keeps
 -- BBP's own default after the import.
@@ -62,6 +62,17 @@ return {
   -- Size: 136 wide, 14 tall health bars
   nameplateEnemyWidth = 136,
   nameplateGeneralHpHeight = 14,
+
+  -- Enemy name sits on its own row above the health text (v2). Blizzard draws the
+  -- "240 100%" health text itself: with the Legacy, Thin, Health Focus and Cast Focus
+  -- nameplate styles it sits just above the bar on the right, 2 px up and one 15 px
+  -- line tall at the Large size (12 px font x 1.25). BBP centres the name at the bar
+  -- top + 5, so the two collided. Lifting the name 16 px puts its bottom at +21, clear
+  -- of the health text, and the debuff row goes up by the same 16 so it keeps its gap
+  -- above the name. With the Classic, Modern or Block styles the health text is inside
+  -- the bar, so the only difference there is a slightly taller plate.
+  fakeNameYPos = 16,
+  nameplateAurasYPos = 16,
 
   -- Threat colours, role-aware (tank = Protection spec): in dungeons/raids and the open
   -- world (not BGs/arenas), only on mobs that are in combat. Tank: green = you have it, orange = losing it,
