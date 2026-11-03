@@ -6,7 +6,7 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep-tray-separate-import)**, three slim experience, reputation and guild reputation bars that sit under the Details! windows.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (32,061 chars, starts `!WA:2!`). Current version: **v1.6.1** (engine `VERSION = 8`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (33,261 chars, starts `!WA:2!`). Current version: **v1.7** (engine `VERSION = 9`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
@@ -18,13 +18,13 @@ This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep
 2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.6.1" group. Click **Import** again to accept it.
+5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.7" group. Click **Import** again to accept it.
 6. Type `/reload`.
 7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
-9. Options live on **Schizzle's Warrior Rotation v1.6.1 → SWR Next → Custom Options** (see "Options" below).
+9. Options live on **Schizzle's Warrior Rotation v1.7 → SWR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.6.1" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.7" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
 **Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group (their positions and sizes) falls under **Group Arrangement** (ticked by default).
 
@@ -34,7 +34,7 @@ This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep
 
 ## What's on screen
 
-All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
+All 30 auras read one shared engine, the global `SchizzleWarrior`, which lives in the **SWR Next** icon's On Init action. The engine works out the rotation 10 times a second and rescans your keybinds every 2 seconds.
 
 | Element | Size | Position | What it shows |
 |---|---|---|---|
@@ -50,10 +50,13 @@ All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 | **SWR Last Cast** | 26 px | x -40, y -50 | The spell that just went off, for 3 s. A green border means it was one of the suggested spells |
 | **SWR Off-GCD** | 34 px | x +40, y -50 | Heroic Strike or Cleave. These are off the global cooldown, so press them alongside the Next icon |
 | **SWR Tracker 1-4** | 28 px | y -90 | Four buff/debuff icons for your spec. Greyed out when missing, with a red glow when something important is missing. A tracker stays hidden until its spell is learned, and all four are hidden in Leveling mode |
-| **SWR Colossus Smash** | 160x12 | y -118 | Arms/Fury only, once Colossus Smash is learned. Your CS window on the target, or `CS in Xs` / `CS READY` |
-| **SWR Shield Block** | 160x12 | y -118 | Prot only, once Shield Block is learned. Shield Block uptime with charges, e.g. `Shield Block (1)` |
-| **SWR Shield Barrier** | 160x12 | y -133 | Prot only, once Shield Barrier is learned. Shield Barrier uptime and absorb left, e.g. `Barrier 45.2k` |
-| **SWR Tray 1-8** | 32 px | y -160, x +134 to -118 (36 px apart) | Cooldown tray, bottom right: racials and big cooldowns that aren't in the rotation, shown only when known and off cooldown. Fills from the right edge (x +150) toward the left. See [Cooldown tray](#cooldown-tray) |
+| **SWR Sunder** | 28 px | x +80, y -90 | Arms/Fury/Leveling, with the "Track Sunder Armor" option on and Sunder Armor learned. Sits right of the trackers in the same style: Weakened Armor stacks on the target (from anyone) with its timer swipe, greyed out when missing, red glow in combat when it's missing, under 3 stacks or under 5 s left. Prot keeps its own Weakened Armor tracker |
+| **SWR Colossus Smash** | 160x12 | y -129 | Arms/Fury only, once Colossus Smash is learned. Your CS window on the target, or `CS in Xs` / `CS READY` |
+| **SWR Shield Block** | 160x12 | y -129 | Prot only, once Shield Block is learned. Shield Block uptime with charges, e.g. `Shield Block (1)` |
+| **SWR Shield Barrier** | 160x12 | y -144 | Prot only, once Shield Barrier is learned. Shield Barrier uptime and absorb left, e.g. `Barrier 45.2k` |
+| **SWR Tray 1-8** | 32 px | y -172, x +134 to -118 (36 px apart) | Cooldown tray, bottom right: racials and big cooldowns that aren't in the rotation, shown only when known and off cooldown. Fills from the right edge (x +150) toward the left. See [Cooldown tray](#cooldown-tray) |
+
+**Spacing (v1.7):** the tracker labels end 13 px under the tracker icons (y -117). The Colossus Smash / Shield Block bar starts 6 px below that, Shield Barrier sits 3 px under Shield Block, and the tray starts 6 px under Shield Barrier, so nothing overlaps. Before v1.7 the CS bar at y -118 covered the tracker labels.
 
 **When it shows:** in combat, or when you have a hostile target, at any level. Every aura loads for the Warrior class only, with no spec or level condition, because a warrior under level 10 has no spec. The engine decides what each aura shows: the Colossus Smash bar appears only for Arms/Fury and the two Shield bars only for Protection, and each one waits until its spell is learned.
 
@@ -71,12 +74,13 @@ All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives i
 
 ### Arms
 
-- **Priority outside Colossus Smash:** Colossus Smash > Dragon Roar > Mortal Strike > Overpower (Taste for Blood) > Storm Bolt (when CS is far away) > Slam only at 80+ rage > Battle/Commanding Shout for rage.
-- **Priority in the Colossus Smash window:** Mortal Strike > Bladestorm/Dragon Roar > Storm Bolt > Overpower with 2+ Taste for Blood > Slam > Overpower > Heroic Throw.
+- **Priority outside Colossus Smash:** Colossus Smash > Dragon Roar > Mortal Strike > Overpower (Taste for Blood) > Storm Bolt (when CS is far away) > Sunder Armor (option on, Weakened Armor missing / under 3 / under 5 s, tag `WA`) > Slam only at 80+ rage > Battle/Commanding Shout for rage.
+- **Priority in the Colossus Smash window:** Mortal Strike > Bladestorm/Dragon Roar > Storm Bolt > Overpower with 2+ Taste for Blood > Slam > Overpower > Sunder Armor (option on, as above) > Heroic Throw.
 - **Execute phase (target under 20%):**
   - Colossus Smash, then Mortal Strike for rage.
   - Execute inside CS.
   - Outside CS, Execute only near the rage cap.
+  - No Sunder Armor prompt in the execute phase (rage goes to Execute); the Sunder icon still glows.
   - Overpower is tagged `free` when Sudden Execute makes it free.
 - **Sudden Death:** when it resets Colossus Smash, CS glows with an `SD` tag.
 - **AoE (3+ by default):** Sweeping Strikes > Thunder Clap to spread Deep Wounds (Blood and Thunder) > Bladestorm/Dragon Roar/Shockwave > CS > Mortal Strike > Whirlwind at 4+ > Overpower > Slam under Sweeping Strikes.
@@ -93,6 +97,7 @@ All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives i
   - Raging Blow at 2 charges, or at 1 when CS is more than 6 s away, so you keep a charge for the CS window.
   - Whirlwind for Meat Cleaver on 2-3 targets.
   - Wild Strike with Bloodsurge (tag `BS`), then Bloodthirst, then Storm Bolt (when CS is more than 10 s away).
+  - Sunder Armor when the option is on and Weakened Armor is missing, under 3 stacks or under 5 s left (tag `WA`). Not in the CS window or the execute phase.
   - Shout for rage, then Wild Strike as a filler at 70+ rage (only when CS is more than 3 s away).
 - **Single-Minded Fury difference:** Bloodsurge Wild Strike ranks above Raging Blow. Titan's Grip keeps Raging Blow first.
 - **In CS:** Bladestorm/Dragon Roar > Storm Bolt > Raging Blow at 2 charges > Bloodthirst > Raging Blow > Bloodsurge Wild Strike > Wild Strike.
@@ -113,7 +118,7 @@ All 29 auras read one shared engine, the global `SchizzleWarrior`, which lives i
   - Thunder Clap when Weakened Blows is missing (tag `WB`).
   - Execute only with 90+ rage while tanking.
   - Dragon Roar/Shockwave/Storm Bolt.
-  - Devastate when Weakened Armor is below 3 stacks (tag `WA`).
+  - Devastate when Weakened Armor is below 3 stacks or under 4 s left (tag `WA`). Devastate applies Weakened Armor itself. With "Track Sunder Armor" off this bump is skipped (Devastate stays the filler) and the Weakened Armor tracker doesn't glow.
   - Shout for rage, then Devastate as the filler.
 - **AoE (3+):** Thunder Clap > Revenge > Bladestorm/Dragon Roar/Shockwave > Shield Slam > ...
 - **Active mitigation tracker:**
@@ -141,7 +146,7 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
   4. Victory Rush whenever the Victorious proc is up.
   5. Thunder Clap on 2+ enemies, once learned.
   6. Heroic Strike at 30+ rage. It is the main attack while leveling, so it sits in the Next icon and the Off-GCD icon stays empty.
-  7. Sunder Armor and Battle/Commanding Shout, once learned.
+  7. Sunder Armor (in combat, when Weakened Armor needs it and the "Track Sunder Armor" option is on) and Battle/Commanding Shout, once learned.
   8. Otherwise Attack (`RAGE` tag) while rage builds, with Heroic Strike in Next+1. With auto attack off and the target in melee range, Attack (`ATK`) shows only when none of the melee attacks above is usable; Heroic Strike at 30+ rage comes first and starts auto attack itself.
 - **Resources text:** hidden. Leveling mode has no counters to show, and the stance and level are no longer printed.
 - **Hidden in Leveling mode:** the trackers, the Colossus Smash bar and the Shield bars. The rage bar, the Battle Stance reminder, defensives and the interrupt icon still work with whatever is learned.
@@ -159,7 +164,7 @@ Before level 10, `GetSpecialization()` returns nothing, so the aura runs a Level
 
 ## Cooldown tray
 
-A row of small icons (32 px, about 57% of the Next icon) under the HUD at y -160. They show racials and big cooldowns that the rotation doesn't call for, so you can see at a glance what's ready.
+A row of small icons (32 px, about 57% of the Next icon) under the HUD at y -172 (y -160 before v1.7). They show racials and big cooldowns that the rotation doesn't call for, so you can see at a glance what's ready.
 
 - **Ready only:** an icon shows only when the spell is known (`IsPlayerSpell`) and off cooldown (the GCD doesn't count). A spell on cooldown or not learned is simply not there, so nothing shows greyed out.
 - **Packs from the right:** ready spells fill slot 1 at the right edge first and grow leftward, up to 8. No gaps, no overlap.
@@ -206,6 +211,7 @@ Turn it off with **Show cooldown tray** in the options.
 | Rage dump margin | 20 | Heroic Strike / Cleave when rage is within this much of max |
 | Arms: Slam outside CS at rage | 80 | Outside Colossus Smash, Arms only Slams above this |
 | Fury: Wild Strike filler at rage | 70 | Fury only uses Wild Strike as a filler (no Bloodsurge) above this |
+| Track Sunder Armor (Weakened Armor) | on | **On** if you're tanking or assigned to keep Weakened Armor up: Sunder Armor is suggested (tag `WA`, below the big hitters, above Slam / shout / Wild Strike fillers) when the target's Weakened Armor, from anyone, is missing, under 3 stacks or under 5 s left, and the SWR Sunder icon shows stacks and time. If someone else keeps it at 3 stacks you get no prompt. **Off** if someone else does it: no Sunder prompt and no Sunder icon (Prot also skips the Devastate `WA` bump) |
 | Show off-GCD / defensives / stance (left) / offensive cooldowns (right) / keybinds | on | Turn parts of the HUD off |
 | Red tint when out of range | on | Adds a red tint to the grey out-of-range look |
 | Show last cast | on | The small Last Cast icon left of Next+1 |
@@ -308,6 +314,7 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - **Range:** the enemy count uses nameplates, so turn on enemy nameplates for the AoE switch to work.
 - **Shield Barrier absorb:** the amount comes from the aura's points value. If the client doesn't report it, the bar just says "Shield Barrier".
 - **Leveling spell levels:** the level 5 (Victory Rush) and level 7 (Execute) unlocks come from guide text, not from client data. The Leveling mode reads `IsPlayerSpell`, so a different unlock level only changes when the spell first appears.
+- **Sunder Armor costs 15 rage and a GCD.** In a raid with a tank (or a Feral druid / Rogue) keeping Weakened Armor up, turn the option off. Weakened Armor is one shared 3-stack debuff (about 30 s), so stacks from different players don't add up past 3. The prompt waits for combat, a hostile target and 15 rage.
 - **Stance swaps** (for example Defensive Stance for a big hit as DPS) are your call. The left-side reminder only nudges you back.
 
 ## Source files (`source/`)
@@ -316,7 +323,7 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. The version lives in one place, `RELEASE` near the top, which sets the group name and description. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
 - `tray_build.lua`: builds the separate XP & Rep Tray and writes `../XP & Rep Tray.txt` (same `WA_LIBS` / `WA_OUT` settings).
 - `tray_sim.lua`: the tray's offline test (176 checks), run the same way as `sim.lua`. Set `WOW_UI_SOURCE` to a wow-ui-source checkout of the 5.5 client to also confirm every game API it calls exists there.
-- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 364 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
+- `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 413 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
@@ -324,6 +331,12 @@ No SavedVariables or personal data are included.
 
 The XP & Rep Tray has its own version: **v1.0** (Nov 3, 2026) was the first release; **v1.1** (Nov 3, 2026) makes the XP fill blue, turns the rested overlay purple and adds a green overlay (and right-side text) for XP waiting in completed quests that haven't been turned in; **v1.2** (Nov 3, 2026) fixes that green overlay, which never showed in game because `GetQuestLogRewardXP` reads the selected quest rather than a questID, and adds mouseover tooltips to both bars; **v1.3** (Nov 3, 2026) adds a third bar for guild reputation (the tray is now 34 px tall and the group's default y moved from 26 to 38; update with Size & Position ticked, plus the v1.7 Details! profiles). Update it with Import → **Update**. The list below is the rotation's.
 
+- **v1.7** (Nov 3, 2026): new **Track Sunder Armor (Weakened Armor)** option (Custom Options, on by default) and a layout fix.
+  - On: in combat with a hostile target and 15+ rage, Sunder Armor is suggested (tag `WA`) when Weakened Armor on the target (from anyone) is missing, under 3 stacks or under 5 s left. Arms: after Storm Bolt, before Slam and the shout; in the CS window after Overpower, before Heroic Throw. Fury: after Storm Bolt, before the shout and the Wild Strike filler; not in the CS window. Never in the execute phase. Leveling's Sunder now follows the option too (and waits for combat). Nothing is suggested when someone keeps it at 3 stacks.
+  - New **SWR Sunder** icon right of the trackers (Arms/Fury/Leveling): Weakened Armor stacks and timer, red glow when Sunder is needed.
+  - Off: no Sunder prompt, no Sunder icon, and Prot skips the Devastate `WA` bump and the Weakened Armor tracker's glow.
+  - Layout: the Colossus Smash / Shield Block bar covered the tracker labels (CS, TfB, SD, Exe/Enr). Bars moved from y -118 to -129 (Shield Barrier -133 to -144) and the tray from -160 to -172, each 6 px clear of the element above.
+  - Engine `VERSION = 9`. 413 simulator checks (Sunder priority, the 3-stack and refresh cases, option off, Prot, and the new spacing). **Updating:** import and click **Update** with the default ticks. Group Arrangement (ticked by default) moves the bars and tray, Add Missing Auras adds SWR Sunder, and Actions must stay ticked for the engine. Your Custom Options carry over and the new option starts on. Then `/reload`.
 - **v1.6.1** (Nov 3, 2026): bug fix for Charge being suggested while it was on cooldown. In MoP Classic 5.5 Charge is a charge spell (one charge, 20 s recharge; charge category 1219 in the client's spell data), and the client reports that recharge only through `C_Spell.GetSpellCharges`. `GetSpellCooldown` returns 0 for it, and that was all the engine read, so Charge always looked ready. The engine's cooldown check now reads both and uses whichever is longer, with the global `GetSpellCooldown` / `GetSpellCharges` as a fallback, and ignores the global cooldown by comparing against the GCD spell (61304). The `isOnGCD` flag is only trusted for a cooldown of 1.5 s or less, because the client can leave it stale. Charge is also skipped when the target is within its 8 yd minimum range. When Charge isn't usable, the list falls through to Heroic Throw, Mortal Strike, Victory Rush and the rest. Heroic Throw, Mortal Strike and Colossus Smash use the same cooldown check; Victory Rush follows the Victorious buff. Engine `VERSION = 8`. 383 simulator checks, now with Charge recharging (both spell IDs, modern and older APIs), during the GCD, in melee, at 6 and 30 yd, and the level 10 and 90 Arms fallbacks. **Updating:** import and click **Update** with the default ticks (Actions, which holds the engine, must stay ticked). Leave Size & Position unticked to keep your spot, then `/reload`.
 - **v1.6** (Nov 3, 2026): a smaller, quieter HUD.
   - The rage bar is half the size (80x5, was 160x10). Its number moved to the right of the bar, and the "Rage" label is gone.

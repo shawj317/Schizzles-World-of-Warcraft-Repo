@@ -252,6 +252,7 @@ local function run(label, sc, expect)
   cf.aoe, cf.protMode, cf.amMode, cf.fuMode, cf.shout, cf.dpsStance, cf.dumpMargin, cf.slamRage, cf.wildRage = 3, 1, 1, 1, 1, 1, 20, 80, 70
   cf.showOff, cf.showDef, cf.showCDs, cf.showKeys, cf.tintOOR, cf.showInt, cf.intCC, cf.intMain, cf.intFocus = true, true, true, true, true, true, true, false, false
   cf.showTray = true
+  cf.sunder = true
   for k, v in pairs(sc.cfg or {}) do cf[k] = v end
   Private.DeleteAuraEnvironment("SWR Next")
   Private.ActivateAuraEnvironment("SWR Next", nil, nil, nil)
@@ -658,7 +659,7 @@ R("legacy return order read correctly (count, duration, expirationTime, spellId)
 R("auraAt past the last aura -> nil (loop stops)", { api = "legacy", buffs = TFB2, rage = 40,
   check = function() local E = getE() return E.auraAt("player", 2, "HELPFUL", now) == nil, "not nil" end }, nil)
 
--- static layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -160, no overlap with anything else
+-- static layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -172 (v1.7, was -160), no overlap with anything else
 do
   local okL, why = true, ""
   local function box(c) local w = c.width or 0 local h = c.height or 0 return c.xOffset - w / 2, c.xOffset + w / 2, c.yOffset - h / 2, c.yOffset + h / 2 end
@@ -668,15 +669,16 @@ do
   if #trays ~= 8 then okL, why = false, "slots " .. #trays end
   for i, c in ipairs(trays) do
     if c.id ~= "SWR Tray " .. i or c.uid ~= "SWRTray" .. i then okL, why = false, "id " .. c.id end
-    if c.width ~= 32 or c.height ~= 32 or c.yOffset ~= -160 or c.xOffset ~= 134 - 36 * (i - 1) then okL, why = false, "pos " .. c.id end
+    if c.width ~= 32 or c.height ~= 32 or c.yOffset ~= -172 or c.xOffset ~= 134 - 36 * (i - 1) then okL, why = false, "pos " .. c.id end
     if c.parent ~= data.id then okL, why = false, "parent " .. c.id end
     for _, o in ipairs(others) do if overlap(c, o) then okL, why = false, c.id .. " overlaps " .. o.id end end
     for j, o in ipairs(trays) do if j ~= i and overlap(c, o) then okL, why = false, c.id .. " overlaps " .. o.id end end
   end
   local r1 = trays[1] and (trays[1].xOffset + 16) == 150
-  check(okL and r1, "tray layout (8 x 32 px at y -160, right edge +150, no overlap) " .. why)
-  local last = t.c[#t.c - 8]
-  check(last and last.id == "SWR Shield Barrier", "tray slots added after the existing children (order unchanged)")
+  check(okL and r1, "tray layout (8 x 32 px at y -172, right edge +150, no overlap) " .. why)
+  local last = t.c[#t.c - 9]
+  check(last and last.id == "SWR Shield Barrier" and t.c[#t.c - 8].id == "SWR Tray 1", "tray slots added after the existing children (order unchanged)")
+  check(t.c[#t.c].id == "SWR Sunder" and t.c[#t.c].uid == "SWRSunder", "v1.7 Sunder icon appended last (existing order unchanged)")
 end
 
 -- v1.6 layout: rage bar halved (80 x 5 px), its number just right of it, swing timer gone,
@@ -685,7 +687,7 @@ do
   local by = {} for _, c in ipairs(t.c) do by[c.id] = c end
   local rg = by["SWR Rage"]
   check(rg.width == 80 and rg.height == 5 and rg.xOffset == 0 and rg.yOffset == 62, "rage bar halved (80x5 at 0,62) " .. rg.width .. "x" .. rg.height)
-  check(by["SWR Swing Timer"] == nil and by["SWR Swing Timer OH"] == nil and #t.c == 29, "swing timer auras removed (" .. #t.c .. " children)")
+  check(by["SWR Swing Timer"] == nil and by["SWR Swing Timer OH"] == nil and #t.c == 30, "swing timer auras removed (" .. #t.c .. " children)")
   local swingOpt = false
   for _, o in ipairs(by["SWR Next"].authorOptions) do if o.key == "showSwing" then swingOpt = true end end
   check(not swingOpt and by["SWR Next"].config.showSwing == nil, "no swing timer option left")
@@ -699,8 +701,62 @@ do
   local res = by["SWR Resources"]
   check(res.yOffset - res.fontSize / 2 > rg.yOffset + rg.height / 2, "resources line clear above the rage bar")
   check(data.xOffset == 0 and data.yOffset == -40 and data.anchorPoint == "CENTER", "group still at CENTER 0,-40")
-  check(data.id:find("v1%.6%.1$") ~= nil, "group name carries v1.6.1")
+  check(data.id:find("v1%.7$") ~= nil, "group name carries v1.7")
   check(data.scale == 0.8 and data.alpha == 0.8, "Group Scale 0.8 and Group Alpha 0.8 " .. tostring(data.scale) .. " " .. tostring(data.alpha))
+end
+
+-- v1.7 Sunder Armor tracker (option "sunder", default on). Arms/Fury with Sunder Armor known (talents = { 7386 }).
+print("\n== Sunder Armor (v1.7) ==")
+local SA = { 7386 }
+local OUT = { [86346] = 10, [12294] = 3 }   -- outside CS, MS on cd: Sunder sits above Slam / shout
+local function sund(st) local x = st("SWR Next") return x and x.tag == "WA", x and x.tag end
+local function sicon(st) return st("SWR Sunder") end
+R("Arms: Weakened Armor missing -> Sunder {WA}", { rage = 40, talents = SA, cd = OUT, check = function(st)
+  local x = sicon(st) return sund(st) and x and x.inactive and x.alert and x.label == "Sunder", "sunder" end }, "SunderArmor")
+R("Arms: WA 2/3 -> Sunder", { rage = 40, talents = SA, cd = OUT, tdebuffsOther = { { 113746, 20, 2 } }, check = sund }, "SunderArmor")
+R("Arms: WA 3/3, 3 s left -> Sunder (refresh)", { rage = 40, talents = SA, cd = OUT, tdebuffsOther = { { 113746, 3, 3 } }, check = sund }, "SunderArmor")
+R("Arms: WA 3/3, 20 s from someone else -> no Sunder", { rage = 40, talents = SA, cd = OUT, tdebuffsOther = { WA3 }, check = function(st)
+  local x = sicon(st) return x and not x.inactive and not x.alert and x.stacks == "3", "icon" end }, "BattleShout")
+R("Arms: WA 3/3 applied by me, 20 s -> no Sunder", { rage = 40, talents = SA, cd = OUT, tdebuffs = { WA3 } }, "BattleShout")
+R("Arms: option off -> no Sunder, icon hidden", { rage = 40, talents = SA, cd = OUT, cfg = { sunder = false }, check = function(st)
+  return sicon(st) == nil, "icon shown" end }, "BattleShout")
+R("Arms: Sunder below Colossus Smash", { rage = 40, talents = SA }, "ColossusSmash")
+R("Arms: Sunder below Mortal Strike", { rage = 40, talents = SA, cd = { [86346] = 10 } }, "MortalStrike")
+R("Arms: Sunder below Overpower (TfB)", { rage = 40, talents = SA, cd = OUT, buffs = { { 60503, 10, 1 } } }, "Overpower")
+R("Arms: Sunder above Slam at 90 rage", { rage = 90, talents = SA, cd = OUT }, "SunderArmor")
+R("Arms: under 15 rage -> no Sunder", { rage = 10, talents = SA, cd = OUT, check = function(st) return st("SWR Next").tag ~= "WA", "tag" end }, nil)
+R("Arms: execute phase -> no Sunder (rage goes to Execute)", { rage = 40, thp = 15, talents = SA, cd = OUT, check = function(st)
+  local a, b = st("SWR Next"), st("SWR Next+1") return a.tag ~= "WA" and b and b.icon == 100000 + 5308, "exec" end }, "BattleShout")
+R("Arms: CS window, MS cd -> Slam before Sunder", { rage = 40, talents = SA, tdebuffs = { CS }, cd = { [86346] = 14, [12294] = 3 } }, "Slam")
+R("Arms: out of combat -> no Sunder prompt", { rage = 40, talents = SA, cd = OUT, combat = false, check = function(st)
+  local x = st("SWR Next") return not x or x.tag ~= "WA", "tag" end }, nil)
+R("Arms: Sunder not known -> no icon", { rage = 40, cd = OUT, check = function(st) return sicon(st) == nil, "icon" end }, "BattleShout")
+R("Fury: WA missing, BT cd -> Sunder", { spec = 2, rage = 40, weap = TG, talents = SA, cd = { [86346] = 10, [23881] = 2 }, check = sund }, "SunderArmor")
+R("Fury: WA 3/3 from someone else -> no Sunder", { spec = 2, rage = 40, weap = TG, talents = SA, cd = { [86346] = 10, [23881] = 2 }, tdebuffsOther = { WA3 },
+  check = function(st) return st("SWR Next").tag ~= "WA", "tag" end }, nil)
+R("Fury: option off -> no Sunder", { spec = 2, rage = 40, weap = TG, talents = SA, cd = { [86346] = 10, [23881] = 2 }, cfg = { sunder = false },
+  check = function(st) return st("SWR Next").tag ~= "WA" and sicon(st) == nil, "tag" end }, nil)
+R("Prot: option off -> Devastate without the WA bump, no WA alert", { spec = 3, rage = 30, stance = 71, cd = { [23922] = 4, [6572] = 5 }, tdebuffsOther = { WB, { 113746, 20, 1 } },
+  cfg = { sunder = false }, check = function(st) return st("SWR Next").tag ~= "WA" and not st("SWR Tracker 2").alert and sicon(st) == nil, "prot" end }, nil)
+R("Prot: option on keeps the Devastate WA bump, no Sunder icon", { spec = 3, rage = 30, stance = 71, cd = { [23922] = 4, [6572] = 5 }, tdebuffsOther = { WB, { 113746, 20, 1 } },
+  check = function(st) return st("SWR Next").tag == "WA" and sicon(st) == nil, "prot" end }, "Devastate")
+do
+  local by = {} for _, c in ipairs(t.c) do by[c.id] = c end
+  local nx = by["SWR Next"]
+  local opt, iw, ish
+  for i, o in ipairs(nx.authorOptions) do if o.key == "sunder" then opt = o; iw = i end if o.key == "wildRage" then ish = i end end
+  check(opt and opt.type == "toggle" and opt.default == true and nx.config.sunder == true and iw == ish + 1,
+    "Sunder option: toggle, default on, right after Fury: Wild Strike (class settings before Show toggles)")
+  -- layout: CS / Shield Block bars clear the tracker labels (label bottom = icon bottom - 1 - 12) by 6 px, tray 6 px under Barrier
+  local function bot(c) return c.yOffset - c.height / 2 end
+  local function top(c) return c.yOffset + c.height / 2 end
+  local labelBottom = bot(by["SWR Tracker 1"]) - 1 - 12
+  local okb = true
+  for _, id in ipairs({ "SWR Colossus Smash", "SWR Shield Block" }) do if labelBottom - top(by[id]) ~= 6 then okb = false end end
+  check(okb and bot(by["SWR Shield Block"]) - top(by["SWR Shield Barrier"]) == 3 and bot(by["SWR Shield Barrier"]) - top(by["SWR Tray 1"]) == 6,
+    "v1.7 layout: CS bar 6 px under the tracker labels, Barrier 3 px under Block, tray 6 px under Barrier")
+  local sn = by["SWR Sunder"]
+  check(sn.yOffset == by["SWR Tracker 1"].yOffset and sn.width == 28 and sn.xOffset == by["SWR Tracker 4"].xOffset + 32, "Sunder icon in the tracker row, right of Tracker 4")
 end
 
 do local n = 0 for _, w in ipairs(warnings) do if w.key == "SandboxForbidden" then n = n + 1 end end

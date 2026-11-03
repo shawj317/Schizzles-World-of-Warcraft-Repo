@@ -4,7 +4,7 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 8
+local VERSION = 9
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -641,6 +641,29 @@ local function gapCloser(S, add)
   if ready(ID.hthrow, S) and not outOfRange(ID.hthrow) then add(ID.hthrow, nil, "Heroic Throw: target out of melee range") end
 end
 local function victorious(S) return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end
+-- v1.7 Sunder Armor tracker (option "Track Sunder Armor (Weakened Armor)", key sunder, default on).
+-- Weakened Armor (113746) is a shared raid debuff from anyone (Sunder Armor, Devastate, Faerie Fire, Expose Armor...),
+-- 3 stacks, 30 s. Sunder is asked for only when the option is on, you're in combat with a hostile target, have the
+-- 15 rage, and the debuff is missing, under 3 stacks or under 5 s left. At 3 stacks with time left, nothing is asked.
+-- Arms / Fury: below Colossus Smash, Mortal Strike / Bloodthirst, Raging Blow, procs, talents and Storm Bolt, above the
+-- Slam / shout / Wild Strike fillers; in the CS window only after Slam and Overpower. Never in the execute phase (rage
+-- goes to Execute there; the Sunder icon still glows). Prot: Devastate's WA bump (Devastate applies it too).
+local SUNDER_REFRESH = 5
+local function sunderOn() return E.cfg.sunder ~= false end
+E.sunderOn = sunderOn
+local function sunderNeed(S)
+  if not sunderOn() or not known(ID.sunder) or not S.hostile or not S.combat then return nil end
+  local wa = aura(TDEBUFF_ALL, ID.warmor)
+  if wa and wa.stacks >= 3 and wa.rem >= SUNDER_REFRESH then return nil end
+  if S.rage < 15 then return nil end
+  if not wa then return "Weakened Armor missing: Sunder Armor" end
+  if wa.stacks < 3 then return "Weakened Armor " .. math.max(wa.stacks, 1) .. "/3: Sunder Armor" end
+  return string.format("Weakened Armor %.0fs left: refresh with Sunder Armor", wa.rem)
+end
+local function sunder(S, add)
+  local why = sunderNeed(S)
+  if why then add(ID.sunder, { tag = "WA" }, why) end
+end
 local function leveling(S, out)
   local add = adder(out)
   local vic = victorious(S)
@@ -651,7 +674,7 @@ local function leveling(S, out)
   if vic and S.hostile then add(ID.vr, nil, "Victory Rush (free hit before the proc ends)") end
   if S.hostile and S.n >= 2 and ready(ID.tc, S) and S.rage >= 20 then add(ID.tc, nil, "2+ enemies: Thunder Clap") end
   if S.hostile and ready(ID.hs, S) and S.rage >= 30 then add(ID.hs, nil, "Heroic Strike: main attack while leveling") end
-  if S.hostile and known(ID.sunder) and S.rage >= 15 and stacks(TDEBUFF_ALL, ID.warmor) < 3 then add(ID.sunder, nil, "Sunder Armor") end
+  sunder(S, add)
   shout(S, add)
   if known(ID.hs) then add(ID.hs, { wait = true, rage = S.rage < 30 }, "waiting for rage (Heroic Strike at 30)") end
 end
@@ -704,12 +727,14 @@ local function arms(S, out)
       if known(ID.op) and tfb >= 2 and usable(ID.op) then add(ID.op, nil, "CS window: Overpower (2+ Taste for Blood)") end
       if known(ID.slam) and S.rage >= 25 then add(ID.slam, nil, "CS window: Slam") end
       if known(ID.op) and tfb > 0 and usable(ID.op) then add(ID.op, nil, "CS window: Overpower") end
+      sunder(S, add)
       if ready(ID.hthrow, S) and S.cs > 1.5 then add(ID.hthrow, nil, "CS window: Heroic Throw filler") end
     else
       talent4(S, add, true)
       if ready(ID.ms, S) then add(ID.ms, nil, "Mortal Strike") end
       if known(ID.op) and tfb > 0 and usable(ID.op) then add(ID.op, nil, "Overpower (Taste for Blood)") end
       if ready(ID.sbolt, S) and S.csCd > 10 then add(ID.sbolt, nil, "Storm Bolt (CS far away)") end
+      sunder(S, add)
       if known(ID.slam) and S.rage >= (tonumber(E.cfg.slamRage) or 80) then add(ID.slam, nil, "Slam outside CS only with high rage") end
       shout(S, add)
     end
@@ -770,6 +795,7 @@ local function fury(S, out)
     BS("Wild Strike (Bloodsurge)")
     if ready(ID.bt, S) then add(ID.bt, nil, "Bloodthirst") end
     if ready(ID.sbolt, S) and S.csCd > 10 then add(ID.sbolt, nil, "Storm Bolt (CS far away)") end
+    sunder(S, add)
     shout(S, add)
     if known(ID.wild) and S.rage >= (tonumber(E.cfg.wildRage) or 70) and S.csCd > 3 then add(ID.wild, nil, "Wild Strike filler (rage pooled above threshold)") end
   end
@@ -796,7 +822,7 @@ local function prot(S, out)
   if S.exec and S.rage >= 30 and (S.rage >= 90 or not S.tank) then add(ID.exe, nil, "Execute (rage to spare)") end
   if not S.aoe then talent4(S, add, false) end
   if ready(ID.sbolt, S) then add(ID.sbolt, nil, "Storm Bolt") end
-  if known(dev) and (not wa or wa.stacks < 3 or wa.rem < 4) then add(dev, { tag = "WA" }, "Weakened Armor < 3 stacks / expiring") end
+  if sunderOn() and known(dev) and (not wa or wa.stacks < 3 or wa.rem < 4) then add(dev, { tag = "WA" }, "Weakened Armor < 3 stacks / expiring") end
   shout(S, add)
   if known(dev) then add(dev, nil, "Devastate filler") end
   if known(ID.sslam) then add(ID.sslam, { wait = true }, "waiting for Shield Slam") end
@@ -993,7 +1019,7 @@ local function trackers(S)
   elseif S.prot then
     local hostile = S.hostile and S.tank
     t[1] = track(TDEBUFF_ALL, ID.wblows, "WB", hostile, nil, ID.tc)
-    t[2] = track(TDEBUFF_ALL, ID.warmor, "WA", hostile, 3, known(ID.dev) and ID.dev or ID.sunder)
+    t[2] = track(TDEBUFF_ALL, ID.warmor, "WA", hostile and sunderOn(), 3, known(ID.dev) and ID.dev or ID.sunder)
     t[3] = track(BUFF, ID.ult, "Ult", nil, nil, ID.ultTal)
     t[4] = track(BUFF, ID.snb, "S&B", nil, nil, ID.snbTal)
   end
@@ -1113,6 +1139,15 @@ function E:Tick()
   end
   R.res = res
   R.trk = trackers(S)
+  -- v1.7 Sunder icon (Arms / Fury / Leveling; Prot keeps its own WA tracker): Sunder Armor's icon with the
+  -- Weakened Armor stacks and timer from anyone, grey when missing, red glow when Sunder is needed
+  if sunderOn() and not S.prot and S.hostile and known(ID.sunder) then
+    local wa = aura(TDEBUFF_ALL, ID.warmor)
+    local low = not wa or wa.stacks < 3 or wa.rem < SUNDER_REFRESH
+    R.sunder = { id = ID.sunder, icon = spellIcon(ID.sunder), name = spellName(ID.sunder), active = wa ~= nil,
+      stacks = wa and tostring(wa.stacks) or "", exp = wa and wa.exp or 0, dur = wa and wa.dur or 0, label = "Sunder",
+      alert = (low and S.combat) and true or false }
+  end
   if not S.prot and known(ID.cs) then
     local a = aura(TDEBUFF, ID.cs)
     R.cs = { rem = a and a.rem or 0, exp = a and a.exp or 0, dur = a and a.dur or 6.5, cd = S.csCd }

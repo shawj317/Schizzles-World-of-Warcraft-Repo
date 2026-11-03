@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the one version number: it goes into the in-game group name and the description. Bump it here only.
 -- The group uid ("SchizzleWarriorGroup") and the child ids/uids never carry it, so re-importing updates in place.
-local RELEASE = "1.6.1"
+local RELEASE = "1.7"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -151,6 +151,7 @@ nextIcon.authorOptions = {
   { type = "number", key = "dumpMargin", name = "Rage dump margin", default = 20, min = 0, max = 60, step = 5, width = 1, useDesc = true, desc = "Heroic Strike / Cleave is suggested when rage is within this much of max rage." },
   { type = "number", key = "slamRage", name = "Arms: Slam outside CS at rage", default = 80, min = 30, max = 120, step = 5, width = 1 },
   { type = "number", key = "wildRage", name = "Fury: Wild Strike filler at rage", default = 70, min = 30, max = 120, step = 5, width = 1 },
+  { type = "toggle", key = "sunder", name = "Track Sunder Armor (Weakened Armor)", default = true, width = 1, useDesc = true, desc = "On: you keep Weakened Armor up (you're tanking, or you're the one assigned to it). Sunder Armor is suggested when the target's Weakened Armor (from anyone) is missing, under 3 stacks or under 5 s left, and the Sunder icon next to the trackers shows its stacks and time. Off: someone else applies it (tank, Feral druid, Rogue), so you never get a Sunder prompt." },
   { type = "toggle", key = "showOff", name = "Show off-GCD icon (Heroic Strike / Cleave)", default = true, width = 1 },
   { type = "toggle", key = "showDef", name = "Show defensives / stance (left)", default = true, width = 1 },
   { type = "toggle", key = "showCDs", name = "Show offensive cooldowns (right)", default = true, width = 1 },
@@ -163,7 +164,7 @@ nextIcon.authorOptions = {
   { type = "toggle", key = "intMain", name = "Interrupt in main icon", default = false, width = 1, useDesc = true, desc = "Off = dedicated red interrupt icon above the rage bar. On = the interrupt takes over the Next icon." },
   { type = "toggle", key = "intFocus", name = "Also watch focus casts", default = false, width = 1 },
 }
-nextIcon.config = { aoe = 3, protMode = 1, amMode = 1, fuMode = 1, shout = 1, dpsStance = 1, dumpMargin = 20, slamRage = 80, wildRage = 70,
+nextIcon.config = { aoe = 3, protMode = 1, amMode = 1, fuMode = 1, shout = 1, dpsStance = 1, dumpMargin = 20, slamRage = 80, wildRage = 70, sunder = true,
   showOff = true, showDef = true, showCDs = true, showKeys = true, tintOOR = true, showLast = true, showTray = true, showInt = true, intCC = true, intMain = false, intFocus = false }
 children[#children + 1] = nextIcon
 children[#children + 1] = icon("SWR Next+1", 34, 0, -50, "R.next2", false)
@@ -265,9 +266,10 @@ ib.subRegions[#ib.subRegions + 1] = text("%p", "INNER_RIGHT", 9, -2, 0)
 children[#children + 1] = ib
 
 -- buff / debuff trackers (4 small icons; contents follow the spec, see README)
-local function trkTSU(i)
+local function trkTSU(i, pick)
   return HEAD .. [[
-  local t = R.show and R.trk and R.trk[]] .. i .. [[]
+  local t = ]] .. (pick or ("R.show and R.trk and R.trk[" .. i .. "]")) .. [[
+
   if not t then
 ]] .. hide() .. [[
 
@@ -281,20 +283,29 @@ local function trkTSU(i)
 end]]
 end
 local TRK_Y, TRK_S = -90, 28
-for i = 1, 4 do
-  local x = (i - 2.5) * (TRK_S + 4)
-  local t = icon("SWR Tracker " .. i, TRK_S, x, TRK_Y, "nil", false)
+local TRK_LABEL = 9
+local function trackerIcon(id, x, tsu)
+  local t = icon(id, TRK_S, x, TRK_Y, "nil", false)
   t.subRegions = { { type = "subbackground" }, glowSub("Pixel"),
     text("%stacks", "INNER_BOTTOMRIGHT", 11, -1, 1, nil, "THICKOUTLINE"),
-    text("%label", "OUTER_BOTTOM", 9, 0, -1, { 0.9, 0.9, 0.9, 1 }, "OUTLINE") }
+    text("%label", "OUTER_BOTTOM", TRK_LABEL, 0, -1, { 0.9, 0.9, 0.9, 1 }, "OUTLINE") }
   t.subRegions[2].useGlowColor = true; t.subRegions[2].glowColor = { 1, 0.15, 0.15, 1 }
-  t.triggers = trig(trkTSU(i), "{ inactive = 'bool', alert = 'bool', stacks = 'string', label = 'string', expirationTime = true, duration = true }")
+  t.triggers = trig(tsu, "{ inactive = 'bool', alert = 'bool', stacks = 'string', label = 'string', expirationTime = true, duration = true }")
   t.conditions = {
     { check = { trigger = 1, variable = "inactive", value = 1 }, changes = { { property = "desaturate", value = true }, { property = "alpha", value = 0.45 } } },
     { check = { trigger = 1, variable = "alert", value = 1 }, changes = { { property = "sub.2.glow", value = true }, { property = "alpha", value = 1 } } },
   }
-  children[#children + 1] = t
+  return t
 end
+for i = 1, 4 do children[#children + 1] = trackerIcon("SWR Tracker " .. i, (i - 2.5) * (TRK_S + 4), trkTSU(i)) end
+-- v1.7 layout fix: the tracker labels (OUTER_BOTTOM, 1 px under the icon, 9 pt) end about 12 px below the icons, and
+-- the old bar row at y -118 (top edge -112) covered them in game. The bars now start GAP px under the label bottom,
+-- Shield Barrier keeps its 3 px gap under Shield Block, and the tray moves down to stay GAP px under the lowest bar.
+local GAP = 6
+local LABEL_BOTTOM = TRK_Y - TRK_S / 2 - 1 - (TRK_LABEL + 3)  -- -117
+local BAR_H = 12
+local BAR1_Y = LABEL_BOTTOM - GAP - BAR_H / 2                  -- -129 (Colossus Smash / Shield Block)
+local BAR2_Y = BAR1_Y - BAR_H - 3                              -- -144 (Shield Barrier)
 
 -- timed bar helper: Colossus Smash window (Arms/Fury, once CS is learned), Shield Block / Shield Barrier (Protection, once learned)
 local function timedTSU(field, label, extra)
@@ -325,17 +336,18 @@ local function timedBar(id, y, color, field, label, extra)
   b.triggers = trig(timedTSU(field, label, extra), "{ up = 'bool', label = 'string', expirationTime = true, duration = true }")
   return b
 end
-children[#children + 1] = timedBar("SWR Colossus Smash", -118, { 0.9, 0.2, 0.15, 1 }, "cs", "Colossus Smash",
+children[#children + 1] = timedBar("SWR Colossus Smash", BAR1_Y, { 0.9, 0.2, 0.15, 1 }, "cs", "Colossus Smash",
   [[up and "Colossus Smash" or ((s.cd or 0) > 0.25 and string.format("CS in %.0fs", s.cd) or "CS READY")]])
-children[#children + 1] = timedBar("SWR Shield Block", -118, { 0.3, 0.55, 1, 1 }, "sblock", "Shield Block",
+children[#children + 1] = timedBar("SWR Shield Block", BAR1_Y, { 0.3, 0.55, 1, 1 }, "sblock", "Shield Block",
   [[string.format("Shield Block (%d)", s.charges or 0)]])
-children[#children + 1] = timedBar("SWR Shield Barrier", -133, { 0.95, 0.8, 0.2, 1 }, "sbar", "Shield Barrier",
+children[#children + 1] = timedBar("SWR Shield Barrier", BAR2_Y, { 0.95, 0.8, 0.2, 1 }, "sbar", "Shield Barrier",
   [[(up and s.amount) and string.format("Barrier %.1fk", s.amount / 1000) or "Shield Barrier"]])
 
 -- cooldown tray (added last so the existing children keep their order): 8 fixed slots of 32 px (57% of the 56 px Next icon), 36 px apart, in one row under the whole HUD.
 -- Slot 1 is right-aligned with the right edge of SWR Cooldown 3 (x +150) and the row fills leftward. The engine packs
 -- only ready spells into slots 1..n, so visible icons always sit together from the right.
-local TRAY_SIZE, TRAY_STEP, TRAY_RIGHT, TRAY_Y = 32, 36, 150, -160
+local TRAY_SIZE, TRAY_STEP, TRAY_RIGHT = 32, 36, 150
+local TRAY_Y = BAR2_Y - BAR_H / 2 - GAP - TRAY_SIZE / 2         -- -172
 for i = 1, 8 do
   local t = icon("SWR Tray " .. i, TRAY_SIZE, TRAY_RIGHT - TRAY_SIZE / 2 - TRAY_STEP * (i - 1), TRAY_Y, "R.tray and R.tray[" .. i .. "]", false)
   t.cooldownTextDisabled = true
@@ -343,6 +355,10 @@ for i = 1, 8 do
     border_color = { 0, 0, 0, 0.8 }, border_offset = 0, border_size = 1 }
   children[#children + 1] = t
 end
+
+-- v1.7 Sunder Armor icon (appended after the tray so every existing child keeps its order): one tracker-style icon
+-- right of the four trackers, in the same row and style. Arms / Fury / Leveling only, and only with the option on.
+children[#children + 1] = trackerIcon("SWR Sunder", 2.5 * (TRK_S + 4), trkTSU(0, "R.show and R.sunder"))
 
 -- group default position: CENTER of the group on the screen's CENTER, 0 px across, 40 px down
 -- (child offsets are relative to the group, so they don't change)
