@@ -39,7 +39,7 @@ Positions are Bartender4's own (the bar's top-left corner from a point on the sc
 - **Out of range:** the whole button turns red.
 - **Self-cast and focus-cast keys** follow Blizzard's settings (Esc > Interface > Combat), as in Bartender4's defaults. The Blizzard vehicle UI is used in vehicles.
 - **Bars locked**, snapping on. Unlock with `/bt4` > **Lock** to move them.
-- **Neighbours:** bar 5 sits on the right edge above the [Details!](../Details!/) stack. At a small UI scale (a 768 px tall UI) its lower end can reach the top of the Details! windows, so check it once in game. The micro menu sits under the bottom Details! window.
+- **Neighbours:** bar 5 sits on the right edge, well above the [Details!](../Details!/) windows. The micro menu sits under them. On a UI narrower than about 1435 px (such as 1365 × 768 at UI scale 1), the left Details! window covers the right end of bars 1–3 by up to about 35 px, and the extra action button lands under it. See the Details! README for the numbers.
 
 ## Keybinds
 See the table in the [helper addon README](../SchizzlesWarriorSetup/#keybinds). Short version: bar 3 is Q, E, R, F, T, G, Y, Mouse 3, Mouse 4, Ctrl-Mouse 3, Ctrl-Mouse 4, Alt-Mouse 3; bar 2 is the same with Shift, then Ctrl-Q, Ctrl-E, Alt-Mouse 4; A and D strafe. They are saved account-wide, so every character gets them.

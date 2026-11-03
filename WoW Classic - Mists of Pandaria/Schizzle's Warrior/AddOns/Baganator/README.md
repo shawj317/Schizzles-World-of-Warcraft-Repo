@@ -34,7 +34,7 @@ A Baganator profile for the non-ElvUI Warrior kit in MoP Classic 5.5.x by Jon Sh
 | Bags open at | bottom right, **24 px from the right edge and 190 px up**, the same corner as the Details! windows | 30 px from the right, 85 px up |
 | Bank opens at | bottom left, **30 px in and 190 px up** | 30 px in, 85 px up |
 
-**Where it opens:** 190 px up keeps the bags clear of the action bars and away from the rotation aura in the middle of the screen. The bags line up with the Details! corner and cover those windows while they're open; close the bags and Details! is back. To move them, drag the window by its title bar, then tick **Lock windows** in `/bgr` if you don't want them to move again.
+**Where it opens:** 190 px up keeps the bags clear of the action bars and away from the rotation aura in the middle of the screen. The bags open just above the Details! windows, covering only the top few pixels of their title bars while open. To move them, drag the window by its title bar, then tick **Lock windows** in `/bgr` if you don't want them to move again.
 
 **Junk and upgrades:** Baganator picks these up by itself when RestedXP Guide and Pawn are loaded, and both are in the kit. Without RestedXP it goes back to treating grey items as junk; without Pawn there are no upgrade arrows. Both can be changed under **General** in `/bgr`.
 

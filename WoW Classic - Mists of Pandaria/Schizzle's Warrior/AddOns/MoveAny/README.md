@@ -11,7 +11,7 @@ MoveAny settings for the non-ElvUI Warrior kit in MoP Classic 5.5.x by Jon Shaw 
 4. Leave **Move Windows**, **Save Frame Position** and **Save Frame Scale** ticked (the defaults). You can then drag any Blizzard window by its title, and it stays where you put it.
 5. Click **Reload & Reopen**. Then, for each of the two frames, click its row to highlight its mover and drag the mover (the arrow keys nudge it 1 px at a time):
    - **Loss of Control Frame:** by default it sits in the middle of the screen, right on top of the rotation aura. Drag its mover to about **150 px above the centre**, between the top of the WeakAuras HUD and the BigWigs pull countdown. Right-click the mover and set its scale to **0.8** so it fits in that gap.
-   - **Tooltip:** drag its mover to the bottom right, just **above the Details! meters** (right edge about 4 px from the screen edge, bottom about 400 px up). Tooltips for units and the world then pop up there instead of on top of the meters.
+   - **Tooltip:** drag its mover to the bottom right, just **above the Details! meters** (right edge about 4 px from the screen edge, bottom about 205 px up). Tooltips for units and the world then pop up there instead of on top of the meters.
 6. Close the MoveAny window when you're done.
 
 ## Leave these unticked

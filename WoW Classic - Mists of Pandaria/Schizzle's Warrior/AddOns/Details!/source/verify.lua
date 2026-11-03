@@ -102,11 +102,11 @@ for _, spec in ipairs(SPECS) do
     end
     check(w.__locked == true, tag .. "window " .. i .. " locked")
     check(w.toolbar_side == 1, tag .. "window " .. i .. " title bar on top")
-    check(w.libwindow.point == "BOTTOMRIGHT" and w.libwindow.x == -MARGIN and w.libwindow.scale == 1, tag .. "window " .. i .. " right edge 4 px from the screen's right edge")
+    check(w.libwindow.point == "BOTTOMRIGHT" and w.libwindow.scale == 1, tag .. "window " .. i .. " anchored bottom right at scale 1")
   end
-  check(w2.libwindow.y == MARGIN, tag .. "window 2 bottom edge 4 px up")
-  check(w1.libwindow.y == MARGIN + H_EXPECT + TITLE, tag .. "window 1 sits right on top of window 2's title bar")
-  check(w1.__snapV == true and w1.__snapH == false and w1.__snap[2] == 2 and w2.__snap[4] == 1, tag .. "stacked snap: 1 above 2")
+  check(w1.libwindow.y == MARGIN and w2.libwindow.y == MARGIN, tag .. "both windows' bottom edges 4 px up")
+  check(w2.libwindow.x == -MARGIN and w1.libwindow.x == -MARGIN - W_EXPECT, tag .. "window 2 4 px from the right edge, window 1 directly to its left (no gap)")
+  check(w1.__snapH == true and w1.__snapV == false and w1.__snap[3] == 2 and w2.__snap[1] == 1 and w1.__snap[2] == nil and w2.__snap[4] == nil, tag .. "side-by-side snap: 1 left of 2")
   ---------------------------------------------------------------- 5. simulate ImportProfile + ApplyProfile
   local D = {}
   local data = decode(pstr)
@@ -137,14 +137,14 @@ for _, spec in ipairs(SPECS) do
     windows[index] = inst
   end
   check(windows[1].ativa and windows[2].ativa, tag .. "both windows open after import")
-  check(windows[1].snap[2] == 2 and windows[2].snap[4] == 1, tag .. "windows snapped 1 above 2")
+  check(windows[1].snap[3] == 2 and windows[2].snap[1] == 1, tag .. "windows snapped side by side, 1 left of 2")
   -- profiles.lua: instance.isLocked = skin.__locked, then instance:LockInstance(instance.isLocked)
   check(readfile(SRC .. "functions/profiles.lua"):find("instance.isLocked = skin.__locked", 1, true) ~= nil, tag .. "Details applies __locked on profile load")
   check(windows[1].__locked and windows[2].__locked, tag .. "both windows locked after import")
   check(windows[2].atributo == spec.w2[1] and windows[2].sub_atributo == spec.w2[2], tag .. "window 2 display survives merge")
   local lw1, lw2 = windows[1].libwindow, windows[2].libwindow
-  check(lw1.x == lw2.x and lw1.y == lw2.y + windows[2].posicao.normal.h + TITLE, tag .. "windows touch edge to edge, stacked")
-  check(lw1.y + H_EXPECT + TITLE <= 400, tag .. "top of the stack at most 400 px up (tooltip sits above it)")
+  check(lw1.x == lw2.x - windows[2].posicao.normal.w and lw1.y == lw2.y, tag .. "windows touch edge to edge, side by side, no overlap")
+  check(lw1.y + H_EXPECT + TITLE == 199, tag .. "top of both title bars 199 px up")
 end
 check(strings.arms == strings.fury, "Arms and Fury strings are identical (same layout; the name is typed at import)")
 

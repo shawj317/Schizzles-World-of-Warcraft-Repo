@@ -1,7 +1,7 @@
 -- Builds the three Schizzle's Warrior Details! profiles (Arms, Fury, Protection).
 -- Usage (from this folder):  lua build.lua      env: DETAILS_SRC, WA_TYPES (see common.lua), DETAILS_FONT, OUT_DIR
--- Two locked 250x175 Minimalistic windows stacked in the bottom-right corner, 4 px from the right and
--- bottom edges (window 1 on top, window 2 below), Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
+-- Two locked 250x175 Minimalistic windows side by side in the bottom-right corner, 4 px from the right
+-- and bottom edges (window 2 in the corner, window 1 directly to its left), Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
 local HERE = (arg and arg[0] or ""):match("^(.*[/\\])") or "./"
 dofile(HERE .. "common.lua")
 local R = dofile(HERE .. "defaults.lua")
@@ -71,11 +71,11 @@ local function themedWindow()
   return w
 end
 
--- stack both windows in the bottom-right corner: window 2 at the bottom, window 1 on top of its title bar
+-- both windows on one row in the bottom-right corner: window 2 in the corner, window 1 touching its left edge
 local RIGHT_MARGIN, BOTTOM_MARGIN = -4, 4
 local function placeWindow(w, id, atributo, sub)
-  local xRight = RIGHT_MARGIN
-  local yBottom = BOTTOM_MARGIN + (id == 1 and (H + TITLE_BAR) or 0)
+  local xRight = RIGHT_MARGIN - (id == 1 and W or 0)
+  local yBottom = BOTTOM_MARGIN
   w.libwindow = {point = "BOTTOMRIGHT", x = xRight, y = yBottom, scale = 1}
   local uiW, uiH = 1365, 768 -- fallback CENTER offsets in case libwindow is ignored
   local cx, cy = uiW / 2 + xRight - W / 2, yBottom + H / 2 - uiH / 2
@@ -83,8 +83,8 @@ local function placeWindow(w, id, atributo, sub)
   w.posicao, w.__pos = deepcopy(pos), deepcopy(pos)
   w.__was_opened = true
   w.__locked = true -- locked: no dragging, no resize grips (Details:LockInstance)
-  w.__snapH, w.__snapV = false, true
-  w.__snap = (id == 1) and {[2] = 2} or {[4] = 1} -- 2 = window below me, 4 = window above me
+  w.__snapH, w.__snapV = true, false
+  w.__snap = (id == 1) and {[3] = 2} or {[1] = 1} -- 3 = window to my right, 1 = window to my left
   w.atributo, w.sub_atributo = atributo, sub
   -- last sub-display remembered per attribute (damage, heal, energy, misc, custom)
   w.sub_atributo_last = {1, 1, 1, 1, 1}
