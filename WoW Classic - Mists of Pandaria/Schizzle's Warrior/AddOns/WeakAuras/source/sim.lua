@@ -1,6 +1,6 @@
--- Offline test for "Schizzle's Warrior Rotation": decodes the export exactly like WeakAuras' Transmission.lua,
--- compiles every custom function inside WeakAuras' real aura sandbox (AuraEnvironment.lua) and runs rotation scenarios
--- against a mocked WoW API. Needs a WeakAuras2 checkout with tests/helpers.lua + tests/wow_stubs.lua (run from that tests dir).
+-- Offline test for "Schizzle's Warrior Rotation". Decodes the export the same way WeakAuras' Transmission.lua does,
+-- compiles every custom function inside WeakAuras' real aura sandbox (AuraEnvironment.lua), and runs rotation scenarios
+-- against a mocked WoW API. Needs a WeakAuras2 checkout with tests/helpers.lua and tests/wow_stubs.lua (run it from that tests dir).
 local WA_TESTS = os.getenv("WA_TESTS") or "/workspace/wa2/tests"
 local LIBDIR = os.getenv("WA_LIBS") or "/workspace"
 local EXPORT = os.getenv("WA_EXPORT") or "/workspace/All-in-One Rotation.txt"
@@ -14,7 +14,7 @@ _G.WeakAuras = stubs.newWeakAuras()
 local WeakAuras = _G.WeakAuras
 local Private, warnings = stubs.newPrivate()
 
----------------- decode exactly like Transmission.lua StringToTable ----------------
+-- Decode the same way Transmission.lua StringToTable does.
 local f = assert(io.open(EXPORT)) local str = f:read("*a") f:close()
 local _, _, encVersion, encoded = str:find("^(!WA:%d+!)(.+)$")
 assert(encVersion == "!WA:2!", "header")
@@ -37,7 +37,7 @@ for _, c in ipairs(t.c) do
   print("  child", c.id, c.regionType, "subs=" .. #(c.subRegions or {}), "conds=" .. #(c.conditions or {}))
   check(c.id:sub(1, 4) == "SWR ", "child prefix " .. c.id)
   check(c.load.use_class == true and c.load.class.single == "WARRIOR", "class load " .. c.id)
-  -- no spec requirement anywhere: a level 1-9 warrior has no specialisation
+  -- No spec requirement anywhere. A level 1-9 warrior has no specialisation.
   check(not c.load.use_class_and_spec and not c.load.use_spec and not c.load.use_level and next(c.load.class_and_spec.multi) == nil, "no spec load " .. c.id)
   check(not uids[c.uid], "unique uid " .. c.uid); uids[c.uid] = true
   for _, s in ipairs(c.subRegions or {}) do if s.type == "subtext" then check(s.text_font == "Fira Sans Condensed Medium", "font " .. c.id) end end
@@ -56,7 +56,7 @@ check(byId["SWR Next"] and byId["SWR Next"].uid == "SWRNext", "child ids/uids un
 WeakAuras.GetData = function(id) return byId[id] end
 Private.UIDtoID = function(uid) for id, d in pairs(byId) do if d.uid == uid then return id end end end
 
----------------- mock WoW API ----------------
+-- Mock WoW API.
 local W = {}
 local now = 1000
 _G.GetTime = function() return now end
@@ -75,8 +75,8 @@ CHARGE_IDS = { [1250619] = true, [100] = true }
 _G.C_Spell = {
   GetSpellName = function(id) return NAMES[id] or ("Spell" .. id) end,
   GetSpellTexture = function(id) return 100000 + id end,
-  -- like the 5.5 client: Charge (1250619 / 100) is a 1-charge spell, so its 20 s recharge is reported only by
-  -- GetSpellCharges and GetSpellCooldown says 0 (W.chargeViaCooldown = old mock behaviour, kept as a regression case)
+  -- Like the 5.5 client. Charge (1250619 / 100) is a 1-charge spell, so its 20 s recharge is reported only by
+  -- GetSpellCharges, and GetSpellCooldown says 0. W.chargeViaCooldown is the old mock, kept as a regression case.
   GetSpellCooldown = function(id)
     if CHARGE_IDS[id] and not W.chargeViaCooldown then
       if W.gcdOnAll and W.gcd then return { startTime = now - 0.5, duration = 1.5, isEnabled = true, isOnGCD = true } end
@@ -96,10 +96,10 @@ _G.C_Spell = {
   IsSpellInRange = function(id, unit) if W.oor and W.oor[id] then return false end return true end,
   IsSpellUsable = function(id)
     if W.noMana and W.noMana[id] then return false, true end
-    if (id == 78 or id == 845 or id == 5308) and (W.rage or 0) < 30 then return false, true end -- 30 rage cost
+    if (id == 78 or id == 845 or id == 5308) and (W.rage or 0) < 30 then return false, true end -- 30 rage
     return true end,
 }
--- aura lists: { spellId, remaining, stacks, points }
+-- Aura lists: { spellId, remaining, stacks, points }.
 local function auraList(unit, filter)
   if unit == "player" then return (filter == "HELPFUL") and W.buffs or W.debuffs end
   if unit == "target" then
@@ -116,20 +116,20 @@ local CUA = { GetAuraDataByIndex = function(unit, i, filter)
   local a = list and list[i]
   if a then return auraData(a) end
 end }
--- legacy API (old return order): name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
+-- Old API return order: name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId.
 local function legacyAura(unit, i, filter)
   local list = auraList(unit, filter or "HELPFUL")
   local a = list and list[i]
   if a then return NAMES[a[1]] or ("Spell" .. a[1]), 1, a[3] or 0, nil, 20, now + a[2], "player", false, false, a[1] end
 end
 local function playerAuraBySpellID(id) for _, a in ipairs(W.buffs) do if a[1] == id then return auraData(a) end end end
--- Blizzard's AuraUtil exactly as it fails in game: every call errors (Edit Mode's sample provider lacks GetAuraDataBySpellName).
+-- Blizzard's AuraUtil, broken the same way it fails in game. Every call errors (Edit Mode's sample provider has no GetAuraDataBySpellName).
 -- The engine must never touch it, so it stays broken for every scenario unless one sets api = "auraUtilNil".
 local function brokenAuraUtil() return setmetatable({}, { __index = function() return function() error("Interface/AddOns/Blizzard_FrameXMLUtil/AuraUtil.lua:25: attempt to call a nil value") end end }) end
--- api modes for the aura lookup: nil = C_UnitAuras.GetAuraDataByIndex (MoP Classic / Forever); others exercise the fallbacks
+-- Aura lookup modes. nil means C_UnitAuras.GetAuraDataByIndex (MoP Classic / Forever). The others exercise the fallbacks.
 local CSPELL = {}
 local API = {
-  legacyCd = function() -- no C_Spell cooldown readers: the old globals GetSpellCooldown / GetSpellCharges
+  legacyCd = function() -- No C_Spell cooldown readers here: fall back to the old globals GetSpellCooldown / GetSpellCharges.
     CSPELL.cd, CSPELL.ch = C_Spell.GetSpellCooldown, C_Spell.GetSpellCharges
     local cdF, chF = CSPELL.cd, CSPELL.ch
     _G.GetSpellCooldown = function(id) local i = cdF(id) return i.startTime, i.duration, 1, 1 end
@@ -193,7 +193,7 @@ for i = 1, 12 do _G["ActionButton" .. i] = { action = i, bindingAction = "ACTION
 
 T.loadAddonFile("WeakAuras/AuraEnvironment.lua", "WeakAuras", Private)
 
----------------- compile every custom function inside the WA sandbox ----------------
+-- Compile every custom function inside the WeakAuras sandbox.
 local nextData = byId["SWR Next"]
 local initFn = assert(WeakAuras.LoadFunction("return function() " .. nextData.actions.init.custom .. "\n end", "SWR Next"))
 Private.customActionsFunctions["SWR Next"] = { init = initFn }
@@ -205,7 +205,7 @@ for _, c in ipairs(t.c) do
 end
 print("sandbox compile OK for init + " .. #t.c .. " TSU + customVariables")
 
----------------- spell book per spec ----------------
+-- Spell book per spec.
 local COMMON = { 5308, 78, 845, 6343, 1719, 114207, 6673, 469, 18499, 6544, 57755, 6552, 23920, 97462, 871, 34428, 2457, 71, 2458, 100 }
 local SPEC = {
   [1] = { 12294, 7384, 1464, 12328, 86346, 1680, 118038, 56636, 29725 },
@@ -260,7 +260,7 @@ local function run(label, sc, expect)
   now = now + (sc.dt or 1)
   if sc.before then sc.before(getE()) end
   for _, id in ipairs(ORDER) do
-    -- honour load conditions like WeakAuras would (class always WARRIOR here; spec only if a child asked for it)
+    -- Honour the load conditions the way WeakAuras would. Class is always WARRIOR here. Spec only if a child asked for it.
     local ld = byId[id].load
     local specId = ({ 71, 72, 73 })[W.spec or 0]
     if not ld.use_class_and_spec or (specId and ld.class_and_spec.multi[specId]) then
@@ -400,7 +400,7 @@ R("Prot execute only with 90+ rage when tanking", { spec = 3, rage = 50, thp = 1
 R("Prot Shockwave talent", { spec = 3, rage = 30, stance = 71, talents = { 46968 }, cd = { [23922] = 4, [6572] = 5 }, tdebuffsOther = { WB, WA3 } }, "Shockwave")
 
 print("\n== Leveling (no spec, levels 1-9) ==")
--- MoP Classic: Battle Stance + Heroic Strike at 1, Charge at 3, Victory Rush at 5, Execute at 7
+-- MoP Classic: Battle Stance and Heroic Strike at 1, Charge at 3, Victory Rush at 5, Execute at 7.
 local L1 = { 2457, 78 }
 local L3 = { 2457, 78, 1250619 }
 local L5 = { 2457, 78, 1250619, 34428 }
@@ -425,7 +425,7 @@ R("L3 target 15 yd -> Charge", { noSpec = true, level = 3, rage = 0, dist = 15, 
 R("L3 old Charge ID 100 also works", { noSpec = true, level = 3, rage = 0, dist = 15, knownOnly = { 2457, 78, 100 } }, "ChargeOld")
 R("L3 Charge on cooldown -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 12 }, knownOnly = L3 }, "HeroicStrike")
 R("L3 in melee -> no Charge", { noSpec = true, level = 3, rage = 30, knownOnly = L3 }, "HeroicStrike")
--- v1.6.1: Charge recharging (reported only by GetSpellCharges, like the 5.5 client) must fall through
+-- v1.6.1: Charge recharging (reported only by GetSpellCharges, like the 5.5 client) has to fall through.
 R("L3 Charge recharging (charges 0, GetSpellCooldown 0) -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 15 }, knownOnly = L3,
   check = function(st) return not icon(st("SWR Next+1"), 1250619) and not icon(st("SWR Off-GCD"), 1250619), "no Charge anywhere" end }, "HeroicStrike")
 R("L3 Charge recharging, 0 rage -> wait HS, not Charge", { noSpec = true, level = 3, rage = 0, dist = 15, cd = { [1250619] = 3 }, knownOnly = L3 }, "HeroicStrike")
@@ -566,7 +566,7 @@ R("rage bar: out of combat with a hostile target, 40 rage -> hidden", { rage = 4
   check = function(st) return st("SWR Next") ~= nil and st("SWR Rage") == nil, "hidden" end }, nil)
 R("rage bar orange near cap", { rage = 105, check = function(st) local b = st("SWR Rage") return b and b.dump and b.value == 105 and b.total == 120, "rage" end }, nil)
 print("\n== Cooldown tray ==")
--- tray(st) -> list of spell ids in slots 1..8, or false if a hidden slot sits between shown ones (not packed)
+-- trayIds: spell ids in slots 1..8, or false if a hidden slot sits between shown ones (not packed).
 local function trayIds(st)
   local ids, gap = {}, false
   for i = 1, 8 do
@@ -659,7 +659,7 @@ R("legacy return order read correctly (count, duration, expirationTime, spellId)
 R("auraAt past the last aura -> nil (loop stops)", { api = "legacy", buffs = TFB2, rage = 40,
   check = function() local E = getE() return E.auraAt("player", 2, "HELPFUL", now) == nil, "not nil" end }, nil)
 
--- static layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -172 (v1.7, was -160), no overlap with anything else
+-- Layout: 8 slots of 32 px, 36 px apart, right edge at +150, row at y -172 (v1.7, was -160). Nothing else overlaps them.
 do
   local okL, why = true, ""
   local function box(c) local w = c.width or 0 local h = c.height or 0 return c.xOffset - w / 2, c.xOffset + w / 2, c.yOffset - h / 2, c.yOffset + h / 2 end
@@ -681,8 +681,8 @@ do
   check(t.c[#t.c].id == "SWR Sunder" and t.c[#t.c].uid == "SWRSunder", "v1.7 Sunder icon appended last (existing order unchanged)")
 end
 
--- v1.6 layout: rage bar halved (80 x 5 px), its number just right of it, swing timer gone,
--- no stance or level text in the resources line, group still at CENTER 0,-40 with Group Scale / Alpha 0.8
+-- v1.6 layout. Rage bar halved (80 x 5 px), the number just to the right of it, swing timer gone.
+-- No stance or level text on the resources line. Group still at CENTER 0,-40, with group scale and alpha 0.8.
 do
   local by = {} for _, c in ipairs(t.c) do by[c.id] = c end
   local rg = by["SWR Rage"]
@@ -694,7 +694,7 @@ do
   local function texts(c) local o = {} for _, r in ipairs(c.subRegions) do if r.type == "subtext" then o[#o + 1] = r end end return o end
   local rt = texts(rg)
   check(#rt == 1 and rt[1].text_text == "%ragetext" and rt[1].anchor_point == "OUTER_RIGHT", "rage number outside the thin bar (right)")
-  -- the Next icon's mode label sits centred between the icon top and the rage bar bottom (no gap left by the swing bars)
+  -- The Next icon's mode label sits centred between the icon top and the bottom of the rage bar. No gap left by the swing bars.
   local nx = by["SWR Next"]
   local modeY for _, r in ipairs(nx.subRegions) do if r.text_text == "%mode" then modeY = r.text_anchorYOffset end end
   check(modeY and math.abs(modeY - (nx.height / 2 + (rg.yOffset - rg.height / 2)) / 2) < 1e-9, "mode label centred under the rage bar " .. tostring(modeY))
@@ -705,10 +705,10 @@ do
   check(data.scale == 0.8 and data.alpha == 0.8, "Group Scale 0.8 and Group Alpha 0.8 " .. tostring(data.scale) .. " " .. tostring(data.alpha))
 end
 
--- v1.7 Sunder Armor tracker (option "sunder", default on). Arms/Fury with Sunder Armor known (talents = { 7386 }).
+-- v1.7 Sunder Armor tracker. Option "sunder", on by default. Arms and Fury with Sunder Armor known (talents = { 7386 }).
 print("\n== Sunder Armor (v1.7) ==")
 local SA = { 7386 }
-local OUT = { [86346] = 10, [12294] = 3 }   -- outside CS, MS on cd: Sunder sits above Slam / shout
+local OUT = { [86346] = 10, [12294] = 3 }   -- outside CS, MS on cooldown: Sunder sits above Slam and shout
 local function sund(st) local x = st("SWR Next") return x and x.tag == "WA", x and x.tag end
 local function sicon(st) return st("SWR Sunder") end
 R("Arms: Weakened Armor missing -> Sunder {WA}", { rage = 40, talents = SA, cd = OUT, check = function(st)
@@ -747,7 +747,7 @@ do
   for i, o in ipairs(nx.authorOptions) do if o.key == "sunder" then opt = o; iw = i end if o.key == "wildRage" then ish = i end end
   check(opt and opt.type == "toggle" and opt.default == true and nx.config.sunder == true and iw == ish + 1,
     "Sunder option: toggle, default on, right after Fury: Wild Strike (class settings before Show toggles)")
-  -- layout: CS / Shield Block bars clear the tracker labels (label bottom = icon bottom - 1 - 12) by 6 px, tray 6 px under Barrier
+  -- Layout: the CS and Shield Block bars clear the tracker labels (label bottom = icon bottom - 1 - 12) by 6 px, and the tray sits 6 px under Barrier.
   local function bot(c) return c.yOffset - c.height / 2 end
   local function top(c) return c.yOffset + c.height / 2 end
   local labelBottom = bot(by["SWR Tracker 1"]) - 1 - 12
