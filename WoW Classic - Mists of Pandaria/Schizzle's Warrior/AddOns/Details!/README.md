@@ -14,7 +14,7 @@ The Arms and Fury strings are identical: the layout and displays are the same, a
 The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/AddOns/Details!/) (v2.2) and the Warrior [Plater profiles](../Plater/).
 
 ## What you get (all three profiles)
-- **Two windows, both 250 × 175**, side by side in the bottom-right corner. Window 2 sits in the corner, 4 px from the right and bottom edges of the screen, and window 1 sits directly to its left at the same height, with no gap. They're snapped together. Including the 20 px title bars, the pair covers 500 × 195 px.
+- **Two windows, both 250 × 153**, side by side in the bottom-right corner. Window 2 sits in the corner, 4 px from the right edge of the screen, and window 1 sits directly to its left at the same height, with no gap. They're snapped together. Their bottom edge is **26 px up**, right on top of the [XP & Rep Tray](../WeakAuras/#xp--rep-tray-separate-import) (a separate WeakAuras import: two 500 px bars, 22 px tall in total, 4 px from the bottom edge). Including the 20 px title bars, the pair covers 500 × 173 px, and with the tray under it the whole corner block is 500 × 195 px, the same as before the tray.
 - **Locked:** both windows start locked, so they can't be dragged or resized by accident, and dragging the title bar doesn't stretch them either. To move or resize one, hover it and click **Unlock** in its bottom-right corner. Click **Lock** again when you're done.
 - **Dark flat look:** Minimalistic skin base, near-black header, dark see-through body, "Details Flat" bars at height 18 with class colours and spec icons, and a thin 1 px black border around the bar area.
 - **Text:** Fira Sans Condensed Medium (WeakAuras registers it), bar text size 9 and title size 11. The right side of each bar shows **total, per second and percent**, with the percent in muted grey.
@@ -30,6 +30,7 @@ The look matches [Schizzle's Monk Details! Profile](../../../Schizzle's%20Monk/A
 3. Repeat for `Fury Profile.txt` (name it `Schizzle's Warrior Fury`) and `Protection Profile.txt` (name it `Schizzle's Warrior Protection`).
 4. Pick the profile for the spec you're in now from the Profiles dropdown (or type `/details profile Schizzle's Warrior Protection`, etc.).
 5. `/reload` so the windows, snap links, lock and tank-avoidance setting apply cleanly.
+6. Import the [XP & Rep Tray](../WeakAuras/#xp--rep-tray-separate-import) in WeakAuras (`/wa` → **Import**) to fill the 22 px strip under the windows. Without it, that strip is just empty screen.
 
 Import all three, even if you only play one spec today, so the switcher has somewhere to go after a respec.
 
@@ -78,12 +79,12 @@ Details! doesn't export bookmarks in profiles, so set them up once by hand: righ
 - Bar options live in **Options → Designer** in current Details! (click a part of the preview window). "Bars: General" and "Bars: Texts" look almost empty; that's normal.
 
 ## Fits with the rest of the kit
-- The windows cover the bottom-right corner up to 199 px from the bottom (175 px windows plus their 20 px title bars), so the [MoveAny tooltip spot](../MoveAny/) sits just above them.
+- The windows cover the bottom-right corner from 26 px up (the top of the XP & Rep Tray) to 199 px up (153 px windows plus their 20 px title bars). The top edge is unchanged from v1.4, so the [MoveAny tooltip spot](../MoveAny/) still sits just above them.
 - [Baganator](../Baganator/)'s bag opens just above the windows (its bottom is 190 px up), so while it's open it covers the top 9 px of the title bars under it.
 - **Bartender4 neighbours** (positions in UI units; at UI scale 1 on a 16:9 screen the UI is 1365 wide):
   - **Action bars 1–3:** their right end is about 213 px right of the screen centre, and window 1's left edge is 504 px in from the right. On a UI narrower than about 1435 px (such as 1365) window 1 covers the right end of bars 1–3 by up to about 35 px. On a wider UI (a smaller UI scale) they clear.
   - **Extra action button** (236 px right of centre, about 160 px up): when one appears it lands under window 1 on a UI narrower than about 1575 px.
-  - **Micro menu:** Bartender4's faded-out micro menu (bottom right, 300 px in, bottom 30 px) sits under the bottom rows of both windows, so hovering there can show the micro buttons.
+  - **Micro menu:** Bartender4's faded-out micro menu (bottom right, 300 px in, bottom 30 px) sits under the bottom rows of window 1, just above the XP & Rep Tray, so hovering there can show the micro buttons.
   - **Bar 5** (right edge, around the middle of the screen) now stays well above the windows, whose title bars top out 199 px up.
   - If something gets in the way, unlock and nudge the windows, lower the UI scale, or move the bar in `/bt4`.
 
@@ -104,7 +105,7 @@ DETAILS_SRC=/path/to/Details-Damage-Meter WA_TYPES=/path/to/WeakAuras/Types.lua 
 DETAILS_SRC=/path/to/Details-Damage-Meter WA_TYPES=/path/to/WeakAuras/Types.lua lua verify.lua
 ```
 
-`verify.lua` checks each string's round trip, keys and types against Details!' defaults, fonts and textures, and a simulated import. It also checks the window size (250 × 175), the displays (Damage Done and Damage Taken, by Details!' own attribute numbers), the lock, and the anchors (bottom right, 4 px in, window 1 directly left of window 2, snapped side by side). It also checks the snippet: it compiles, uses none of Details!' blocked names, and behaves correctly in a mocked game (login, dual-spec swap, respec in combat, missing profile, your own profile left alone, throttle, non-Warrior).
+`verify.lua` checks each string's round trip, keys and types against Details!' defaults, fonts and textures, and a simulated import. It also checks the window size (250 × 153), the displays (Damage Done and Damage Taken, by Details!' own attribute numbers), the lock, and the anchors (bottom right, 4 px in from the right and 26 px up so the windows rest on the XP & Rep Tray, window 1 directly left of window 2, snapped side by side). It also checks the snippet: it compiles, uses none of Details!' blocked names, and behaves correctly in a mocked game (login, dual-spec swap, respec in combat, missing profile, your own profile left alone, throttle, non-Warrior).
 
 ## Version history
 - **v1 (Nov 1 2026):** three spec profiles (two 232 × 176 windows each) plus the spec-switch snippet.
@@ -112,6 +113,7 @@ DETAILS_SRC=/path/to/Details-Damage-Meter WA_TYPES=/path/to/WeakAuras/Types.lua 
 - **v1.2 (Nov 2 2026):** both windows are now **209 × 150** (was 211 × 150), still snapped edge to edge at the same spot. Nothing else changed.
 - **v1.3 (Nov 2 2026):** both windows are now **250 × 175** (was 209 × 150) and **stacked** in the bottom-right corner, 4 px from the right and bottom edges (they used to sit side by side, 24 px in and 190 px up). Window 1 shows Damage Done and window 2 shows **Damage Taken** in all three profiles (Arms and Fury used to show Interrupts). Both windows start **locked**, and a locked window no longer stretches when its title bar is dragged. Re-import the profiles to get the changes.
 - **v1.4 (Nov 2 2026):** the windows are **side by side** again instead of stacked: window 2 in the bottom-right corner, 4 px from the right and bottom edges, and window 1 directly to its left, snapped to it. Size (250 × 175), displays and the lock are unchanged. Re-import the profiles to get the change.
+- **v1.5 (Nov 3 2026):** both windows are **22 px shorter (250 × 153, was 250 × 175)** and their bottom edge moved up from 4 px to **26 px**, so they sit right on top of the new WeakAuras [XP & Rep Tray](../WeakAuras/#xp--rep-tray-separate-import) (500 × 22, 4 px from the bottom). The title bars still top out 199 px up, so nothing above the windows moves. Width, side-by-side snap, displays and the lock are unchanged. Re-import the profiles (same names, delete the old ones first) and `/reload`.
 
 ## License
 

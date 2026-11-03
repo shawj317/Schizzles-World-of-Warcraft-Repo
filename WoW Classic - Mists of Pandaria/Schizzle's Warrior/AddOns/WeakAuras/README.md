@@ -4,6 +4,8 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 > **Heads-up:** this aura is built for Mists of Pandaria Classic (5.5.x). It will be revised for WoW Forever after that launches.
 
+This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep-tray-separate-import)**, two slim experience and reputation bars that sit under the Details! windows.
+
 **File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (31,164 chars, starts `!WA:2!`). Current version: **v1.6** (engine `VERSION = 7`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
@@ -259,6 +261,36 @@ IDs were checked against MoP Classic client data (wago.tools DB2 tables for buil
 
 Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, a 20-rage dump margin, Execute at 90 rage for Prot, and holding one Raging Blow charge when CS is less than 6 s away. You can change the first two in Options.
 
+## XP & Rep Tray (separate import)
+
+**File:** [`XP & Rep Tray.txt`](XP%20%26%20Rep%20Tray.txt) (4,344 chars, starts `!WA:2!`). In-game group: **Schizzle's XP & Rep Tray v1.0**. It has nothing to do with the rotation group, so it works on any class and can be imported on its own.
+
+**What it is:** two slim bars, each **500 x 10 px**, stacked with a 2 px gap (**22 px tall** in total), in the bottom-right corner 4 px from the right and bottom edges of the screen. That is directly under the two side-by-side [Details! windows](../Details!/), which are 500 px wide together, so the tray and the meters line up edge to edge. The Details! profiles from v1.5 on are 22 px shorter to make room for it.
+
+- **Top bar, experience:** a bronze fill for your XP this level, with **rested XP as a blue overlay** right after the fill (clipped at the bar's end). Left text: `Level 42   Rested 35%` (the rested part only shows while you have rested XP). Right text: current / needed and percent, for example `12,345 / 50,000   24.7%`.
+- **Bottom bar, reputation:** the faction you're watching (tick **Show as Experience Bar** on a faction in the reputation panel, `U`). Left text: faction name and standing, for example `Shado-Pan   Honored`. Right text: progress inside that standing and percent. **The bar colour follows the standing:** red (Hated, Hostile), orange (Unfriendly), yellow (Neutral), green (Friendly), sea green (Honored), blue (Revered) and purple (Exalted). Friendship factions such as the Tillers farmers show their own rank (Stranger to Best Friend) on a green bar, and a maxed rank shows a full bar with the rank name.
+- **Kit look:** Fira Sans Condensed Medium at size 9 with an outline, a near-black background and a thin bronze frame drawn inside each bar, so nothing spills onto the meters above.
+
+**When a bar hides:**
+- **The XP bar hides at the level cap (90)**, and also if XP gain is switched off. The reputation bar then moves up into the top slot, right under Details!, and the strip at the very bottom of the screen stays empty. The tray's top edge never moves, so there's never a gap between the meters and the bars.
+- **The reputation bar hides when no faction is watched.** Watch one again and it comes back.
+- If both are hidden (level 90 and nothing watched), the tray shows nothing at all.
+
+**Game APIs (checked against the MoP Classic 5.5.4 client source):** `UnitXP`, `UnitXPMax`, `GetXPExhaustion`, `UnitLevel`, `IsXPUserDisabled`, `GetMaxLevelForPlayerExpansion`, `C_Reputation.GetWatchedFactionData` and `C_GossipInfo.GetFriendshipReputation`. The tray falls back to the older `GetWatchedFactionInfo` if `C_Reputation` is ever missing, and to a level cap of 90 if the client doesn't report one. Every optional API is type-checked first, and the code uses no `pcall`, `AuraUtil` or anything else WeakAuras' sandbox blocks. Both bars only update on game events (XP gained, level up, rested change, reputation change, loading screens), so they cost nothing between them.
+
+### Import the tray (step by step)
+1. Open `XP & Rep Tray.txt` on GitHub and click **Copy raw file** (two overlapping squares, top right of the file).
+2. In game, type `/wa` and click **Import**.
+3. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
+4. WeakAuras shows the "Schizzle's XP & Rep Tray v1.0" group with two auras (Schizzle Tray XP and Schizzle Tray Rep). Click **Import** again.
+5. Type `/reload`.
+6. To get the reputation bar, press `U`, click a faction and tick **Show as Experience Bar**.
+7. Import the **v1.5 Details! profiles** too (see the [Details! README](../Details!/)), so the meters are 22 px shorter and sit right on top of the tray. With older Details! profiles the meters' bottom 22 px cover the tray.
+
+**Moving it:** open `/wa`, click the group and drag it, or set X/Y on its **Display** tab. The default is the group's top-right corner on the screen's bottom-right corner at x -4, y 26. On a later update, WeakAuras keeps your position unless you tick **Size & Position**.
+
+**Verified offline:** `source/tray_sim.lua` decodes the string like WeakAuras' importer, replays WeakAuras' dynamic group layout (XP 16-26 px up, reputation 4-14 px up, both 4-504 px in from the right), compiles both triggers inside WeakAuras' own sandbox (0 warnings) and runs 67 checks with a mocked game: mid level with and without rested XP, levelling to 90, XP switched off, no watched faction, a normal faction, Exalted, friendship ranks (mid and maxed) and the `GetWatchedFactionInfo` fallback. **It has not been tested in the game client yet.**
+
 ## Known limits
 
 - **Not tested in game yet.** Everything was checked offline against a mocked WoW API. Report anything that looks wrong with `/dump SchizzleWarrior.R.why`.
@@ -272,11 +304,15 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 
 - `engine.lua`: the rotation engine that goes into SWR Next → Actions → On Init.
 - `build.lua`: builds the export string from `engine.lua` and writes `../All-in-One Rotation.txt`. The version lives in one place, `RELEASE` near the top, which sets the group name and description. It needs LibSerialize and LibDeflate (point `WA_LIBS` at the folder that holds both); `WA_OUT` sets the output file.
+- `tray_build.lua`: builds the separate XP & Rep Tray and writes `../XP & Rep Tray.txt` (same `WA_LIBS` / `WA_OUT` settings).
+- `tray_sim.lua`: the tray's offline test (67 checks), run the same way as `sim.lua`. Set `WOW_UI_SOURCE` to a wow-ui-source checkout of the 5.5 client to also confirm every game API it calls exists there.
 - `sim.lua`: the offline test. It decodes the export like WeakAuras does, compiles every custom function in WeakAuras' sandbox and runs 364 checks. It needs a WeakAuras2 checkout: run it from its `tests/` folder, or set `WA_TESTS`, `WA_LIBS` and `WA_EXPORT`.
 
 No SavedVariables or personal data are included.
 
 ## Version history
+
+The XP & Rep Tray has its own version (**v1.0**, Nov 3, 2026: first release). The list below is the rotation's.
 
 - **v1.6** (Nov 3, 2026): a smaller, quieter HUD.
   - The rage bar is half the size (80x5, was 160x10). Its number moved to the right of the bar, and the "Rage" label is gone.

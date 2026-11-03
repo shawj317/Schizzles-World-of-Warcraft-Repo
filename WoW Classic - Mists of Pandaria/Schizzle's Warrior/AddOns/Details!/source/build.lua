@@ -1,7 +1,8 @@
 -- Builds the three Schizzle's Warrior Details! profiles (Arms, Fury, Protection).
 -- Usage (from this folder):  lua build.lua      env: DETAILS_SRC, WA_TYPES (see common.lua), DETAILS_FONT, OUT_DIR
--- Two locked 250x175 Minimalistic windows side by side in the bottom-right corner, 4 px from the right
--- and bottom edges (window 2 in the corner, window 1 directly to its left), Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
+-- Two locked 250x153 Minimalistic windows side by side in the bottom-right corner, 4 px from the right edge
+-- (window 2 in the corner, window 1 directly to its left), sitting right on top of the 500x22 WeakAuras
+-- XP & Rep Tray (4 px up, so the windows' bottom edge is 26 px up). Fira Sans Condensed Medium, bar text 9, title 11, tooltip 11.
 local HERE = (arg and arg[0] or ""):match("^(.*[/\\])") or "./"
 dofile(HERE .. "common.lua")
 local R = dofile(HERE .. "defaults.lua")
@@ -17,7 +18,8 @@ local KNOWN_FILES = {
 }
 local FONT_FILE = KNOWN_FILES[FONT] or "Fonts\\FRIZQT__.TTF"
 local FLAT, FLAT_FILE = "Details Flat", "Interface\\AddOns\\Details\\images\\bar_background"
-local W, H = 250, 175
+-- 153 = the old 175 minus the XP & Rep Tray's height (22), so the title bars still top out 199 px up
+local W, H = 250, 153
 local TITLE_BAR = 20 -- Details' title bar sits above the bar area (class_instance_snap.lua TITLE_BAR_HEIGHT)
 
 local function themedWindow()
@@ -71,8 +73,10 @@ local function themedWindow()
   return w
 end
 
--- both windows on one row in the bottom-right corner: window 2 in the corner, window 1 touching its left edge
-local RIGHT_MARGIN, BOTTOM_MARGIN = -4, 4
+-- both windows on one row in the bottom-right corner: window 2 in the corner, window 1 touching its left edge.
+-- The XP & Rep Tray (WeakAuras, 500x22) fills the 4..26 px strip under them, so they start on its top edge.
+local TRAY_BOTTOM, TRAY_HEIGHT = 4, 22
+local RIGHT_MARGIN, BOTTOM_MARGIN = -4, TRAY_BOTTOM + TRAY_HEIGHT
 local function placeWindow(w, id, atributo, sub)
   local xRight = RIGHT_MARGIN - (id == 1 and W or 0)
   local yBottom = BOTTOM_MARGIN
