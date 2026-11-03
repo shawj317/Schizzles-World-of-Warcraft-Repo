@@ -29,8 +29,8 @@ assert(ok and type(t) == "table" and t.m == "d" and t.d and t.c and t.v == 1421,
 local data = t.d
 print(("decoded OK: group %q uid=%s, %d children"):format(data.id, data.uid, #t.c))
 check(not decompressed:lower():find("peanut"), "no Peanut naming")
-check(data.id == "Schizzle's XP & Rep Tray v1.1", "group name carries v1.1")
-check((data.desc or ""):find("v1%.1%.$") ~= nil, "description ends with v1.1")
+check(data.id == "Schizzle's XP & Rep Tray v1.2", "group name carries v1.2")
+check((data.desc or ""):find("v1%.2%.$") ~= nil, "description ends with v1.2")
 check(data.uid == "SchizzleXPRepTray" and data.regionType == "dynamicgroup", "standalone dynamic group, own uid")
 local by = {}
 for i, c in ipairs(t.c) do
@@ -52,6 +52,9 @@ local function isPurple(c) return c[1] > c[2] and c[3] > c[2] end
 check(isBlue(XP.barColor) and XP.barColor[4] == 1, "earned XP fill is blue")
 check(isGreen(XP.overlays[1]), "overlay 1 (completed quests) is green")
 check(isPurple(XP.overlays[2]), "overlay 2 (rested) is purple")
+-- draw order (AuraBar.lua): the blue fill is ARTWORK sublevel 0 and overlay n is ARTWORK sublevel min(n, 7) on the same
+-- bar frame, so green (1) draws over blue and purple (2) over green
+check(XP.overlayclip and #XP.overlays == 2, "green is overlay 1 (above the fill), purple overlay 2 (above green)")
 
 ---------------- layout: replay WeakAuras' DOWN grower (DynamicGroup.lua) ----------------
 check(data.grow == "DOWN" and data.align == "RIGHT" and data.space == 2 and data.sort == "none" and (data.stagger or 0) == 0, "grow down, right aligned, 2 px apart, list order")
@@ -85,12 +88,17 @@ _G.UnitXPMax = function() return W.xpMax end
 _G.GetXPExhaustion = function() return W.rested end
 _G.IsXPUserDisabled = function() return W.xpOff or false end
 _G.GetMaxLevelForPlayerExpansion = function() return 90 end
--- quest log, MoP-style: title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID
-W.log = {}
+-- quest log, MoP-style: title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID.
+-- GetQuestLogRewardXP behaves like the 5.5 client's quest panel uses it (Wrath/QuestInfo.lua, loaded for mists):
+-- it reads the *selected* quest-log entry and ignores any argument. (The v1.1 mock looked the questID up, which is
+-- why the v1.1 sim passed while the green overlay stayed empty in game.)
+W.log, W.sel, W.selects = {}, 0, 0
 _G.GetNumQuestLogEntries = function() return #W.log, #W.log end
 _G.GetQuestLogTitle = function(i) local q = W.log[i] if not q then return nil end
   return q.title, 40, 0, q.header or false, false, q.complete, 0, q.id end
-_G.GetQuestLogRewardXP = function(id) for _, q in ipairs(W.log) do if q.id == id then return q.xp end end return 0 end
+_G.GetQuestLogSelection = function() return W.sel end
+_G.SelectQuestLogEntry = function(i) W.sel = i W.selects = W.selects + 1 end
+_G.GetQuestLogRewardXP = function() local q = W.log[W.sel] return q and not q.header and q.xp or 0 end
 _G.BreakUpLargeNumbers = function(n) local s = tostring(math.floor(n)) local r = s:reverse():gsub("(%d%d%d)", "%1,"):reverse() return (r:gsub("^,", "")) end
 for i, l in ipairs({ "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }) do _G["FACTION_STANDING_LABEL" .. i] = l end
 _G.C_Reputation = { GetWatchedFactionData = function() return W.watch end }
@@ -124,16 +132,31 @@ check(r and s.show and s.value == 12345 and s.total == 50000 and s.progressType 
 check(s.additionalProgress[1].direction == "forward" and s.additionalProgress[1].width == 0, "no completed quests: empty green overlay")
 check(s.additionalProgress[2].direction == "forward" and (s.additionalProgress[2].offset or 0) == 0 and s.additionalProgress[2].width == 17500, "rested overlay starts at the fill")
 check(s.lefttext == "Level 42   Rested 35%" and s.righttext == "12,345 / 50,000   24.7%", "XP text: " .. tostring(s.lefttext) .. " | " .. tostring(s.righttext))
+local function tipText(st) local o = { st.tipTitle } for _, l in ipairs(st.tip or {}) do o[#o + 1] = l[1] .. " = " .. l[2] end return table.concat(o, " | ") end
+check(tipText(s) == "Level 42 | Experience = 12,345 / 50,000  (24.7%) | To level 43 = 37,655  (75.3%) | Rested = 17,500  (35.0% of the level)", "XP tooltip: " .. tipText(s))
 -- completed-but-not-turned-in quests: only complete (1) quest entries count; headers, unfinished and failed (-1) don't
 W.log = { { title = "Kun-Lai Summit", header = true, id = 0 },
   { title = "Done A", complete = 1, id = 101, xp = 2400 }, { title = "Not done", complete = nil, id = 102, xp = 9000 },
   { title = "Failed", complete = -1, id = 103, xp = 5000 }, { title = "Done B", complete = 1, id = 104, xp = 1100 } }
 r, s = run(XP, "QUEST_LOG_UPDATE")
 check(r and s.quest == 3500, "pending quest XP = sum of completed quests (" .. tostring(s.quest) .. ")")
+check(s.nq == 2, "two completed quests counted")
+check(W.sel == 0, "player's quest-log selection put back (none)")
 local g, p = s.additionalProgress[1], s.additionalProgress[2]
 check(g.direction == "forward" and (g.offset or 0) == 0 and g.width == 3500, "green overlay right after the blue fill")
 check(p.direction == "forward" and p.offset == 3500 and p.width == 17500, "purple rested overlay after the green one")
 check(s.righttext == "12,345 / 50,000   24.7%   +3,500 quest", "right text adds the pending quest XP: " .. tostring(s.righttext))
+check(tipText(s):find("Completed quests = +3,500  (2 quests) | After turn-ins = 15,845 / 50,000  (31.7%)", 1, true) ~= nil, "XP tooltip lists pending quest XP: " .. tipText(s))
+W.xp = 48000
+r, s = run(XP, "QUEST_LOG_UPDATE")
+check(tipText(s):find("After turn-ins = level 43 +1,500", 1, true) ~= nil, "turn-ins that level you up: " .. tipText(s))
+W.xp = 12345
+-- the bug: with a different quest selected in the log, the v1.1 read returned that quest's XP for every entry (or 0)
+W.sel = 3
+W.log[2].complete = 1
+r, s = run(XP, "QUEST_LOG_UPDATE")
+check(s.quest == 3500 and W.sel == 3, "another quest selected: still the right sum, selection restored to it")
+W.sel = 0
 W.log[2].complete = nil
 r, s = run(XP, "UNIT_QUEST_LOG_CHANGED", "player")
 check(r and s.quest == 1100 and s.additionalProgress[2].offset == 1100, "quest log change updates the green overlay")
@@ -146,6 +169,18 @@ W.log = { { title = "Done A", complete = 1, id = 101, xp = 2400 } }
 r, s = run(XP, "QUEST_LOG_UPDATE")
 check(s.show and s.quest == 0, "missing quest API: XP bar still works, no green overlay")
 _G.GetQuestLogRewardXP = keepX
+-- client without the selection API: falls back to the questID form
+local keepS, keepG = _G.SelectQuestLogEntry, _G.GetQuestLogSelection
+_G.SelectQuestLogEntry, _G.GetQuestLogSelection = nil, nil
+_G.GetQuestLogRewardXP = function(id) for _, q in ipairs(W.log) do if q.id == id then return q.xp end end return 0 end
+r, s = run(XP, "QUEST_LOG_UPDATE")
+check(s.quest == 2400, "no SelectQuestLogEntry: questID form used")
+_G.SelectQuestLogEntry, _G.GetQuestLogSelection, _G.GetQuestLogRewardXP = keepS, keepG, keepX
+-- nothing completed: no selection churn
+W.log = { { title = "Not done", complete = nil, id = 102, xp = 9000 } }
+W.selects = 0
+r, s = run(XP, "QUEST_LOG_UPDATE")
+check(s.quest == 0 and W.selects == 0, "no completed quests: quest-log selection never touched")
 W.log = {}
 r, s = run(XP, "QUEST_LOG_UPDATE")
 check(run(XP, "PLAYER_XP_UPDATE") == false, "no redraw when nothing changed")
@@ -174,16 +209,20 @@ W.watch = { factionID = 1270, name = "Shado-Pan", reaction = 6, currentReactionT
 r, s = run(REP, "UPDATE_FACTION")
 check(r and s.show and s.value == 3000 and s.total == 12000 and s.tier == 6, "watched faction progress inside the standing")
 check(s.lefttext == "Shado-Pan   Honored" and s.righttext == "3,000 / 12,000   25.0%", "Rep text: " .. tostring(s.lefttext) .. " | " .. tostring(s.righttext))
+check(tipText(s) == "Shado-Pan | Standing = Honored | Progress = 3,000 / 12,000  (25.0%) | To Revered = 9,000  (75.0%)", "Rep tooltip: " .. tipText(s))
 W.watch = { factionID = 1341, name = "The August Celestials", reaction = 8, currentReactionThreshold = 42000, nextReactionThreshold = 42999, currentStanding = 42999 }
 r, s = run(REP, "UPDATE_FACTION")
 check(s.tier == 8 and s.value == 999 and s.total == 999, "Exalted shows a full bar")
+check(tipText(s):find("Progress = 999 / 999", 1, true) and tipText(s):find("To next standing = 0", 1, true), "Exalted tooltip: " .. tipText(s))
 W.watch = { factionID = 1273, name = "Jogu the Drunk", reaction = 5, currentReactionThreshold = 0, nextReactionThreshold = 0, currentStanding = 9000 }
 W.friend = { [1273] = { friendshipFactionID = 1273, reaction = "Buddy", standing = 9000, reactionThreshold = 8400, nextThreshold = 16800 } }
 r, s = run(REP, "UPDATE_FACTION")
 check(s.show and s.lefttext == "Jogu the Drunk   Buddy" and s.value == 600 and s.total == 8400 and s.tier == 5, "friendship rank and progress")
+check(tipText(s) == "Jogu the Drunk | Friendship rank = Buddy | Progress = 600 / 8,400  (7.1%) | To next rank = 7,800  (92.9%)", "friendship tooltip: " .. tipText(s))
 W.friend[1273] = { friendshipFactionID = 1273, reaction = "Best Friend", standing = 42999, reactionThreshold = 42000 }
 r, s = run(REP, "UPDATE_FACTION")
 check(s.righttext == "Best Friend" and s.value == 1 and s.total == 1, "max friendship rank: full bar, rank name")
+check(tipText(s) == "Jogu the Drunk | Friendship rank = Best Friend | Progress = highest rank", "max friendship tooltip: " .. tipText(s))
 W.friend = nil
 W.watch = { factionID = 0, name = "", reaction = 4 }
 r, s = run(REP, "UPDATE_FACTION")
@@ -201,6 +240,84 @@ for i, c in ipairs(REP.conditions) do
   check(c.check.variable == "tier" and c.check.op == "==" and tonumber(c.check.value) == i and c.changes[1].property == "barColor" and #c.changes[1].value == 4, "standing colour " .. i)
 end
 
+---------------- mouseover tooltip: run each bar's On Show action in the real sandbox ----------------
+local frames, TT = {}, { lines = {} }
+local function newFrame(parent)
+  local fr = { parent = parent, scripts = {}, level = 1, calls = {} }
+  function fr:SetAllPoints(o) self.allPoints = o end
+  function fr:SetFrameLevel(n) self.level = n end
+  function fr:GetFrameLevel() return self.level end
+  function fr:EnableMouseMotion(v) self.motion = v end
+  function fr:SetMouseClickEnabled(v) self.click = v end
+  function fr:EnableMouse(v) self.mouse = v end
+  function fr:SetScript(k, fn) self.scripts[k] = fn end
+  return fr
+end
+_G.CreateFrame = function(kind, name, parent) local fr = newFrame(parent) fr.kind = kind frames[#frames + 1] = fr return fr end
+function TT:SetOwner(o, a) self.owner, self.anchor, self.lines, self.shown = o, a, {}, false end
+function TT:GetOwner() return self.owner end
+function TT:ClearAllPoints() self.point = nil end
+function TT:SetPoint(...) self.point = { ... } end
+function TT:ClearLines() self.lines = {} end
+function TT:AddLine(t, r, g, b) self.lines[#self.lines + 1] = { t, nil, r, g, b } end
+function TT:AddDoubleLine(l, rt, ...) self.lines[#self.lines + 1] = { l, rt, ... } end
+function TT:Show() self.shown = true end
+function TT:Hide() self.shown = false end
+_G.GameTooltip = TT
+local regionsById = {}
+for _, c in ipairs(t.c) do regionsById[c.id] = newFrame() end
+local keepGD, keepGR, keepER = WeakAuras.GetData, WeakAuras.GetRegion, Private.EnsureRegion
+local dataById = {} for _, c in ipairs(t.c) do dataById[c.id] = c end
+WeakAuras.GetData = function(id) return dataById[id] end
+WeakAuras.GetRegion = function(id) return regionsById[id] end
+Private.EnsureRegion = function(id) return regionsById[id] end
+for _, c in ipairs(t.c) do
+  local a = c.actions.start
+  check(a.do_custom and type(a.custom) == "string", "On Show action sets up the hover frame " .. c.id)
+  local fn = assert(WeakAuras.LoadFunction("return function() " .. a.custom .. "\n end", c.id), "compile hover " .. c.id)
+  local reg = regionsById[c.id]
+  reg.state = states[c.id][""]
+  local n0 = #frames
+  Private.ActivateAuraEnvironment(c.id, nil, reg.state, states[c.id]) fn() Private.ActivateAuraEnvironment()
+  Private.ActivateAuraEnvironment(c.id, nil, reg.state, states[c.id]) fn() Private.ActivateAuraEnvironment()
+  check(#frames == n0 + 1, "one hover frame per bar, even when shown again " .. c.id)
+  local hf = frames[#frames]
+  check(hf.parent == reg and hf.allPoints == reg and reg.schizTip == hf, "hover frame covers the bar " .. c.id)
+  check(hf.motion == true and hf.click == false and hf.mouse == nil, "mouse motion only, clicks pass through " .. c.id)
+  check(type(hf.scripts.OnEnter) == "function" and type(hf.scripts.OnLeave) == "function", "OnEnter / OnLeave set " .. c.id)
+end
+-- XP hover with pending quests
+W.level, W.xp, W.xpMax, W.rested = 42, 12345, 50000, 17500
+W.log = { { title = "Done A", complete = 1, id = 101, xp = 2400 } }
+run(XP, "QUEST_LOG_UPDATE")
+local xr = regionsById[XP.id] xr.state = states[XP.id][""]
+xr.schizTip.scripts.OnEnter(xr.schizTip)
+check(TT.shown and TT.owner == xr.schizTip and TT.anchor == "ANCHOR_NONE", "hovering XP shows the GameTooltip")
+check(TT.point and TT.point[1] == "BOTTOMRIGHT" and TT.point[3] == "BOTTOMLEFT" and TT.point[4] < 0, "tooltip sits left of the tray, not over Details!")
+check(TT.lines[1][1] == "Level 42" and TT.lines[1][3] > TT.lines[1][5], "bronze title line")
+local found = false for _, l in ipairs(TT.lines) do if l[1] == "Completed quests" and l[2] == "+2,400  (1 quest)" then found = true end end
+check(found and #TT.lines == 6, "XP tooltip lines incl. completed quests (" .. #TT.lines .. ")")
+xr.schizTip.scripts.OnLeave(xr.schizTip)
+check(not TT.shown, "leaving hides it")
+local rr = regionsById[REP.id]
+W.watch = { factionID = 1270, name = "Shado-Pan", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 12000 }
+run(REP, "UPDATE_FACTION") rr.state = states[REP.id][""]
+rr.schizTip.scripts.OnEnter(rr.schizTip)
+check(TT.shown and TT.lines[1][1] == "Shado-Pan" and #TT.lines == 4 and TT.lines[4][1] == "To Revered", "hovering Rep shows faction lines")
+TT.owner = {} rr.schizTip.scripts.OnLeave(rr.schizTip)
+check(TT.shown, "leaving doesn't hide a tooltip someone else owns")
+rr.state = nil TT.shown = false
+rr.schizTip.scripts.OnEnter(rr.schizTip)
+check(not TT.shown, "no state (bar hidden): no tooltip, no error")
+-- client without EnableMouseMotion: plain EnableMouse fallback
+do local reg = newFrame() local fr0 = newFrame
+  _G.CreateFrame = function(_, _, parent) local fr = fr0(parent) fr.EnableMouseMotion = nil frames[#frames + 1] = fr return fr end
+  regionsById[XP.id] = reg
+  local fn = WeakAuras.LoadFunction("return function() " .. XP.actions.start.custom .. "\n end", XP.id)
+  Private.ActivateAuraEnvironment(XP.id, nil, nil, states[XP.id]) fn() Private.ActivateAuraEnvironment()
+  check(reg.schizTip and reg.schizTip.mouse == true, "no EnableMouseMotion: EnableMouse fallback") end
+WeakAuras.GetData, WeakAuras.GetRegion, Private.EnsureRegion = keepGD, keepGR, keepER
+
 ---------------- every game API the tray calls exists in the 5.5 client ----------------
 if UISRC then
   local function grep(pat, path) local p = io.popen("grep -rqs -- '" .. pat .. "' '" .. UISRC .. "/" .. path .. "' && echo y") local o = p:read("*a") p:close() return o:find("y") ~= nil end
@@ -209,7 +326,10 @@ if UISRC then
     check(grep('Name = "' .. api .. '"', doc), "5.5 API documented: " .. api)
   end
   check(grep('LiteralName = "QUEST_LOG_UPDATE"', doc) and grep('LiteralName = "UNIT_QUEST_LOG_CHANGED"', doc) and grep('LiteralName = "QUEST_TURNED_IN"', doc), "5.5 events documented: QUEST_LOG_UPDATE, UNIT_QUEST_LOG_CHANGED, QUEST_TURNED_IN")
-  check(grep("GetQuestLogRewardXP(questID)", "Interface/AddOns"), "5.5 FrameXML calls GetQuestLogRewardXP(questID)")
+  check(grep("xp = GetQuestLogRewardXP();", "Interface/AddOns/Blizzard_UIPanels_Game/Wrath/QuestInfo.lua"), "5.5 quest panel reads quest XP with GetQuestLogRewardXP() on the selected entry")
+  check(grep("Wrath\\\\QuestInfo.lua \\[AllowLoadGameType wrath, cata, mists\\]", "Interface/AddOns/Blizzard_UIPanels_Game/Blizzard_UIPanels_Game_Classic.toc"), "that quest panel is the one MoP Classic loads")
+  check(grep("SelectQuestLogEntry(", "Interface/AddOns/Blizzard_UIPanels_Game") and grep("GetQuestLogSelection()", "Interface/AddOns/Blizzard_UIPanels_Game"), "5.5 client has SelectQuestLogEntry / GetQuestLogSelection")
+  for _, api in ipairs({ "EnableMouseMotion", "SetMouseClickEnabled" }) do check(grep(api, "Interface/AddOns"), "5.5 FrameXML uses " .. api) end
   check(not grep('Name = "GetNumQuestLogEntries"', doc .. "/QuestLogDocumentation.lua"), "5.5 C_QuestLog has no GetNumQuestLogEntries (so the legacy globals are used)")
   for _, api in ipairs({ "UnitXP(\"player\")", "UnitXPMax(\"player\")", "GetXPExhaustion()", "BreakUpLargeNumbers(" }) do
     check(grep(api, "Interface/AddOns"), "used by the 5.5 FrameXML: " .. api)

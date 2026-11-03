@@ -71,11 +71,28 @@ _G.UnitGUID = function(u) if u == "player" then return "Player-1-1" end return "
 _G.IsPlayerSpell = function(id) return W.known[id] and true or false end
 _G.C_SpellBook = { IsSpellKnown = function(id) return W.known[id] and true or false end }
 local NAMES = {}
+CHARGE_IDS = { [1250619] = true, [100] = true }
 _G.C_Spell = {
   GetSpellName = function(id) return NAMES[id] or ("Spell" .. id) end,
   GetSpellTexture = function(id) return 100000 + id end,
-  GetSpellCooldown = function(id) local r = W.cd[id] or (id == 61304 and W.gcd) if r then return { startTime = now - 1, duration = r + 1, isEnabled = true, isOnGCD = false } end return { startTime = 0, duration = 0, isEnabled = true } end,
-  GetSpellCharges = function(id) if id == 2565 then return { currentCharges = W.sbCharges or 2, maxCharges = 2 } end return nil end,
+  -- like the 5.5 client: Charge (1250619 / 100) is a 1-charge spell, so its 20 s recharge is reported only by
+  -- GetSpellCharges and GetSpellCooldown says 0 (W.chargeViaCooldown = old mock behaviour, kept as a regression case)
+  GetSpellCooldown = function(id)
+    if CHARGE_IDS[id] and not W.chargeViaCooldown then
+      if W.gcdOnAll and W.gcd then return { startTime = now - 0.5, duration = 1.5, isEnabled = true, isOnGCD = true } end
+      return { startTime = 0, duration = 0, isEnabled = true }
+    end
+    local r = W.cd[id] or (id == 61304 and W.gcd)
+    if r then return { startTime = now - 1, duration = r + 1, isEnabled = true, isOnGCD = W.staleOnGcd and true or false } end
+    return { startTime = 0, duration = 0, isEnabled = true } end,
+  GetSpellCharges = function(id)
+    if id == 2565 then return { currentCharges = W.sbCharges or 2, maxCharges = 2 } end
+    if CHARGE_IDS[id] then
+      local r = W.cd[1250619] or W.cd[100]
+      if r then return { currentCharges = 0, maxCharges = 1, cooldownStartTime = now - (20 - r), cooldownDuration = 20, chargeModRate = 1 } end
+      return { currentCharges = 1, maxCharges = 1, cooldownStartTime = 0, cooldownDuration = 20, chargeModRate = 1 }
+    end
+    return nil end,
   IsSpellInRange = function(id, unit) if W.oor and W.oor[id] then return false end return true end,
   IsSpellUsable = function(id)
     if W.noMana and W.noMana[id] then return false, true end
@@ -110,7 +127,14 @@ local function playerAuraBySpellID(id) for _, a in ipairs(W.buffs) do if a[1] ==
 -- The engine must never touch it, so it stays broken for every scenario unless one sets api = "auraUtilNil".
 local function brokenAuraUtil() return setmetatable({}, { __index = function() return function() error("Interface/AddOns/Blizzard_FrameXMLUtil/AuraUtil.lua:25: attempt to call a nil value") end end }) end
 -- api modes for the aura lookup: nil = C_UnitAuras.GetAuraDataByIndex (MoP Classic / Forever); others exercise the fallbacks
+local CSPELL = {}
 local API = {
+  legacyCd = function() -- no C_Spell cooldown readers: the old globals GetSpellCooldown / GetSpellCharges
+    CSPELL.cd, CSPELL.ch = C_Spell.GetSpellCooldown, C_Spell.GetSpellCharges
+    local cdF, chF = CSPELL.cd, CSPELL.ch
+    _G.GetSpellCooldown = function(id) local i = cdF(id) return i.startTime, i.duration, 1, 1 end
+    _G.GetSpellCharges = function(id) local c = chF(id) if c then return c.currentCharges, c.maxCharges, c.cooldownStartTime, c.cooldownDuration end end
+    C_Spell.GetSpellCooldown, C_Spell.GetSpellCharges = nil, nil end,
   auraUtilNil = function() _G.AuraUtil = nil end,
   legacy = function() _G.C_UnitAuras = nil; _G.UnitAura = legacyAura end,
   legacyBuffDebuff = function() _G.C_UnitAuras = {}; _G.UnitAura = nil
@@ -124,6 +148,8 @@ local API = {
     _G.UnitDebuff = function(u, i, f) return legacyAura(u, i, (f and f:find("PLAYER")) and "HARMFUL|PLAYER" or "HARMFUL") end end,
 }
 local function resetApi()
+  if CSPELL.cd then C_Spell.GetSpellCooldown, C_Spell.GetSpellCharges, CSPELL.cd, CSPELL.ch = CSPELL.cd, CSPELL.ch, nil, nil end
+  _G.GetSpellCooldown, _G.GetSpellCharges = nil, nil
   _G.C_UnitAuras = CUA; _G.UnitAura = nil; _G.UnitBuff = nil; _G.UnitDebuff = nil; _G.AuraUtil = brokenAuraUtil()
 end
 resetApi()
@@ -379,6 +405,7 @@ local L3 = { 2457, 78, 1250619 }
 local L5 = { 2457, 78, 1250619, 34428 }
 local L7 = { 2457, 78, 1250619, 34428, 5308 }
 local VIC = { 32216, 15 }
+local function plus0(t, ...) local o = {} for _, v in ipairs(t) do o[#o + 1] = v end for _, v in ipairs({ ... }) do o[#o + 1] = v end return o end
 local function lev(st) local x = st("SWR Next") return x and x.mode:find("^LEVELING") ~= nil, x and x.mode end
 local function noSpecBars(st) return st("SWR Colossus Smash") == nil and st("SWR Shield Block") == nil and st("SWR Shield Barrier") == nil and st("SWR Tracker 1") == nil and st("SWR Tracker 4") == nil end
 R("L1 attacking, 0 rage -> Attack (building rage), HS next, rage bar hidden at 0 rage", { noSpec = true, level = 1, rage = 0, knownOnly = L1,
@@ -397,6 +424,20 @@ R("L3 target 15 yd -> Charge", { noSpec = true, level = 3, rage = 0, dist = 15, 
 R("L3 old Charge ID 100 also works", { noSpec = true, level = 3, rage = 0, dist = 15, knownOnly = { 2457, 78, 100 } }, "ChargeOld")
 R("L3 Charge on cooldown -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 12 }, knownOnly = L3 }, "HeroicStrike")
 R("L3 in melee -> no Charge", { noSpec = true, level = 3, rage = 30, knownOnly = L3 }, "HeroicStrike")
+-- v1.6.1: Charge recharging (reported only by GetSpellCharges, like the 5.5 client) must fall through
+R("L3 Charge recharging (charges 0, GetSpellCooldown 0) -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 15 }, knownOnly = L3,
+  check = function(st) return not icon(st("SWR Next+1"), 1250619) and not icon(st("SWR Off-GCD"), 1250619), "no Charge anywhere" end }, "HeroicStrike")
+R("L3 Charge recharging, 0 rage -> wait HS, not Charge", { noSpec = true, level = 3, rage = 0, dist = 15, cd = { [1250619] = 3 }, knownOnly = L3 }, "HeroicStrike")
+R("L3 old Charge ID 100 recharging -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [100] = 10 }, knownOnly = { 2457, 78, 100 } }, "HeroicStrike")
+R("L3 Charge recharge done (charges 1) -> Charge again", { noSpec = true, level = 3, rage = 30, dist = 15, knownOnly = L3 }, "Charge")
+R("L3 Charge ready while the GCD runs -> Charge (off GCD)", { noSpec = true, level = 3, rage = 30, dist = 15, gcd = 1, gcdOnAll = true, knownOnly = L3 }, "Charge")
+R("L3 Charge cd via old mock (GetSpellCooldown) still respected", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 12 }, chargeViaCooldown = true, knownOnly = L3 }, "HeroicStrike")
+R("L3 Charge recharging, legacy global APIs -> Heroic Strike", { noSpec = true, level = 3, rage = 30, dist = 15, cd = { [1250619] = 12 }, api = "legacyCd", knownOnly = L3 }, "HeroicStrike")
+R("L3 Charge ready, legacy global APIs -> Charge", { noSpec = true, level = 3, rage = 30, dist = 15, api = "legacyCd", knownOnly = L3 }, "Charge")
+R("L3 target 6 yd (inside Charge's 8 yd minimum) -> no Charge", { noSpec = true, level = 3, rage = 30, dist = 6, knownOnly = L3 }, "HeroicStrike")
+R("L3 target 30 yd (Charge out of range) -> no Charge", { noSpec = true, level = 3, rage = 30, dist = 30, oor = { [1250619] = true }, knownOnly = L3 }, "HeroicStrike")
+R("Charge recharging, Heroic Throw ready -> Heroic Throw", { noSpec = true, level = 22, rage = 30, dist = 15, cd = { [1250619] = 15 }, knownOnly = plus0(L3, 57755) }, "HeroicThrow")
+R("Charge and Heroic Throw both on cd -> Heroic Strike", { noSpec = true, level = 22, rage = 30, dist = 15, cd = { [1250619] = 15, [57755] = 20 }, knownOnly = plus0(L3, 57755) }, "HeroicStrike")
 R("L5 Victorious up -> Victory Rush", { noSpec = true, level = 5, rage = 40, buffs = { VIC }, knownOnly = L5 }, "VictoryRush")
 R("L5 Victorious, hp 50 -> Victory Rush glow", { noSpec = true, level = 5, rage = 40, hp = 50, buffs = { VIC }, knownOnly = L5,
   check = function(st) return st("SWR Next").glow, "glow" end }, "VictoryRush")
@@ -421,6 +462,16 @@ R("Arms lv10, MS on cd, 40 rage -> Heroic Strike filler", { spec = 1, level = 10
 R("Arms lv10, MS on cd, 10 rage -> wait MS", { spec = 1, level = 10, rage = 10, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294),
   check = function(st) return st("SWR Next").waiting, "wait" end }, "MortalStrike")
 R("Arms lv10, target 15 yd -> Charge", { spec = 1, level = 10, rage = 30, dist = 15, knownOnly = plus(B10, 12294) }, "Charge")
+R("Arms lv10, Charge recharging, 15 yd -> Mortal Strike (OOR tint), no Charge", { spec = 1, level = 10, rage = 30, dist = 15, cd = { [1250619] = 15 }, oor = { [12294] = true }, knownOnly = plus(B10, 12294),
+  check = function(st) return st("SWR Next").oorTint and not icon(st("SWR Next+1"), 1250619), "ms oor" end }, "MortalStrike")
+R("Arms lv10, Charge recharging, MS cd, Victorious -> Victory Rush", { spec = 1, level = 10, rage = 10, dist = 15, buffs = { VIC }, cd = { [1250619] = 15, [12294] = 4 }, knownOnly = plus(B10, 12294) }, "VictoryRush")
+R("Arms lv10, Charge recharging in melee -> Mortal Strike", { spec = 1, level = 10, rage = 30, cd = { [1250619] = 15 }, knownOnly = plus(B10, 12294) }, "MortalStrike")
+R("Arms lv10, MS 4 s cd with a stale isOnGCD flag -> not Mortal Strike", { spec = 1, level = 10, rage = 40, cd = { [12294] = 4 }, staleOnGcd = true, knownOnly = plus(B10, 12294) }, "HeroicStrike")
+R("Arms lv10 no Taste for Blood -> resources 'TfB 0'", { spec = 1, level = 10, rage = 30, knownOnly = plus(B10, 12294, 7384),
+  check = function(st) return st("SWR Resources") and st("SWR Resources").res == "TfB 0", st("SWR Resources") and st("SWR Resources").res end }, "MortalStrike")
+R("Arms 90, CS on 10 s cd -> not Colossus Smash", { rage = 40, cd = { [86346] = 10 } }, "MortalStrike")
+R("Arms 90, CS and MS on cd, stale isOnGCD -> neither", { rage = 40, cd = { [86346] = 10, [12294] = 3 }, staleOnGcd = true,
+  check = function(st) return not icon(st("SWR Next"), 86346) and not icon(st("SWR Next"), 12294), "no cd spells" end }, nil)
 R("Arms lv10, Victorious, MS cd -> Victory Rush", { spec = 1, level = 10, rage = 10, buffs = { VIC }, cd = { [12294] = 4 }, knownOnly = plus(B10, 12294) }, "VictoryRush")
 R("Fury lv10 -> Bloodthirst", { spec = 2, level = 10, rage = 30, knownOnly = plus(B10, 23881),
   check = function(st) return st("SWR Next").mode:find("^FURY") ~= nil and st("SWR Tracker 2") ~= nil and st("SWR Tracker 3") == nil, "fury10 trackers" end }, "Bloodthirst")
@@ -648,7 +699,7 @@ do
   local res = by["SWR Resources"]
   check(res.yOffset - res.fontSize / 2 > rg.yOffset + rg.height / 2, "resources line clear above the rage bar")
   check(data.xOffset == 0 and data.yOffset == -40 and data.anchorPoint == "CENTER", "group still at CENTER 0,-40")
-  check(data.id:find("v1%.6$") ~= nil, "group name carries v1.6")
+  check(data.id:find("v1%.6%.1$") ~= nil, "group name carries v1.6.1")
   check(data.scale == 0.8 and data.alpha == 0.8, "Group Scale 0.8 and Group Alpha 0.8 " .. tostring(data.scale) .. " " .. tostring(data.alpha))
 end
 

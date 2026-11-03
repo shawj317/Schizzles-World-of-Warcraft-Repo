@@ -4,7 +4,7 @@
 -- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
 -- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
 -- Debug: /dump SchizzleWarrior.R.why
-local VERSION = 7
+local VERSION = 8
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -65,24 +65,64 @@ local function spellIcon(id)
   return GetSpellTexture and GetSpellTexture(id) or 134400
 end
 
--- cooldown remaining, ignoring the GCD; returns remaining, start, duration
-local function cd(id, now)
-  local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
-  if type(info) ~= "table" then return 0, 0, 0 end
-  local s, d = info.startTime or 0, info.duration or 0
-  if s == 0 or d == 0 or info.isOnGCD then return 0, 0, 0 end
-  if d <= 1.5 then
-    -- the GCD shows up as a cooldown on every GCD spell; Heroic Strike / Cleave have a real 1.5 s cooldown
-    local g = C_Spell.GetSpellCooldown(61304)
-    if type(g) == "table" and g.startTime == s and g.duration == d then return 0, 0, 0 end
+-- raw cooldown and charge readers: C_Spell first, the old globals (start, duration, enabled) as a fallback
+local function rawCd(id)
+  if C_Spell and C_Spell.GetSpellCooldown then
+    local info = C_Spell.GetSpellCooldown(id)
+    if type(info) == "table" then return tonumber(info.startTime) or 0, tonumber(info.duration) or 0, info.isOnGCD end
+    return 0, 0, nil
   end
-  local rem = s + d - now
-  if rem < 0 then rem = 0 end
-  return rem, s, d
+  if GetSpellCooldown then
+    local s, d = GetSpellCooldown(id)
+    return tonumber(s) or 0, tonumber(d) or 0, nil
+  end
+  return 0, 0, nil
+end
+-- current, max, recharge start, recharge duration; nil for a spell without charges
+local function rawCharges(id)
+  if C_Spell and C_Spell.GetSpellCharges then
+    local c = C_Spell.GetSpellCharges(id)
+    if type(c) ~= "table" then return nil end
+    return tonumber(c.currentCharges) or 0, tonumber(c.maxCharges) or 0, tonumber(c.cooldownStartTime) or 0, tonumber(c.cooldownDuration) or 0
+  end
+  if GetSpellCharges then
+    local cur, mx, s, d = GetSpellCharges(id)
+    if cur == nil then return nil end
+    return tonumber(cur) or 0, tonumber(mx) or 0, tonumber(s) or 0, tonumber(d) or 0
+  end
+  return nil
+end
+-- cooldown remaining, ignoring the GCD; returns remaining, start, duration.
+-- v1.6.1: MoP Classic 5.5 Charge (1250619, also 100) is a charge spell (1 charge, 20 s recharge: SpellCategories
+-- ChargeCategory 1219). Its recharge is only reported by GetSpellCharges, while GetSpellCooldown says 0, so v1.6 kept
+-- suggesting Charge while it was recharging. A spell with charges now counts as on cooldown while it has none left.
+-- The GCD is filtered by comparing with the GCD spell (61304); the isOnGCD flag is trusted only for a GCD-length
+-- duration, because Blizzard documents it as unreliable outside SPELL_UPDATE_COOLDOWN.
+local function cd(id, now)
+  local rem, rs, rd = 0, 0, 0
+  local s, d, onGcd = rawCd(id)
+  if s > 0 and d > 0 then
+    local isGcd = false
+    if d <= 1.5 then
+      -- the GCD shows up as a cooldown on every GCD spell; Heroic Strike / Cleave have a real 1.5 s cooldown
+      local gs, gd = rawCd(61304)
+      isGcd = (gs == s and gd == d) or (onGcd and true or false)
+    end
+    if not isGcd then
+      local r = s + d - now
+      if r > 0 then rem, rs, rd = r, s, d end
+    end
+  end
+  local cur, mx, cs, cdur = rawCharges(id)
+  if cur and mx > 0 and cur < 1 and cs > 0 and cdur > 0 then
+    local r = cs + cdur - now
+    if r > rem then rem, rs, rd = r, cs, cdur end
+  end
+  return rem, rs, rd
 end
 local function charges(id)
-  local c = C_Spell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(id)
-  if type(c) == "table" then return c.currentCharges or 0, c.maxCharges or 0 end
+  local cur, mx = rawCharges(id)
+  if cur then return cur, mx end
   return nil
 end
 local function usable(id)
@@ -581,10 +621,23 @@ local function chargeId()
   if known(ID.chargeOld) then return ID.chargeOld end
   return nil
 end
+-- Charge needs 8-25 yd and must be off cooldown (both IDs are checked, they share one recharge). When it isn't
+-- usable the gap closer falls through to Heroic Throw, then to the normal priority.
+local function chargeReady(S)
+  local ch = chargeId()
+  if not ch then return nil end
+  local r = math.max(cd(ID.charge, S.now), cd(ID.chargeOld, S.now))
+  if r > 0.25 then return nil end
+  -- inside Charge's 8 yd minimum range (only when a real distance check exists; IsSpellInRange covers it otherwise)
+  if WeakAuras and WeakAuras.CheckRange and WeakAuras.CheckRange("target", 8, "<=") then return nil end
+  if outOfRange(ch) or not usable(ch) then return nil end
+  return ch
+end
+E.chargeReady = chargeReady
 local function gapCloser(S, add)
   if not S.hostile or meleeCheck(5) then return end
-  local ch = chargeId()
-  if ch and ready(ch, S) and not outOfRange(ch) then add(ch, { glow = true }, "Charge: target out of melee range") return end
+  local ch = chargeReady(S)
+  if ch then add(ch, { glow = true }, "Charge: target out of melee range") return end
   if ready(ID.hthrow, S) and not outOfRange(ID.hthrow) then add(ID.hthrow, nil, "Heroic Throw: target out of melee range") end
 end
 local function victorious(S) return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end

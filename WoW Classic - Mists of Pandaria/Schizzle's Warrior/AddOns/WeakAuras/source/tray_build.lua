@@ -8,7 +8,7 @@ local LibDeflate = dofile(LIBDIR .. "/LibDeflate/LibDeflate.lua")
 local OUT = os.getenv("WA_OUT") or (HERE .. "/../XP & Rep Tray.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE goes into the group name and the description only; the uids never carry it, so re-importing updates in place.
-local RELEASE = "1.1"
+local RELEASE = "1.2"
 local GROUP = "Schizzle's XP & Rep Tray v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -50,6 +50,38 @@ local HIDE = [[
     if st and st.show then st.show = false; st.changed = true; return true end
     return false]]
 
+-- Mouseover tooltip (v1.2). On Show, each bar gets one invisible child frame covering it that takes mouse *motion* only
+-- (EnableMouseMotion + SetMouseClickEnabled(false)), so clicks still go through to the world. Hovering shows a
+-- GameTooltip with the lines the trigger keeps in its state (tipTitle, tip = { { left, right }, ... }), anchored to the
+-- left of the tray so it never covers the Details! windows above it. Uses only calls the WeakAuras sandbox allows.
+local HOVER = [[
+local r = aura_env.region
+if not r or r.schizTip or type(CreateFrame) ~= "function" then return end
+local f = CreateFrame("Frame", nil, r)
+f:SetAllPoints(r)
+f:SetFrameLevel(r:GetFrameLevel() + 5)
+if f.EnableMouseMotion then
+  f:EnableMouseMotion(true)
+  if f.SetMouseClickEnabled then f:SetMouseClickEnabled(false) end
+else
+  f:EnableMouse(true)
+end
+local function show(self)
+  local st, tt = r.state, GameTooltip
+  if not tt or not st or type(st.tip) ~= "table" then return end
+  tt:SetOwner(self, "ANCHOR_NONE")
+  tt:ClearAllPoints()
+  tt:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT", -6, 0)
+  tt:ClearLines()
+  tt:AddLine(st.tipTitle or "", 0.85, 0.6, 0.3)
+  for _, l in ipairs(st.tip) do tt:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.75, 1, 1, 1) end
+  tt:Show()
+end
+f:SetScript("OnEnter", show)
+f:SetScript("OnLeave", function(self) if GameTooltip and GameTooltip:GetOwner() == self then GameTooltip:Hide() end end)
+r.schizTip = f
+]]
+
 local function bar(id, color)
   return {
     id = id, uid = id:gsub("%W", ""), parent = GROUP, regionType = "aurabar", internalVersion = INTERNAL, tocversion = TOC,
@@ -63,18 +95,24 @@ local function bar(id, color)
       -- 1 px bronze frame drawn inside the bar (offset 0), so it never spills into the gap or onto Details!
       { type = "subborder", border_visible = true, border_edge = "Square Full White", border_color = { 0.72, 0.45, 0.2, 0.9 },
         border_offset = 0, border_size = 1, anchor_area = "bar" } },
-    conditions = {}, load = LOAD(), actions = { init = {}, start = {}, finish = {} },
+    conditions = {}, load = LOAD(), actions = { init = {}, start = { do_custom = true, custom = HOVER }, finish = {} },
     animation = ANIM, config = {}, authorOptions = {}, information = {},
   }
 end
 
 local children = {}
 
+
 -- XP: current / needed for this level as a blue fill. In front of it, clipped to the bar end: a green overlay for the XP
 -- waiting in completed quests that haven't been turned in yet, then a purple overlay for rested XP.
 -- Quest XP: the 5.5 client's quest log API is the legacy one (C_QuestLog there has no GetInfo/GetNumQuestLogEntries):
--- GetNumQuestLogEntries, GetQuestLogTitle (isHeader 4th, isComplete 6th = 1 when ready to turn in, questID 8th) and
--- GetQuestLogRewardXP(questID), which the 5.5.4 FrameXML itself calls with a questID (Classic/AlertFrames.lua).
+-- GetNumQuestLogEntries, GetQuestLogTitle (isHeader 4th, isComplete 6th = 1 when ready to turn in, -1 failed, questID 8th)
+-- and GetQuestLogRewardXP. v1.1 called GetQuestLogRewardXP(questID) because the 5.5.4 alert frames do that for world
+-- quests, but for the quest log the function reads the *selected* entry: the MoP quest panel (Wrath/QuestInfo.lua, loaded
+-- for mists) calls SelectQuestLogEntry(i) and then GetQuestLogRewardXP() with no argument. With nothing (or another quest)
+-- selected the v1.1 sum came out 0, so the green overlay never drew. v1.2 selects each completed quest, reads its XP,
+-- then puts the player's own selection back. Quests under a collapsed quest-log header aren't listed by the client, so
+-- they can't be counted (expanding headers would change the quest log for the player).
 -- Hidden at the level cap (90 in MoP; read from the client when it says so) and when XP gain is switched off.
 local XP_TSU = [[
 function(allstates, event, arg1)
@@ -94,26 +132,41 @@ function(allstates, event, arg1)
   end
   local cur = UnitXP("player") or 0
   local rested = GetXPExhaustion() or 0
-  local quest = 0
+  local quest, nq = 0, 0
   if type(GetNumQuestLogEntries) == "function" and type(GetQuestLogTitle) == "function" and type(GetQuestLogRewardXP) == "function" then
+    local canSelect = type(SelectQuestLogEntry) == "function" and type(GetQuestLogSelection) == "function"
+    local keep = canSelect and GetQuestLogSelection() or 0
+    local moved = false
     local n = GetNumQuestLogEntries() or 0
     for i = 1, n do
       local title, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(i)
-      if title and not isHeader and (isComplete == 1 or isComplete == true) and type(questID) == "number" and questID > 0 then
+      if title and not isHeader and (isComplete == 1 or isComplete == true) then
+        if canSelect then SelectQuestLogEntry(i); moved = true end
         local x = GetQuestLogRewardXP(questID)
-        if type(x) == "number" and x > 0 then quest = quest + x end
+        if type(x) == "number" and x > 0 then quest, nq = quest + x, nq + 1 end
       end
     end
+    if moved and GetQuestLogSelection() ~= keep then SelectQuestLogEntry(keep or 0) end
   end
   local fmt = type(BreakUpLargeNumbers) == "function" and BreakUpLargeNumbers or tostring
   local left = "Level " .. lvl
   if rested > 0 then left = left .. string.format("   Rested %d%%", math.floor(rested / total * 100 + 0.5)) end
   local right = string.format("%s / %s   %.1f%%", fmt(cur), fmt(total), cur / total * 100)
   if quest > 0 then right = right .. "   +" .. fmt(quest) .. " quest" end
+  local function pct(v) return string.format("%.1f%%", v / total * 100) end
+  local tip = { { "Experience", fmt(cur) .. " / " .. fmt(total) .. "  (" .. pct(cur) .. ")" },
+    { "To level " .. (lvl + 1), fmt(total - cur) .. "  (" .. pct(total - cur) .. ")" },
+    { "Rested", rested > 0 and (fmt(rested) .. "  (" .. pct(rested) .. " of the level)") or "none" } }
+  if quest > 0 then
+    tip[#tip + 1] = { "Completed quests", "+" .. fmt(quest) .. "  (" .. nq .. (nq == 1 and " quest)" or " quests)") }
+    local after = cur + quest
+    if after >= total then tip[#tip + 1] = { "After turn-ins", "level " .. (lvl + 1) .. " +" .. fmt(after - total) }
+    else tip[#tip + 1] = { "After turn-ins", fmt(after) .. " / " .. fmt(total) .. "  (" .. pct(after) .. ")" } end
+  end
   local st = allstates[""]
-  if st and st.show and st.value == cur and st.total == total and st.rested == rested and st.quest == quest and st.lefttext == left then return false end
+  if st and st.show and st.value == cur and st.total == total and st.rested == rested and st.quest == quest and st.nq == nq and st.lefttext == left then return false end
   allstates[""] = { show = true, changed = true, progressType = "static", value = cur, total = total, autoHide = false,
-    rested = rested, quest = quest,
+    rested = rested, quest = quest, nq = nq, tipTitle = "Level " .. lvl, tip = tip,
     additionalProgress = { { direction = "forward", width = quest }, { direction = "forward", offset = quest, width = rested } },
     lefttext = left, righttext = right, level = lvl }
   return true
@@ -123,7 +176,7 @@ xp.overlays = { QUEST_GREEN, RESTED_PURPLE }
 xp.overlayclip = true
 xp.triggers = trig(XP_TSU, -- UNIT_ events need a unit after the colon, or WeakAuras registers nothing for them (GenericTrigger.lua)
   "PLAYER_XP_UPDATE PLAYER_LEVEL_UP UPDATE_EXHAUSTION PLAYER_UPDATE_RESTING PLAYER_ENTERING_WORLD QUEST_LOG_UPDATE UNIT_QUEST_LOG_CHANGED:player QUEST_TURNED_IN",
-  "{ value = true, total = true, rested = 'number', quest = 'number', level = 'number', lefttext = 'string', righttext = 'string', additionalProgress = 2 }")
+  "{ value = true, total = true, rested = 'number', quest = 'number', nq = 'number', level = 'number', lefttext = 'string', righttext = 'string', additionalProgress = 2 }")
 children[#children + 1] = xp
 
 -- Reputation: the faction picked with "Show as Experience Bar" in the reputation panel. MoP Classic 5.5 has
@@ -149,11 +202,11 @@ function(allstates, event)
 
   local label = _G["FACTION_STANDING_LABEL" .. reaction] or labels[reaction] or ""
   local tier = reaction
-  local maxed = false
+  local maxed, friend = false, false
   if fid and C_GossipInfo and type(C_GossipInfo.GetFriendshipReputation) == "function" then
     local f = C_GossipInfo.GetFriendshipReputation(fid)
     if type(f) == "table" and (f.friendshipFactionID or 0) > 0 then
-      label, tier = f.reaction or label, 5
+      label, tier, friend = f.reaction or label, 5, true
       if f.nextThreshold then lo, hi, val = f.reactionThreshold, f.nextThreshold, f.standing
       else lo, hi, val, maxed = 0, 1, 1, true end
     end
@@ -166,10 +219,17 @@ function(allstates, event)
   local fmt = type(BreakUpLargeNumbers) == "function" and BreakUpLargeNumbers or tostring
   local left = name .. "   " .. label
   local right = maxed and label or string.format("%s / %s   %.1f%%", fmt(cur), fmt(total), cur / total * 100)
+  local tip = { { friend and "Friendship rank" or "Standing", label } }
+  if maxed then tip[#tip + 1] = { "Progress", friend and "highest rank" or "maxed" }
+  else
+    local nextLabel = friend and "next rank" or (_G["FACTION_STANDING_LABEL" .. (reaction + 1)] or labels[reaction + 1] or "next standing")
+    tip[#tip + 1] = { "Progress", fmt(cur) .. " / " .. fmt(total) .. "  (" .. string.format("%.1f%%", cur / total * 100) .. ")" }
+    tip[#tip + 1] = { "To " .. nextLabel, fmt(total - cur) .. "  (" .. string.format("%.1f%%", (total - cur) / total * 100) .. ")" }
+  end
   local st = allstates[""]
   if st and st.show and st.value == cur and st.total == total and st.tier == tier and st.lefttext == left and st.righttext == right then return false end
   allstates[""] = { show = true, changed = true, progressType = "static", value = cur, total = total, autoHide = false,
-    tier = tier, lefttext = left, righttext = right }
+    tier = tier, lefttext = left, righttext = right, tipTitle = name, tip = tip }
   return true
 end]]
 -- colour by standing: red / orange / yellow like Blizzard up to Neutral, then a distinct colour per higher standing
@@ -202,7 +262,7 @@ local group = {
     subeventSuffix = "_CAST_START", spellIds = {}, unit = "player", debuffType = "HELPFUL" }, untrigger = {} } },
   conditions = {}, load = LOAD(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {}, information = { saved = true },
-  desc = "Schizzle's XP & Rep Tray: two slim 500 px bars (experience in blue with completed-quest XP in green and rested XP in purple, and your watched reputation) in the bottom-right corner, under the Details! windows. v" .. RELEASE .. ".",
+  desc = "Schizzle's XP & Rep Tray: two slim 500 px bars (experience in blue with completed-quest XP in green and rested XP in purple, and your watched reputation) in the bottom-right corner, under the Details! windows. Hover a bar for details. v" .. RELEASE .. ".",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 
