@@ -54,6 +54,17 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   The same goes for the BetterBlizzPlates nameplate profile (Warrior only; Jon is trying it as a Plater
   replacement). Keep the Plater folder until he says otherwise, and keep its debuff list and glows in step with
   the BetterBlizzFrames profile.
+- **Non-ElvUI Warrior interface kit:** `Schizzle's Warrior/AddOns/` also holds Jon's full interface without
+  ElvUI or Plater (indexed in the Warrior README under "Non-ElvUI interface kit"). Keep its shared design: charcoal
+  {0.06,0.06,0.06}, bronze {0.72,0.45,0.2}, gold {1,0.82,0}, tan {0.78,0.61,0.43}, ember {1,0.47,0}; Fira Sans Condensed
+  Medium; the "Minimalist" texture. Nothing may sit in the WeakAuras HUD box (x within 170 px of centre, y from 220 px below
+  to 120 px above centre), on the Details! windows (two 209x150, 24 px from the right edge, 190 px up) or over the
+  BetterBlizzFrames unit frames at their Blizzard spots (Baganator's bag is the one exception: it covers the meters only
+  while it's open). One owner per job: Bartender4 owns bars, the stance bar and the
+  extra action button; BetterBlizzFrames owns unit frames, cast bar and error text; Prat owns chat; SexyMap owns the
+  minimap; MoveAny is the only frame mover; TSM owns tooltip prices and posting. Each addon folder ships an import
+  file in the addon's own format where one exists (otherwise a click guide) plus `source/` build/verify scripts that
+  check it against the addon's real code; keep them passing. Leave the Plater folder and the ElvUI-related files alone.
 
 ## Everyone else
 
