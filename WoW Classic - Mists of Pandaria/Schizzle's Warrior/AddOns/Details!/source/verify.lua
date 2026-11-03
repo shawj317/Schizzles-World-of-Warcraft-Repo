@@ -25,6 +25,22 @@ for name, file in readfile(WA_TYPES):gmatch('LSM:Register%("font", "([^"]+)", "(
   media.font[name] = media.font[name] or file:gsub("\\\\", "\\")
 end
 
+-- v1.6 option values, read from the Details source rather than typed in
+local lsmBackground = {}
+for name, file in readfile(SRC .. "Libs/LibSharedMedia-3.0/LibSharedMedia-3.0.lua"):gmatch('lib%.MediaTable%.background%["([^"]+)"%]%s*=%s*%[%[([^%]]+)%]%]') do lsmBackground[name] = file end
+local slugValue = readfile(SRC .. "Libs/DF/fw.lua"):match('{"(SLUG)", "Slug"}')
+local specAlphaPath = readfile(SRC .. "functions/util.lua"):match('value = %[%[([^%]]+)%]%], label = "Specialization Alpha"')
+check(lsmBackground["Blizzard Out of Control"] ~= nil and slugValue == "SLUG" and specAlphaPath ~= nil, "found the v1.6 option values in the Details source")
+local optSrc = readfile(SRC .. "frames/window_designer/designer_objects.lua")
+for _, key in ipairs({'option("backdrop_texture"', 'option("bg_alpha"', 'option("auto_hide_menu.left"', 'option("titlebar_texture"',
+    'option("row_info.texts[1].font.outline"', 'option("row_info.show_arena_role_icon"'}) do
+  check(optSrc:find(key, 1, true) ~= nil, "Designer writes " .. key)
+end
+local secSrc = readfile(SRC .. "frames/window_options2_sections.lua")
+check(secSrc:find("Details.update_speed", 1, true) and secSrc:find("min = 0.05", 1, true) and secSrc:find("Details.overall_clear_logout", 1, true)
+  and secSrc:find("Details.auto_combatlog = value", 1, true) and secSrc:find("Details.damage_taken_everything = value", 1, true)
+  and secSrc:find('"row_info", "fast_ps_update"', 1, true), "Display / Combat Log / Bars options write the mapped keys")
+
 local allowNested = {fixed = 1}
 local function keyCheck(t, def, path, allowExtra)
   for k, v in pairs(t) do
@@ -67,10 +83,27 @@ for _, spec in ipairs(SPECS) do
   keyCheck(flat, R.profile, tag .. "profile")
   keyCheck(P.globaData, R.global, tag .. "globaData")
   check(P.globaData.run_code == nil, tag .. "no run_code in the import")
-  if spec.key == "prot" then
-    check(P.globaData.parser_options and P.globaData.parser_options.tank_avoidance == true, tag .. "tank_avoidance on")
-  else
-    check(next(P.globaData) == nil, tag .. "DPS profiles change no account-wide settings")
+  check(P.globaData.parser_options and P.globaData.parser_options.tank_avoidance == true, tag .. "Record Tank Avoidance on (global parser_options)")
+  do local n = 0 for _ in pairs(P.globaData) do n = n + 1 end check(n == 1, tag .. "parser_options is the only account-wide setting") end
+  keyCheck(P.playerData, R.player, tag .. "playerData")
+  check(P.playerData.auto_combatlog == true, tag .. "Auto Start Combatlog on (per-character playerData)")
+  do local n = 0 for _ in pairs(P.playerData) do n = n + 1 end check(n == 1, tag .. "auto_combatlog is the only per-character setting") end
+  ---------------------------------------------------------------- v1.6 settings, each mapped to the key its options widget writes
+  check(P.profile.update_speed == 0.05, tag .. "Update Interval 0.05 (profile.update_speed)")
+  check(P.profile.overall_clear_logout == true, tag .. "Clear On Logoff (profile.overall_clear_logout)")
+  check(P.profile.damage_taken_everything == true, tag .. "Advanced Damage Taken (profile.damage_taken_everything)")
+  for i, w in ipairs(P.profile.instances) do
+    local wt = tag .. "window " .. i .. ": "
+    check(w.backdrop_texture == "Blizzard Out of Control" and lsmBackground["Blizzard Out of Control"] ~= nil, wt .. "background Blizzard Out of Control (LSM background)")
+    check(w.bg_alpha == 0.25, wt .. "Row Area Opacity 0.25 (bg_alpha)")
+    check(w.auto_hide_menu.left == true, wt .. "Auto Hide Buttons (auto_hide_menu.left)")
+    check(w.titlebar_shown == true and w.titlebar_texture == "Details! Slash" and media.statusbar["Details! Slash"] ~= nil and w.titlebar_height == 20, wt .. "title bar texture Details! Slash (shown, 20 px)")
+    check(w.row_info.fast_ps_update == true, wt .. "Fast Updates (row_info.fast_ps_update)")
+    check(w.row_info.texts[1].font.outline == "SLUG" and slugValue == "SLUG", wt .. "unit name outline Slug (texts[1].font.outline = SLUG)")
+    check(w.row_info.texts[2].font.outline == "" and w.row_info.texts[3].font.outline == "" and w.row_info.texts[4].font.outline == "", wt .. "value texts' outline unchanged")
+    check(w.row_info.use_spec_icons == true and w.row_info.spec_file == specAlphaPath, wt .. "icon texture Specialization Alpha (spec_file)")
+    check(readfile(SRC .. "images/spec_icons_normal_alpha.tga") ~= nil, wt .. "spec_icons_normal_alpha.tga ships with Details")
+    check(w.row_info.show_arena_role_icon == true, wt .. "Show Arena Role Icon (row_info.show_arena_role_icon)")
   end
   check(#prof.instances == 2, tag .. "exactly 2 windows")
   for i, w in ipairs(prof.instances) do
@@ -145,6 +178,9 @@ for _, spec in ipairs(SPECS) do
   local lw1, lw2 = windows[1].libwindow, windows[2].libwindow
   check(lw1.x == lw2.x - windows[2].posicao.normal.w and lw1.y == lw2.y, tag .. "windows touch edge to edge, side by side, no overlap")
   check(lw1.y + H_EXPECT + TITLE == 199, tag .. "top of both title bars 199 px up")
+  check(D.auto_combatlog == nil, tag .. "(sim) profile load alone doesn't carry auto_combatlog; the import's playerData does")
+  check(windows[1].row_info.texts[1].font.outline == "SLUG" and windows[2].row_info.texts[1].font.outline == "SLUG", tag .. "Slug outline survives the row-text migration")
+  check(windows[1].bg_alpha == 0.25 and windows[2].backdrop_texture == "Blizzard Out of Control", tag .. "designer settings survive the merge")
   check(lw1.y == 4 + 22 and lw2.y == 4 + 22, tag .. "windows start right on top of the 500x22 XP & Rep Tray (4 px up), no gap")
 end
 check(strings.arms == strings.fury, "Arms and Fury strings are identical (same layout; the name is typed at import)")

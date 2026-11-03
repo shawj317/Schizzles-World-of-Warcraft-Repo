@@ -263,11 +263,11 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 
 ## XP & Rep Tray (separate import)
 
-**File:** [`XP & Rep Tray.txt`](XP%20%26%20Rep%20Tray.txt) (4,344 chars, starts `!WA:2!`). In-game group: **Schizzle's XP & Rep Tray v1.0**. It has nothing to do with the rotation group, so it works on any class and can be imported on its own.
+**File:** [`XP & Rep Tray.txt`](XP%20%26%20Rep%20Tray.txt) (4,749 chars, starts `!WA:2!`). In-game group: **Schizzle's XP & Rep Tray v1.1**. It has nothing to do with the rotation group, so it works on any class and can be imported on its own.
 
 **What it is:** two slim bars, each **500 x 10 px**, stacked with a 2 px gap (**22 px tall** in total), in the bottom-right corner 4 px from the right and bottom edges of the screen. That is directly under the two side-by-side [Details! windows](../Details!/), which are 500 px wide together, so the tray and the meters line up edge to edge. The Details! profiles from v1.5 on are 22 px shorter to make room for it.
 
-- **Top bar, experience:** a bronze fill for your XP this level, with **rested XP as a blue overlay** right after the fill (clipped at the bar's end). Left text: `Level 42   Rested 35%` (the rested part only shows while you have rested XP). Right text: current / needed and percent, for example `12,345 / 50,000   24.7%`.
+- **Top bar, experience:** a **blue** fill for the XP earned this level. Right after it comes a **green** overlay for the XP waiting in quests that are **complete but not turned in yet**, then a **purple** overlay for **rested XP**. Both overlays are clipped at the bar's end. Left text: `Level 42   Rested 35%` (the rested part only shows while you have rested XP). Right text: current / needed and percent, plus the waiting quest XP when there is some, for example `12,345 / 50,000   24.7%   +3,500 quest`. The green part shows roughly where the bar will be after turning those quests in.
 - **Bottom bar, reputation:** the faction you're watching (tick **Show as Experience Bar** on a faction in the reputation panel, `U`). Left text: faction name and standing, for example `Shado-Pan   Honored`. Right text: progress inside that standing and percent. **The bar colour follows the standing:** red (Hated, Hostile), orange (Unfriendly), yellow (Neutral), green (Friendly), sea green (Honored), blue (Revered) and purple (Exalted). Friendship factions such as the Tillers farmers show their own rank (Stranger to Best Friend) on a green bar, and a maxed rank shows a full bar with the rank name.
 - **Kit look:** Fira Sans Condensed Medium at size 9 with an outline, a near-black background and a thin bronze frame drawn inside each bar, so nothing spills onto the meters above.
 
@@ -276,20 +276,22 @@ Thresholds were simplified from these guides into fixed rules: Slam at 80 rage, 
 - **The reputation bar hides when no faction is watched.** Watch one again and it comes back.
 - If both are hidden (level 90 and nothing watched), the tray shows nothing at all.
 
-**Game APIs (checked against the MoP Classic 5.5.4 client source):** `UnitXP`, `UnitXPMax`, `GetXPExhaustion`, `UnitLevel`, `IsXPUserDisabled`, `GetMaxLevelForPlayerExpansion`, `C_Reputation.GetWatchedFactionData` and `C_GossipInfo.GetFriendshipReputation`. The tray falls back to the older `GetWatchedFactionInfo` if `C_Reputation` is ever missing, and to a level cap of 90 if the client doesn't report one. Every optional API is type-checked first, and the code uses no `pcall`, `AuraUtil` or anything else WeakAuras' sandbox blocks. Both bars only update on game events (XP gained, level up, rested change, reputation change, loading screens), so they cost nothing between them.
+**Game APIs (checked against the MoP Classic 5.5.4 client source):** `UnitXP`, `UnitXPMax`, `GetXPExhaustion`, `UnitLevel`, `IsXPUserDisabled`, `GetMaxLevelForPlayerExpansion`, `C_Reputation.GetWatchedFactionData` and `C_GossipInfo.GetFriendshipReputation`. The quest XP comes from the quest log: `GetNumQuestLogEntries`, `GetQuestLogTitle` (a quest counts when the log marks it complete) and `GetQuestLogRewardXP(questID)`, which the 5.5.4 interface code itself calls that way. MoP Classic's `C_QuestLog` doesn't have the retail quest-log functions, so these older ones are the right ones there. The tray falls back to the older `GetWatchedFactionInfo` if `C_Reputation` is ever missing, and to a level cap of 90 if the client doesn't report one. Every optional API is type-checked first, and the code uses no `pcall`, `AuraUtil` or anything else WeakAuras' sandbox blocks. Both bars only update on game events (XP gained, level up, rested change, quest log changes, quest turned in, reputation change, loading screens), so they cost nothing between them.
 
 ### Import the tray (step by step)
 1. Open `XP & Rep Tray.txt` on GitHub and click **Copy raw file** (two overlapping squares, top right of the file).
 2. In game, type `/wa` and click **Import**.
 3. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-4. WeakAuras shows the "Schizzle's XP & Rep Tray v1.0" group with two auras (Schizzle Tray XP and Schizzle Tray Rep). Click **Import** again.
+4. WeakAuras shows the "Schizzle's XP & Rep Tray v1.1" group with two auras (Schizzle Tray XP and Schizzle Tray Rep). Click **Import** again.
 5. Type `/reload`.
 6. To get the reputation bar, press `U`, click a faction and tick **Show as Experience Bar**.
 7. Import the **v1.5 Details! profiles** too (see the [Details! README](../Details!/)), so the meters are 22 px shorter and sit right on top of the tray. With older Details! profiles the meters' bottom 22 px cover the tray.
 
+**Updating from v1.0:** do steps 1 to 3 the same way. WeakAuras recognises the tray and shows an **Update** button instead of a plain import: click it, leave the default ticks (Display and Trigger, so the new colours and the quest overlay come in; leave Size & Position unticked to keep your spot), click **Import**, then `/reload`. The group is renamed from v1.0 to v1.1.
+
 **Moving it:** open `/wa`, click the group and drag it, or set X/Y on its **Display** tab. The default is the group's top-right corner on the screen's bottom-right corner at x -4, y 26. On a later update, WeakAuras keeps your position unless you tick **Size & Position**.
 
-**Verified offline:** `source/tray_sim.lua` decodes the string like WeakAuras' importer, replays WeakAuras' dynamic group layout (XP 16-26 px up, reputation 4-14 px up, both 4-504 px in from the right), compiles both triggers inside WeakAuras' own sandbox (0 warnings) and runs 67 checks with a mocked game: mid level with and without rested XP, levelling to 90, XP switched off, no watched faction, a normal faction, Exalted, friendship ranks (mid and maxed) and the `GetWatchedFactionInfo` fallback. **It has not been tested in the game client yet.**
+**Verified offline:** `source/tray_sim.lua` decodes the string like WeakAuras' importer, replays WeakAuras' dynamic group layout (XP 16-26 px up, reputation 4-14 px up, both 4-504 px in from the right), compiles both triggers inside WeakAuras' own sandbox (0 warnings) and runs 86 checks with a mocked game: the blue / green / purple colours and their order, mid level with and without rested XP, completed quests waiting (headers, unfinished and failed quests don't count), a quest log change, turning a quest in, a missing quest API, levelling to 90, XP switched off, no watched faction, a normal faction, Exalted, friendship ranks (mid and maxed) and the `GetWatchedFactionInfo` fallback. **It has not been tested in the game client yet.**
 
 ## Known limits
 
@@ -312,7 +314,7 @@ No SavedVariables or personal data are included.
 
 ## Version history
 
-The XP & Rep Tray has its own version (**v1.0**, Nov 3, 2026: first release). The list below is the rotation's.
+The XP & Rep Tray has its own version: **v1.0** (Nov 3, 2026) was the first release; **v1.1** (Nov 3, 2026) makes the XP fill blue, turns the rested overlay purple and adds a green overlay (and right-side text) for XP waiting in completed quests that haven't been turned in. Update it with Import → **Update**. The list below is the rotation's.
 
 - **v1.6** (Nov 3, 2026): a smaller, quieter HUD.
   - The rage bar is half the size (80x5, was 160x10). Its number moved to the right of the bar, and the "Rage" label is gone.

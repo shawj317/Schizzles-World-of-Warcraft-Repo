@@ -20,6 +20,7 @@ local FONT_FILE = KNOWN_FILES[FONT] or "Fonts\\FRIZQT__.TTF"
 local FLAT, FLAT_FILE = "Details Flat", "Interface\\AddOns\\Details\\images\\bar_background"
 -- 153 = the old 175 minus the XP & Rep Tray's height (22), so the title bars still top out 199 px up
 local W, H = 250, 153
+local SPEC_ALPHA = "Interface\\AddOns\\Details\\images\\spec_icons_normal_alpha" -- the "Specialization Alpha" entry (functions/util.lua)
 local TITLE_BAR = 20 -- Details' title bar sits above the bar area (class_instance_snap.lua TITLE_BAR_HEIGHT)
 
 local function themedWindow()
@@ -28,8 +29,15 @@ local function themedWindow()
   merge(w, {
     skin = "Minimalistic",
     color = {0.06, 0.06, 0.07, 0.95},
-    bg_r = 0.05, bg_g = 0.05, bg_b = 0.06, bg_alpha = 0.82,
-    backdrop_texture = "Details Ground",
+    -- v1.6: Designer > Window: Background Texture "Blizzard Out of Control" (a LibSharedMedia background name),
+    -- Row Area Opacity 0.25 (bg_alpha)
+    bg_r = 0.05, bg_g = 0.05, bg_b = 0.06, bg_alpha = 0.25,
+    backdrop_texture = "Blizzard Out of Control",
+    -- v1.6: Designer > Title Bar: Texture "Details! Slash" (statusbar name). The texture only draws while the custom
+    -- title bar is on, so titlebar_shown is on too, at 20 px (the height of the existing title bar strip)
+    titlebar_shown = true, titlebar_height = 20, titlebar_texture = "Details! Slash",
+    -- v1.6: Designer > Title Bar: Auto Hide Buttons (Details only reads .left; .right is deprecated)
+    auto_hide_menu = {left = true, right = false},
     show_statusbar = false, show_sidebars = false,
     desaturated_menu = true, menu_icons_alpha = 0.9, menu_icons_size = 0.82,
     attribute_text = {
@@ -54,12 +62,17 @@ local function themedWindow()
       textR_show_data = {true, true, true},      -- total, per second, percent
       textR_bracket = "NONE", textR_separator = "NONE",
       space = {left = 0, right = 0, between = 1},
-      use_spec_icons = true,
+      -- v1.6: Designer > Bars > Icons: Texture "Specialization Alpha" and Show Arena Role Icon
+      use_spec_icons = true, spec_file = SPEC_ALPHA,
+      show_arena_role_icon = true,
+      -- v1.6: Bars: General > Fast Updates (row_info.fast_ps_update)
+      fast_ps_update = true,
       backdrop = {enabled = false},
       start_after_icon = true,
       percent_type = 1,
       texts = {
-        [1] = {font = {outline = ""}, shadow = {color = {0, 0, 0, 1}, offset = {1, -1}}},
+        -- v1.6: Designer > Bars > Unit Name: Outline "Slug" (Details' outline value "SLUG", Libs/DF/fw.lua FontOutlineFlags)
+        [1] = {font = {outline = "SLUG"}, shadow = {color = {0, 0, 0, 1}, offset = {1, -1}}},
         [2] = {font = {outline = ""}, shadow = {color = {0, 0, 0, 1}, offset = {1, -1}}},
         [3] = {font = {outline = ""}, shadow = {color = {0, 0, 0, 1}, offset = {1, -1}}},
         [4] = {font = {outline = ""}, shadow = {color = {0, 0, 0, 1}, offset = {1, -1}},
@@ -114,21 +127,26 @@ local function buildProfile(spec)
   profile.ps_abbreviation = 3
   profile.total_abbreviation = 2
   profile.time_type = 2
-  profile.update_speed = 0.2
+  -- v1.6: Display > Update Interval 0.05 (the slider's minimum), Clear On Logoff, Combat Log > Advanced Damage Taken
+  profile.update_speed = 0.05
+  profile.overall_clear_logout = true
+  profile.damage_taken_everything = true
   profile.use_row_animations = true
   profile.disable_stretch_from_toolbar = true -- a locked window doesn't stretch when its title bar is dragged
   profile.instances = {
     placeWindow(themedWindow(), 1, 1, 1),                 -- Damage Done
     placeWindow(themedWindow(), 2, spec.w2[1], spec.w2[2]),
   }
+  -- account-wide (global) Details setting, carried in the export's globaData: Combat Log > Parser Options >
+  -- Record Tank Avoidance. Since v1.6 all three profiles turn it on.
   local globaData = {}
-  if spec.key == "prot" then
-    -- account-wide Details setting: capture dodge/parry/block/absorb for the damage-taken tooltips
-    local parser = deepcopy(R.global.parser_options)
-    parser.tank_avoidance = true
-    globaData.parser_options = parser
-  end
-  return {profile = profile, playerData = {}, globaData = globaData, version = 1}
+  local parser = deepcopy(R.global.parser_options)
+  parser.tank_avoidance = true
+  globaData.parser_options = parser
+  -- per-character Details setting, carried in the export's playerData: Combat Log > Auto Start Combatlog.
+  -- ImportProfile copies it onto the character doing the import only.
+  local playerData = {auto_combatlog = true}
+  return {profile = profile, playerData = playerData, globaData = globaData, version = 1}
 end
 
 for _, spec in ipairs(SPECS) do
