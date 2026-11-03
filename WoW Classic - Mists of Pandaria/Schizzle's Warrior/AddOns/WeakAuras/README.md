@@ -6,7 +6,7 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep-tray-separate-import)**, three slim experience, reputation and guild reputation bars that sit under the Details! windows.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (33,261 chars, starts `!WA:2!`). Current version: **v1.7** (engine `VERSION = 9`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (33,528 chars, starts `!WA:2!`). Current version: **v1.7** (engine `VERSION = 9`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
