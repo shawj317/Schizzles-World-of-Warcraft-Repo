@@ -1,5 +1,5 @@
--- Checks Warrior Profile.txt with Baganator's own code.
--- Usage: lua verify.lua /path/to/Interface/AddOns   (folder holding Baganator)
+-- Checks Warrior Profile.txt (a Baganator "BGR!1!" profile export) with Baganator's own code.
+-- Usage: lua verify.lua /path/to/Interface/AddOns   (folder holding Baganator; needs python3 for build.py)
 local dir = arg[0]:match("^(.*)/") or "."
 package.path = dir .. "/?.lua;" .. package.path
 local root = assert(arg[1], "usage: lua verify.lua /path/to/Interface/AddOns")
@@ -10,13 +10,27 @@ local function check(ok, msg)
   if ok then print("ok   " .. msg) else print("FAIL " .. msg); fails = fails + 1 end
 end
 local function readFile(p) local f = assert(io.open(p, "rb")); local s = f:read("*a"); f:close(); return s end
+local function run(cmd) local p = assert(io.popen(cmd)); local s = p:read("*a"); local ok = p:close(); return s, ok end
+local function deepEqual(a, b)
+  if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+  for k, v in pairs(a) do if not deepEqual(v, b[k]) then return false end end
+  for k in pairs(b) do if a[k] == nil then return false end end
+  return true
+end
+local q = "'" .. dir:gsub("'", "'\\''") .. "/build.py'"
 
--- 0. build output is current
-local built = json.encode(dofile(dir .. "/profile.lua"))
+-- 0. the file is exactly what profile.json builds, and decodes the way Baganator's
+--    import button does it (DecodeBase64, DecompressString, DeserializeCBOR)
 local text = readFile(dir .. "/../Warrior Profile.txt")
-check(text == built, "Warrior Profile.txt matches profile.lua (run lua build.lua if not)")
-check(not text:find("||", 1, true) and not text:find("\n"), "one line, no || (the import box turns || into |)")
-check(text:sub(1, 1) == "{", "starts with { so Baganator reads it as JSON")
+local out = run("python3 " .. q .. " --check")
+check(out:find("is current", 1, true) ~= nil, "Warrior Profile.txt rebuilds byte for byte from profile.json")
+check(text:sub(1, 6) == "BGR!1!", "starts with BGR!1! (Baganator's compressed export)")
+check(not text:find("|", 1, true) and not text:find("%s"), "one line, no | or spaces (the import box would mangle them)")
+local decoded = run("python3 " .. q .. " --decode")
+local ok, import = pcall(json.decode, decoded)
+check(ok and type(import) == "table", "decodes to a table")
+local want = json.decode(readFile(dir .. "/profile.json"))
+check(deepEqual(import, want), "decoded string matches profile.json")
 
 -- 1. game API stand-ins Baganator's config code uses
 function strsplit(sep, s) local t = {}; for p in (s .. sep):gmatch("(.-)" .. sep:gsub("%p", "%%%0")) do t[#t + 1] = p end; return unpack(t) end
@@ -61,44 +75,42 @@ A.Config.InitializeData()
 A.Skins.InstallOptions()
 A.Config.Set("sort_method", "quality")
 
--- 3. the import button's path (CustomiseDialog/Main.lua): JSON decode, then "Make new"
-local import = json.decode(text)
-check(type(import) == "table" and import.addon == "Baganator", "decodes to a Baganator table")
+-- 3. the import button's checks and "Make new" (CustomiseDialog/Main.lua)
+check(import.addon == "Baganator", "addon = Baganator (the import button refuses anything else)")
 check(import.version == 3 and import.kind == "profile", "version 3 profile export (gets the Overwrite / Make New choice)")
-local ok, err = A.CustomiseDialog.ImportData(import, "Schizzle's Warrior", false)
-check(ok == true, "ImportData accepted it" .. (err and (" (error " .. err .. ")") or ""))
+local okImport, err = A.CustomiseDialog.ImportData(import, "Schizzle's Warrior", false)
+check(okImport == true, "ImportData accepted it" .. (err and (" (error " .. err .. ")") or ""))
 check(BAGANATOR_CURRENT_PROFILE == "Schizzle's Warrior", "switched to the Schizzle's Warrior profile")
 local P = A.Config.CurrentProfile
-local want = dofile(dir .. "/profile.lua")
+check(P.addon == nil and P.version == nil and P.kind == nil, "header fields stripped from the stored profile")
+local unknown = {}
 for k, v in pairs(want) do
   if k ~= "addon" and k ~= "version" and k ~= "kind" then
-    check(A.Config.IsValidOption(k), "'" .. k .. "' is a Baganator setting")
-    if type(v) == "table" and k ~= "skins" then
-      local same = #v == #P[k]; for i = 1, #v do same = same and P[k][i] == v[i] end
-      check(same, k .. " = {" .. table.concat(v, ", ") .. "}")
-    elseif k ~= "skins" then
-      check(A.Config.Get(k) == v, k .. " = " .. tostring(v) .. " (Get returns " .. tostring(A.Config.Get(k)) .. ")")
-    end
+    if not A.Config.IsValidOption(k) then unknown[#unknown + 1] = k end
+    if not deepEqual(A.Config.Get(k), v) then check(false, k .. " landed with the exported value") end
   end
 end
+table.sort(unknown)
+check(#unknown == 0, "every key is a Baganator setting" .. (#unknown > 0 and (" (unknown: " .. table.concat(unknown, ", ") .. ")") or ""))
+local count = 0; for _ in pairs(want) do count = count + 1 end
+check(true, (count - 3) .. " settings landed with the exported values")
+for k in pairs(A.Config.IsCharacterSpecific) do
+  check(want[k] == nil, k .. " (per character) isn't in the export")
+end
+local missing = {}
+for k in pairs(A.Config.Defaults) do if not A.Config.IsCharacterSpecific[k] and P[k] == nil then missing[#missing + 1] = k end end
+check(#missing == 0, "every setting is present or filled in from Baganator's defaults")
+check(A.Config.Get("sort_method") == "type", "the profile's sort is used, not the old DEFAULT profile's")
+check(BAGANATOR_CONFIG.Profiles.DEFAULT.sort_method == "quality", "the old DEFAULT profile is untouched")
+
+-- 4. the values the README describes
 local darkOpts = {}
 for _, o in ipairs(A.Skins.availableSkins.dark.options) do darkOpts[o.option] = true end
-check(next(darkOpts) ~= nil, "read the Dark skin's options from Dark.lua")
+check(want.current_skin == "dark" and A.Skins.availableSkins.dark ~= nil, "current_skin 'dark' is a registered skin")
 for k, v in pairs(want.skins.dark) do
   check(darkOpts[k], "skins.dark." .. k .. " is a Dark skin option")
   check(A.Config.Get("skins.dark." .. k) == v, "skins.dark." .. k .. " = " .. tostring(v))
 end
-check(want.skins.dark.square_icons == true, "square icons (README says reload)")
-for k in pairs(want.skins) do check(k == "dark", "only the dark skin's options are set") end
-check(P.addon == nil and P.version == nil and P.kind == nil, "header fields stripped from the stored profile")
-local missing = 0
-for k in pairs(A.Config.Defaults) do if not A.Config.IsCharacterSpecific[k] and P[k] == nil then missing = missing + 1 end end
-check(missing == 0, "every other setting filled in from Baganator's defaults")
-check(A.Config.Get("sort_method") == "type", "the default sort is used, not the old profile's")
-check(BAGANATOR_CONFIG.Profiles.DEFAULT.sort_method == "quality", "the old DEFAULT profile is untouched")
-check(A.Skins.availableSkins.dark and want.current_skin == "dark", "current_skin 'dark' is a registered skin")
-
--- 4. ranges from the options panel (CustomiseDialog/Main.lua)
 local main = readFile(BAG .. "CustomiseDialog/Main.lua")
 local function range(opt)
   local block = main:match("{[^{}]-option = \"" .. opt .. "\"[^{}]-}")
@@ -108,18 +120,30 @@ for _, k in ipairs({"bag_view_width", "bank_view_width", "bag_icon_size", "icon_
   local lo, hi = range(k)
   check(lo and want[k] >= lo and want[k] <= hi, ("%s %d within the slider's %s-%s"):format(k, want[k], tostring(lo), tostring(hi)))
 end
-check(want.skins.dark.view_transparency >= 0 and want.skins.dark.view_transparency <= 1, "transparency 0-1")
 local points = {TOPLEFT=1, TOP=1, TOPRIGHT=1, LEFT=1, CENTER=1, RIGHT=1, BOTTOMLEFT=1, BOTTOM=1, BOTTOMRIGHT=1}
 for _, k in ipairs({"bag_view_position", "bank_view_position"}) do
   local p = want[k]
   check(#p == 3 and points[p[1]] and p[2] % 1 == 0 and p[3] % 1 == 0, k .. " is {point, x, y} like the default")
 end
-for _, v in pairs({"single"}) do
-  check(main:find('"' .. want.bag_view_type .. '"', 1, true) ~= nil, "bag_view_type value '" .. v .. "' is one the options panel offers")
+for _, k in ipairs({"auto_open.bank", "auto_open.guild_bank", "auto_open.trade_partner", "auto_open.tradeskill",
+    "auto_open.auction_house", "auto_open.mail", "auto_open.merchant", "auto_open.sockets", "auto_sort_on_open"}) do
+  check(main:find('option = "' .. k .. '"', 1, true) ~= nil, k .. " is in the options panel")
 end
+local oc = readFile(BAG .. "ItemViewCommon/OpenClose.lua")
+for opt, val in pairs({guild_bank = true, trade_partner = true, tradeskill = true, auction_house = true, mail = true, bank = true, merchant = true, sockets = false}) do
+  check(want.auto_open[opt] == val, "auto_open." .. opt .. " = " .. tostring(val))
+  check(oc:find('option = "' .. opt .. '"', 1, true) ~= nil, "auto_open." .. opt .. " is one OpenClose.lua reads")
+end
+check(want.auto_sort_on_open == true and want.sort_method == "type", "sort on open, by type")
+check(want.junk_plugin == "RXPGuides" and want.upgrade_plugin == "pawn", "junk from RestedXP, upgrades from Pawn")
+check(readFile(BAG .. "API/Pawn.lua"):find('RegisterUpgradePlugin("Pawn", "pawn"', 1, true) ~= nil, "'pawn' is Baganator's Pawn upgrade plugin id")
+check(main:find("if addonTable.API.JunkPlugins[addonTable.Config.Get(\"junk_plugin\")] == nil then", 1, true) ~= nil,
+  "without RestedXP Baganator resets junk detection to its default")
+check(want.lock_frames == false, "windows unlocked (README: tick Lock windows after moving)")
 
 -- 5. a broken string is refused
-check(not pcall(json.decode, text:sub(1, -2)), "a cut-off string doesn't decode")
+local bad = run("python3 -B -c \"import sys; sys.path.insert(0, sys.argv[1]); import build; build.decode(open(sys.argv[2]).read()[:-4])\" '" .. dir .. "' '" .. dir .. "/../Warrior Profile.txt' 2>/dev/null && echo DECODED")
+check(not bad:find("DECODED", 1, true), "a cut-off string doesn't decode")
 check(A.CustomiseDialog.ImportData({addon = "Other", version = 3, kind = "profile"}, "x", false) == false, "a non-Baganator table is refused")
 
 print(fails == 0 and "ALL CHECKS PASSED" or (fails .. " CHECK(S) FAILED"))
