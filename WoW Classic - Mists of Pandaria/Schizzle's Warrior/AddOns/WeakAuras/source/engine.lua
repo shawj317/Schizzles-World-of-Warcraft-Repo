@@ -1,9 +1,9 @@
--- Schizzle's Warrior Rotation engine (shared by every aura in the "Schizzle's Warrior Rotation" group)
--- Arms + Fury (Titan's Grip / Single-Minded Fury) + Protection, MoP Classic 5.5.x.
--- Every spell is gated by IsPlayerSpell, so talent tiers 4 (Bladestorm / Shockwave / Dragon Roar) and
--- 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually picked.
--- Before level 10 (no specialisation yet) it runs a Leveling priority built from the spells you have learned.
--- Debug: /dump SchizzleWarrior.R.why
+-- Schizzle's Warrior Rotation, shared by every aura in the "Schizzle's Warrior Rotation" group.
+-- Arms, Fury (Titan's Grip or Single-Minded Fury), and Protection, on MoP Classic 5.5.x.
+-- IsPlayerSpell gates every spell, so talent tier 4 (Bladestorm / Shockwave / Dragon Roar) and
+-- tier 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually took.
+-- Before level 10 you have no spec yet, so it runs a Leveling priority from the spells you've learned.
+-- When a suggestion looks odd, /dump SchizzleWarrior.R.why
 local VERSION = 9
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
@@ -13,7 +13,7 @@ local OLD = SchizzleWarrior
 local E = { v = VERSION, cfg = aura_env.config or {}, last = 0, R = {}, keys = {}, keysByName = {}, keysrc = {}, keysAt = -99 }
 SchizzleWarrior = E
 
--- spell IDs verified against MoP Classic client data (build 5.5.4.70631)
+-- Spell ids checked against the MoP Classic client (build 5.5.4.70631).
 local ID = {
   -- Arms
   ms = 12294, op = 7384, slam = 1464, sweep = 12328,
@@ -26,23 +26,23 @@ local ID = {
   reck = 1719, skull = 114207, bshout = 6673, cshout = 469, brage = 18499, leap = 6544, hthrow = 57755,
   pummel = 6552, sref = 23920, dbts = 118038, rcry = 97462, swall = 871, vr = 34428,
   battle = 2457, def = 71, bers = 2458,
-  attack = 6603, gcd = 61304, -- Auto Attack; the global cooldown spell
-  -- Charge: MoP Classic 5.5 uses 1250619 (level 3); 100 is the older ID, kept as a fallback
+  attack = 6603, gcd = 61304, -- Auto Attack, and the global cooldown spell
+  -- Charge. MoP Classic 5.5 uses 1250619 (learned at level 3). 100 is the older id, kept as a fallback.
   charge = 1250619, chargeOld = 100,
-  -- talents (tier 2 / 3 / 4 / 6)
+  -- Talents (tier 2 / 3 / 4 / 6).
   eregen = 55694, iv = 103840, dshout = 102060,
   bstorm = 46924, shock = 46968, droar = 118000,
   avatar = 107574, bbath = 12292, sbolt = 107570,
   -- glyphs
   gagOrder = 58357,
-  -- cooldown tray only (not suggested by the rotation)
+  -- Cooldown tray only. The rotation does not suggest these.
   shatter = 64382, dban = 114203,
   -- racials
   quaking = 107079, warstomp = 20549,
   -- auras
   enrage = 12880, rbCharges = 131116, bsurge = 46916, tfb = 60503, sdeath = 52437, sexec = 139958,
   ult = 122510, snb = 50227, mcleaver = 85739, sblockBuff = 132404, incite = 122016,
-  -- passives that unlock the trackers above
+  -- Passives that unlock the trackers above.
   sdeathTal = 29725, mcTal = 12950, bsTal = 46915, ultTal = 122509, snbTal = 46953,
   wblows = 115798, warmor = 113746, dwounds = 115767, victorious = 32216, skullBuff = 114206,
 }
@@ -65,7 +65,7 @@ local function spellIcon(id)
   return GetSpellTexture and GetSpellTexture(id) or 134400
 end
 
--- raw cooldown and charge readers: C_Spell first, the old globals (start, duration, enabled) as a fallback
+-- Raw cooldown and charge reads. Try C_Spell first, then the old globals (start, duration, enabled).
 local function rawCd(id)
   if C_Spell and C_Spell.GetSpellCooldown then
     local info = C_Spell.GetSpellCooldown(id)
@@ -78,7 +78,7 @@ local function rawCd(id)
   end
   return 0, 0, nil
 end
--- current, max, recharge start, recharge duration; nil for a spell without charges
+-- Current charges, max charges, recharge start, recharge duration. Nil when the spell has no charges.
 local function rawCharges(id)
   if C_Spell and C_Spell.GetSpellCharges then
     local c = C_Spell.GetSpellCharges(id)
@@ -92,19 +92,19 @@ local function rawCharges(id)
   end
   return nil
 end
--- cooldown remaining, ignoring the GCD; returns remaining, start, duration.
--- v1.6.1: MoP Classic 5.5 Charge (1250619, also 100) is a charge spell (1 charge, 20 s recharge: SpellCategories
--- ChargeCategory 1219). Its recharge is only reported by GetSpellCharges, while GetSpellCooldown says 0, so v1.6 kept
--- suggesting Charge while it was recharging. A spell with charges now counts as on cooldown while it has none left.
--- The GCD is filtered by comparing with the GCD spell (61304); the isOnGCD flag is trusted only for a GCD-length
--- duration, because Blizzard documents it as unreliable outside SPELL_UPDATE_COOLDOWN.
+-- Cooldown left, ignoring the GCD. Returns remaining, start, duration.
+-- v1.6.1: MoP Classic 5.5 Charge (1250619, also 100) is a charge spell (1 charge, 20 s recharge, SpellCategories
+-- ChargeCategory 1219). Only GetSpellCharges reports that recharge. GetSpellCooldown says 0, so v1.6 kept
+-- suggesting Charge while it was still recharging. A spell with charges now counts as on cooldown while none are left.
+-- The GCD is filtered by comparing with the GCD spell (61304). The isOnGCD flag is only trusted for a GCD-length
+-- duration, because Blizzard says that flag is unreliable outside SPELL_UPDATE_COOLDOWN.
 local function cd(id, now)
   local rem, rs, rd = 0, 0, 0
   local s, d, onGcd = rawCd(id)
   if s > 0 and d > 0 then
     local isGcd = false
     if d <= 1.5 then
-      -- the GCD shows up as a cooldown on every GCD spell; Heroic Strike / Cleave have a real 1.5 s cooldown
+      -- The GCD shows up as a cooldown on every GCD spell. Heroic Strike and Cleave have a real 1.5 s cooldown.
       local gs, gd = rawCd(61304)
       isGcd = (gs == s and gd == d) or (onGcd and true or false)
     end
@@ -131,13 +131,13 @@ local function usable(id)
   return true
 end
 
--- Aura lookup, self-contained: it never uses Blizzard's FrameXML aura helpers. Those route every call through a
--- swappable "data provider"; when Edit Mode swaps in its sample provider (AURA_DATA_PROVIDER_SWITCH) that provider
--- has no GetAuraDataBySpellName, so FindAuraByName raised "attempt to call a nil value" (v1.5 bug, fixed in v1.5.1).
--- Order: C_UnitAuras.GetAuraDataByIndex, then the UnitAura / UnitBuff / UnitDebuff index loop; match by spell id,
--- name only as a last resort. Every API is type-checked before it is called, and each scan runs protected, so a
--- missing or broken API means "no aura", never a Lua error. WeakAuras' sandbox blocks pcall / xpcall, so the
--- protection is a coroutine: coroutine.resume returns false instead of raising.
+-- Aura lookup, kept self-contained. It never calls Blizzard's FrameXML aura helpers. Those route every call through a
+-- swappable "data provider". When Edit Mode swaps in its sample provider (AURA_DATA_PROVIDER_SWITCH) that provider
+-- has no GetAuraDataBySpellName, so FindAuraByName threw "attempt to call a nil value" (v1.5 bug, fixed in v1.5.1).
+-- Order: C_UnitAuras.GetAuraDataByIndex, then the UnitAura / UnitBuff / UnitDebuff index loop. Match by spell id,
+-- and by name only as a last resort. Every API is type-checked before it is called, and each scan runs protected, so a
+-- missing or broken API means "no aura", never a Lua error. WeakAuras' sandbox blocks pcall and xpcall, so the
+-- protection is a coroutine. coroutine.resume returns false instead of raising.
 local co_create, co_resume = coroutine.create, coroutine.resume
 local function protect(fn, ...) return co_resume(co_create(fn), ...) end
 local function rec(now, spellId, name, count, duration, expirationTime, points)
@@ -159,10 +159,10 @@ local function legacyGetter(filter)
   local f = (filter and filter:find("HARMFUL")) and UnitDebuff or UnitBuff
   return type(f) == "function" and f or nil
 end
--- one aura at index i via one API: a record or nil
+-- One aura at index i from one API. A record, or nil.
 local function viaModern(get, unit, i, filter, now) return fromData(get(unit, i, filter), now) end
 local function viaLegacy(get, unit, i, filter, now)
-  -- legacy order: name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
+  -- Old return order: name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId.
   local name, _, count, _, duration, expirationTime, _, _, _, spellId = get(unit, i, filter)
   if name then return rec(now, spellId, name, count, duration, expirationTime, nil) end
 end
@@ -171,12 +171,12 @@ local function fill(out, via, get, unit, filter, now)
     local r = via(get, unit, i, filter, now)
     if not r then break end
     if r.id then out[r.id] = r end                           -- spell id first
-    if r.name and not out[r.name] then out[r.name] = r end   -- name only as a last-resort key
+    if r.name and not out[r.name] then out[r.name] = r end   -- name is only a last-resort key
   end
 end
 local function wipe(out) for k in pairs(out) do out[k] = nil end end
 local function exists(unit) return UnitExists(unit) end
-local modernOk = {}   -- [unit .. filter] = true when the last scan came from C_UnitAuras.GetAuraDataByIndex
+local modernOk = {}   -- [unit .. filter] is true when the last scan came from C_UnitAuras.GetAuraDataByIndex
 local function scan(unit, filter, out, now)
   wipe(out)
   local key = unit .. filter
@@ -191,7 +191,7 @@ local function scan(unit, filter, out, now)
   wipe(out)
   return out
 end
--- E.auraAt: one aura at index i (same fallback order), for /dump debugging and the simulator
+-- E.auraAt: one aura at index i, same fallback order. For /dump and the simulator.
 local function auraAt(unit, i, filter, now)
   local get = modernGetter()
   if get then local ok, r = protect(viaModern, get, unit, i, filter, now) if ok then return r end end
@@ -206,13 +206,13 @@ local function byIdGetter()
 end
 local function viaById(get, id, now) return fromData(get(id), now) end
 E.auraAt, E.scan = auraAt, scan
--- TDEBUFF = my debuffs on the target; TDEBUFF_ALL = anyone's (Weakened Blows / Weakened Armor are shared raid debuffs)
+-- TDEBUFF is my debuffs on the target. TDEBUFF_ALL is anyone's. Weakened Blows and Weakened Armor are shared raid debuffs.
 local BUFF, DEBUFF, TDEBUFF, TDEBUFF_ALL = {}, {}, {}, {}
 local function auraId(tbl, id) return tbl[id] end
 local function aura(tbl, id)
   local r = tbl[id]
   if r then return r end
-  -- player buffs: when the buff scan could not use GetAuraDataByIndex, ask GetPlayerAuraBySpellID (if it exists)
+  -- Player buffs: when the buff scan could not use GetAuraDataByIndex, ask GetPlayerAuraBySpellID if it exists.
   if tbl == BUFF and type(id) == "number" and not modernOk.playerHELPFUL then
     local get = byIdGetter()
     if get then
@@ -220,7 +220,7 @@ local function aura(tbl, id)
       if ok and hit then return hit end
     end
   end
-  -- last resort: match by name (rank / variant spell ids)
+  -- Last resort: match by name, for a rank or a variant spell id.
   local n = spellName(id)
   if n then r = tbl[n] end
   return r
@@ -228,9 +228,9 @@ end
 local function rem(tbl, id) local r = aura(tbl, id) return r and r.rem or 0 end
 local function stacks(tbl, id) local r = aura(tbl, id) return r and r.stacks or 0 end
 
--- keybinds ---------------------------------------------------------------
--- v2: read the action buttons that are actually on screen (Blizzard, Bartender4, ElvUI, Dominos),
--- prefer a direct spell over a macro, match by spell ID, base/override ID and name.
+-- Keybinds.
+-- v2 reads the buttons that are actually on screen (Blizzard, Bartender4, ElvUI, Dominos).
+-- A direct spell beats a macro. Match by spell id, base or override id, and name.
 local function abbrev(k)
   if not k or k == "" then return nil end
   k = k:gsub("SHIFT%-", "S"):gsub("CTRL%-", "C"):gsub("ALT%-", "A"):gsub("META%-", "M")
@@ -244,7 +244,7 @@ local BLIZZ = {
   { "MultiBarLeftButton", "MULTIACTIONBAR4BUTTON" }, { "MultiBar5Button", "MULTIACTIONBAR5BUTTON" },
   { "MultiBar6Button", "MULTIACTIONBAR6BUTTON" }, { "MultiBar7Button", "MULTIACTIONBAR7BUTTON" },
 }
--- page -> binding prefix for the raw fallback (5.5: MultiBar actionpage 6,5,3,4,13,14,15)
+-- Page to binding prefix for the raw fallback. On 5.5 the MultiBar action pages are 6, 5, 3, 4, 13, 14, 15.
 local PAGEBIND = { [6] = "MULTIACTIONBAR1BUTTON", [5] = "MULTIACTIONBAR2BUTTON", [3] = "MULTIACTIONBAR3BUTTON",
   [4] = "MULTIACTIONBAR4BUTTON", [13] = "MULTIACTIONBAR5BUTTON", [14] = "MULTIACTIONBAR6BUTTON", [15] = "MULTIACTIONBAR7BUTTON" }
 local function mainPage()
@@ -295,7 +295,7 @@ function E:RefreshKeys(now)
   local seenSlot = {}
   local function offer(spell, kind, slot, key, src, vis)
     if not (spell and key) then return end
-    -- score: visible > hidden, spell > macro, earlier button wins ties
+    -- Score: visible beats hidden, a spell beats a macro, and an earlier button wins a tie.
     local score = (vis and 4 or 0) + (kind == "spell" and 2 or 0)
     local nm = spellName(spell)
     local desc = string.format("slot %d %s via %s%s", slot or 0, kind, src, vis and "" or " (hidden)")
@@ -310,7 +310,7 @@ function E:RefreshKeys(now)
     end
   end
   local G = _G
-  -- 1) Blizzard buttons, 12 per bar, using the slot each button really shows (paging/bonus bars included)
+  -- 1) Blizzard buttons, 12 per bar, using the slot each button is really showing (paging and bonus bars included).
   for _, b in ipairs(BLIZZ) do
     for i = 1, 12 do
       local name = b[1] .. i
@@ -326,7 +326,7 @@ function E:RefreshKeys(now)
       end
     end
   end
-  -- 2) action bar addons (LibActionButton / Dominos)
+  -- 2) Action bar addons (LibActionButton and Dominos).
   local addonButtons = {}
   for i = 1, 180 do addonButtons[#addonButtons + 1] = "BT4Button" .. i; addonButtons[#addonButtons + 1] = "DominosActionButton" .. i end
   for bar = 1, 15 do for i = 1, 12 do addonButtons[#addonButtons + 1] = "ElvUI_Bar" .. bar .. "Button" .. i end end
@@ -345,7 +345,7 @@ function E:RefreshKeys(now)
       end
     end
   end
-  -- 3) raw fallback for slots no visible button covered (uses current page / stance bar)
+  -- 3) Raw fallback for slots no visible button covered. Uses the current page and the stance bar.
   local mp = mainPage()
   for slot = 1, 180 do
     if not seenSlot[slot] then
@@ -372,12 +372,12 @@ function E:Key(id)
   if not k and FindBaseSpellByID then local b = FindBaseSpellByID(id) if b then k = self.keys[b] end end
   local n = spellName(id)
   local kn = n and self.keysByName and self.keysByName[n]
-  -- name match catches rank/override IDs; take it when it scores better (e.g. visible direct spell)
+  -- A name match catches rank and override ids. Take it when it scores better, for example a visible spell on a button.
   if kn and (not k or kn.score > k.score) then k = kn end
   return k and k.key or ""
 end
 
--- environment --------------------------------------------------------------
+-- Environment: nearby enemies, stance, weapons, interrupts.
 local function enemies(range)
   local n = 0
   local plates = C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates()
@@ -395,7 +395,7 @@ local function enemies(range)
   return n
 end
 
--- stance: loop every stance button and compare spell ID and name (no fixed index)
+-- Stance: walk every stance button and compare spell id and name. No fixed index.
 local STANCES = { ID.battle, ID.def, ID.bers }
 local function activeStance()
   local names = {}
@@ -417,7 +417,7 @@ end
 E.activeStance = activeStance
 local STANCE_NAME = { [ID.battle] = "Battle", [ID.def] = "Defensive", [ID.bers] = "Berserker" }
 
--- Fury weapon mode: Titan's Grip = a two-hander in the off hand, Single-Minded Fury = two one-handers
+-- Fury weapons. Titan's Grip means a two-hander in the off hand. Single-Minded Fury means two one-handers.
 local function furyWeapons(cfg)
   local m = tonumber(cfg.fuMode) or 1
   if m == 2 then return "TG" elseif m == 3 then return "SMF" end
@@ -433,12 +433,12 @@ local function furyWeapons(cfg)
   local ohLoc, mhLoc = loc(oh), loc(mh)
   if ohLoc == "INVTYPE_2HWEAPON" or (mhLoc == "INVTYPE_2HWEAPON" and ohLoc) then return "TG" end
   if ohLoc == "INVTYPE_WEAPON" or ohLoc == "INVTYPE_WEAPONOFFHAND" or ohLoc == "INVTYPE_WEAPONMAINHAND" then return "SMF" end
-  if mhLoc == "INVTYPE_2HWEAPON" then return "2H" end -- Fury with one two-hander: play it like Titan's Grip
+  if mhLoc == "INVTYPE_2HWEAPON" then return "2H" end -- Fury with one two-hander: play it like Titan's Grip.
   return "TG"
 end
 E.furyWeapons = furyWeapons
 
--- interrupt candidates: Pummel first, then Disrupting Shout / stuns / racials as fallbacks
+-- Interrupt order: Pummel first, then Disrupting Shout, stuns, and racials as fallbacks.
 local ARCANE_TORRENT = { 69179, 129597, 28730, 25046, 50613, 80483 }
 local function castInfo(unit)
   if not (UnitExists(unit) and UnitCanAttack("player", unit) and not UnitIsDead(unit)) then return nil end
@@ -471,7 +471,7 @@ local function pickInterrupt(S, cfg)
     local c = castInfo(u)
     if c and c.interruptible and c.finish > S.now then
       local list = { { ID.pummel } }
-      -- Disrupting Shout shares Pummel's lockout; it only helps when Pummel is out of reach (10 yd AoE)
+      -- Disrupting Shout shares Pummel's lockout. It only helps when Pummel is out of reach (10 yd AoE).
       list[#list + 1] = { ID.dshout, 10 }
       if cfg.intCC ~= false then
         list[#list + 1] = { ID.sbolt }
@@ -498,16 +498,16 @@ local function pickInterrupt(S, cfg)
   return nil
 end
 
--- snapshot of everything the priorities read
+-- A snapshot of everything the priority lists read.
 function E:Snapshot(now)
   local S = {}
   local cfg = self.cfg
   S.now = now
-  -- read every tick, so picking a spec at level 10 (or swapping specs) switches the priority straight away
+  -- Read every tick, so picking a spec at level 10 (or swapping specs) switches the priority straight away.
   local spec = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization())
                or (GetSpecialization and GetSpecialization())
   spec = tonumber(spec) or 0
-  if spec ~= 1 and spec ~= 2 and spec ~= 3 then spec = 0 end -- nil / 0 / 5 = no specialisation yet (levels 1-9)
+  if spec ~= 1 and spec ~= 2 and spec ~= 3 then spec = 0 end -- nil, 0, or 5 means no spec yet (levels 1-9)
   S.spec = spec
   S.arms, S.fury, S.prot = spec == 1, spec == 2, spec == 3
   S.leveling = spec == 0
@@ -538,7 +538,7 @@ function E:Snapshot(now)
   S.enraged = (aura(BUFF, ID.enrage) or auraId(BUFF, ID.brage)) and true or false
   S.tanking = UnitExists("target") and UnitDetailedThreatSituation and (UnitDetailedThreatSituation("player", "target")) and true or false
   if S.fury then S.weap = furyWeapons(cfg) end
-  -- Protection mode: 1 Auto, 2 Tank, 3 DPS
+  -- Protection mode. 1 is Auto, 2 is Tank, 3 is DPS.
   if S.prot then
     local mode = tonumber(cfg.protMode) or 1
     if mode == 2 then S.tank = true
@@ -554,7 +554,7 @@ function E:Snapshot(now)
   return S
 end
 
--- range. Self / no-range spells always count as in range; point-blank AoE uses an 8 or 10 yd check.
+-- Range. Spells on yourself, and spells with no range, always count as in range. Point-blank AoE uses an 8 or 10 yd check.
 local NORANGE = { [ID.battle] = true, [ID.def] = true, [ID.bers] = true, [ID.bshout] = true, [ID.cshout] = true,
   [ID.reck] = true, [ID.avatar] = true, [ID.bbath] = true, [ID.skull] = true, [ID.brage] = true, [ID.sblock] = true,
   [ID.sbarrier] = true, [ID.swall] = true, [ID.lstand] = true, [ID.rcry] = true, [ID.dbts] = true, [ID.eregen] = true,
@@ -562,11 +562,11 @@ local NORANGE = { [ID.battle] = true, [ID.def] = true, [ID.bers] = true, [ID.bsh
 local AOE8 = { [ID.tc] = true, [ID.ww] = true, [ID.bstorm] = true, [ID.droar] = true, [ID.warstomp] = true,
   [69179] = true, [129597] = true, [28730] = true, [25046] = true, [50613] = true, [80483] = true }
 local AOE10 = { [ID.demo] = true, [ID.shock] = true, [ID.dshout] = true }
--- melee spells: used only when the API returns nil for them
+-- Melee spells. Used only when the range API returns nil for them.
 local MELEE5 = { [ID.ms] = true, [ID.cs] = true, [ID.op] = true, [ID.slam] = true, [ID.exe] = true, [ID.hs] = true,
   [ID.cleave] = true, [ID.sslam] = true, [ID.rev] = true, [ID.dev] = true, [ID.sunder] = true, [ID.bt] = true,
   [ID.rb] = true, [ID.wild] = true, [ID.vr] = true, [ID.attack] = true, [ID.iv] = true, [ID.pummel] = true, [ID.quaking] = true }
--- instant melee attacks that start auto attack when used on a hostile target
+-- Instant melee attacks. Using one on a hostile target starts auto attack.
 local SWINGS = {}
 for id in pairs(MELEE5) do if id ~= ID.attack and id ~= ID.pummel and id ~= ID.quaking then SWINGS[id] = true end end
 local function meleeCheck(yards)
@@ -590,20 +590,20 @@ local function outOfRange(id)
 end
 E.outOfRange = outOfRange
 
--- helpers used by priority lists
+-- Helpers the priority lists share.
 local function ready(id, S, lead) return known(id) and cd(id, S.now) <= (lead or 0.25) end
 E.cd, E.aura, E.rem, E.stacks, E.BUFF, E.DEBUFF, E.TDEBUFF, E.TDEBUFF_ALL = cd, aura, rem, stacks, BUFF, DEBUFF, TDEBUFF, TDEBUFF_ALL
 local function adder(out)
   return function(id, f, why) out[#out + 1] = { id = id, glow = f and f.glow, wait = f and f.wait, rage = f and f.rage, why = why, tag = f and f.tag } end
 end
 local function talent4(S, add, csOnly)
-  -- tier 4: Bladestorm (AoE or CS window), Dragon Roar (on cooldown), Shockwave (AoE / cooldown)
+  -- Tier 4. Bladestorm in AoE or the CS window, Dragon Roar on cooldown, Shockwave for AoE or on cooldown.
   if ready(ID.droar, S) and S.hostile then add(ID.droar, nil, "Dragon Roar on cooldown (ignores armor)") return end
   if ready(ID.bstorm, S) and S.hostile and (S.aoe or not csOnly or S.cs > 4) then add(ID.bstorm, nil, S.aoe and "Bladestorm (AoE)" or "Bladestorm in CS window") return end
   if ready(ID.shock, S) and S.hostile and (S.n >= 2 or S.prot) then add(ID.shock, nil, "Shockwave") end
 end
 local function shout(S, add)
-  -- Battle / Commanding Shout are rage generators (+20) on a shared 60 s cooldown
+  -- Battle Shout and Commanding Shout each give 20 rage, and they share one 60 s cooldown.
   if S.rage <= S.rageMax - 30 then
     local which = (tonumber(E.cfg.shout) or 1) == 2 and ID.cshout or ID.bshout
     if ready(which, S) then add(which, nil, "Shout for rage") end
@@ -614,21 +614,21 @@ local function victory(S, add, hpLimit)
   if not known(ID.iv) and known(ID.vr) and aura(BUFF, ID.victorious) and S.hp < hpLimit then add(ID.vr, nil, "Victory Rush heal") end
 end
 
--- Leveling (levels 1-9, no specialisation): Battle Stance, Heroic Strike as the main attack, Charge to pull (3),
--- Victory Rush (5), Execute (7). Every entry is gated by IsPlayerSpell, so it only shows what you have learned.
+-- Leveling (levels 1-9, no spec): Battle Stance, Heroic Strike as the main attack, Charge to pull (3),
+-- Victory Rush (5), Execute (7). IsPlayerSpell gates every entry, so you only see spells you've learned.
 local function chargeId()
   if known(ID.charge) then return ID.charge end
   if known(ID.chargeOld) then return ID.chargeOld end
   return nil
 end
--- Charge needs 8-25 yd and must be off cooldown (both IDs are checked, they share one recharge). When it isn't
--- usable the gap closer falls through to Heroic Throw, then to the normal priority.
+-- Charge needs 8-25 yd and has to be off cooldown. Both ids are checked, and they share one recharge. When Charge isn't
+-- usable, the gap closer falls through to Heroic Throw, then back to the normal priority.
 local function chargeReady(S)
   local ch = chargeId()
   if not ch then return nil end
   local r = math.max(cd(ID.charge, S.now), cd(ID.chargeOld, S.now))
   if r > 0.25 then return nil end
-  -- inside Charge's 8 yd minimum range (only when a real distance check exists; IsSpellInRange covers it otherwise)
+  -- Inside Charge's 8 yd minimum. Only when a real distance check exists. IsSpellInRange covers it otherwise.
   if WeakAuras and WeakAuras.CheckRange and WeakAuras.CheckRange("target", 8, "<=") then return nil end
   if outOfRange(ch) or not usable(ch) then return nil end
   return ch
@@ -641,13 +641,13 @@ local function gapCloser(S, add)
   if ready(ID.hthrow, S) and not outOfRange(ID.hthrow) then add(ID.hthrow, nil, "Heroic Throw: target out of melee range") end
 end
 local function victorious(S) return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end
--- v1.7 Sunder Armor tracker (option "Track Sunder Armor (Weakened Armor)", key sunder, default on).
--- Weakened Armor (113746) is a shared raid debuff from anyone (Sunder Armor, Devastate, Faerie Fire, Expose Armor...),
--- 3 stacks, 30 s. Sunder is asked for only when the option is on, you're in combat with a hostile target, have the
--- 15 rage, and the debuff is missing, under 3 stacks or under 5 s left. At 3 stacks with time left, nothing is asked.
--- Arms / Fury: below Colossus Smash, Mortal Strike / Bloodthirst, Raging Blow, procs, talents and Storm Bolt, above the
--- Slam / shout / Wild Strike fillers; in the CS window only after Slam and Overpower. Never in the execute phase (rage
--- goes to Execute there; the Sunder icon still glows). Prot: Devastate's WA bump (Devastate applies it too).
+-- v1.7 Sunder Armor tracker. Option "Track Sunder Armor (Weakened Armor)", key sunder, on by default.
+-- Weakened Armor (113746) is a shared raid debuff from anyone (Sunder Armor, Devastate, Faerie Fire, Expose Armor, and the rest),
+-- 3 stacks, 30 s. Sunder is asked for only when the option is on, you're in combat with a hostile target, you have
+-- 15 rage, and the debuff is missing, under 3 stacks, or under 5 s left. At 3 stacks with time left, nothing is asked.
+-- Arms and Fury: below Colossus Smash, Mortal Strike or Bloodthirst, Raging Blow, procs, talents, and Storm Bolt, and above the
+-- Slam, shout, and Wild Strike fillers. In the CS window, only after Slam and Overpower. Never in the execute phase (that rage
+-- goes to Execute; the Sunder icon still glows). Prot: Devastate's WA bump (Devastate applies it too).
 local SUNDER_REFRESH = 5
 local function sunderOn() return E.cfg.sunder ~= false end
 E.sunderOn = sunderOn
@@ -678,7 +678,7 @@ local function leveling(S, out)
   shout(S, add)
   if known(ID.hs) then add(ID.hs, { wait = true, rage = S.rage < 30 }, "waiting for rage (Heroic Strike at 30)") end
 end
--- freshly specced (levels 10-19): few spec spells yet, so add the leveling basics around the spec priority
+-- Just specced (levels 10-19). Few spec spells yet, so the leveling basics sit around the spec priority.
 local function earlySpec(S, list)
   local pre = {}
   local add = adder(pre)
@@ -690,7 +690,7 @@ local function earlySpec(S, list)
   for i = #pre, 1, -1 do table.insert(list, 1, pre[i]) end
 end
 
--- each priority list: Icy Veins / Warcraft Tavern / Wowhead MoP Classic guides (see README)
+-- Each priority list follows the Icy Veins, Warcraft Tavern, and Wowhead MoP Classic guides (see the README).
 local function arms(S, out)
   local add = adder(out)
   local tfb = stacks(BUFF, ID.tfb)
@@ -790,7 +790,7 @@ local function fury(S, out)
     if ready(ID.droar, S) and S.hostile then add(ID.droar, nil, "Dragon Roar on cooldown") end
     if S.n >= 2 and known(ID.ww) and S.rage >= 30 and mc < 1 then add(ID.ww, { tag = "MC" }, "2-3 targets: Whirlwind for Meat Cleaver") end
     if smf then BS("Wild Strike (Bloodsurge; SMF ranks it above Raging Blow)") end
-    -- keep one Raging Blow charge for the next CS window when CS is close
+    -- Keep one Raging Blow charge for the next CS window when CS is close.
     if rbc >= 2 or (rbc == 1 and S.csCd > 6) then RB(rbc >= 2 and "Raging Blow at 2 charges" or "Raging Blow (CS not close)") end
     BS("Wild Strike (Bloodsurge)")
     if ready(ID.bt, S) then add(ID.bt, nil, "Bloodthirst") end
@@ -828,7 +828,7 @@ local function prot(S, out)
   if known(ID.sslam) then add(ID.sslam, { wait = true }, "waiting for Shield Slam") end
 end
 
--- off-GCD rage spender: Heroic Strike / Cleave
+-- Off the GCD rage spender: Heroic Strike or Cleave.
 local function offGcd(S)
   local cfg = E.cfg
   if cfg.showOff == false or not S.hostile or S.leveling then return nil end
@@ -854,7 +854,7 @@ local function offGcd(S)
   return nil
 end
 
--- Protection active mitigation: Shield Block (physical) / Shield Barrier (magic, or Block already up / no charges)
+-- Protection active mitigation. Shield Block for physical. Shield Barrier for magic, or when Block is already up or has no charges.
 local function activeMitigation(S)
   if not (S.prot and S.tank and S.combat) then return nil end
   local am = tonumber(E.cfg.amMode) or 1
@@ -874,21 +874,21 @@ local function activeMitigation(S)
   return nil
 end
 
--- cooldown tray (v1.5): small ready-only icons for racials and big cooldowns, slot 1 = rightmost.
--- A spell shows only when it is known and off cooldown, and never while the rotation is already showing it
--- (Next, Next+1, off-GCD, left/right side icons or the interrupt icon).
+-- Cooldown tray (v1.5). Small icons that only show while the spell is ready. Slot 1 is the rightmost.
+-- A spell shows only when you know it and it is off cooldown, and never while the rotation is already showing it
+-- (Next, Next+1, the off-GCD icon, the left or right side icons, or the interrupt icon).
 local TRAY_SLOTS = 8
 E.TRAY_SLOTS = TRAY_SLOTS
--- every MoP racial with a cooldown for the races that can be Warriors or Monks (class variants share one entry each)
+-- Every MoP racial with a cooldown, for the races that can be Warriors or Monks. Class variants share one entry each.
 local RACIALS = {
-  20572, 33697, 33702,             -- Blood Fury (Orc: attack power / Monk / caster variants)
+  20572, 33697, 33702,             -- Blood Fury (Orc: attack power, the Monk variant, and the caster variant)
   26297,                           -- Berserking (Troll)
   59752,                           -- Every Man for Himself (Human)
   20594,                           -- Stoneform (Dwarf)
   7744, 20577,                     -- Will of the Forsaken, Cannibalize (Undead)
   20549,                           -- War Stomp (Tauren)
-  69179, 129597, 28730, 25046, 50613, 80483, -- Arcane Torrent (Blood Elf: Warrior rage / Monk chi / other variants)
-  28880, 121093, 59542, 59543, 59544, 59545, 59547, 59548, -- Gift of the Naaru (Draenei: Warrior / Monk / other variants)
+  69179, 129597, 28730, 25046, 50613, 80483, -- Arcane Torrent (Blood Elf: Warrior rage, Monk chi, and the other variants)
+  28880, 121093, 59542, 59543, 59544, 59545, 59547, 59548, -- Gift of the Naaru (Draenei: Warrior, Monk, and the other variants)
   20589,                           -- Escape Artist (Gnome)
   58984,                           -- Shadowmeld (Night Elf)
   68992,                           -- Darkflight (Worgen)
@@ -925,7 +925,7 @@ local function sidePops(S, left, right)
   local cfg = E.cfg
   local function L(id, glow) if id and #left < 3 then left[#left + 1] = { id = id, glow = glow } end end
   local function R(id, glow) if id and #right < 3 then right[#right + 1] = { id = id, glow = glow } end end
-  -- left: stance reminder, active mitigation, defensives
+  -- Left side: stance reminder, active mitigation, defensives.
   if cfg.showDef ~= false then
     if not S.prot and S.stance ~= ID.battle and S.stance ~= ID.bers and known(ID.battle) then
       L((tonumber(cfg.dpsStance) or 1) == 2 and known(ID.bers) and ID.bers or ID.battle, S.combat) end
@@ -941,11 +941,11 @@ local function sidePops(S, left, right)
       if tank and ready(ID.demo, S) and S.hostile and (S.boss or S.n >= 3 or S.hp < 70) then L(ID.demo) end
     end
   end
-  -- right: offensive cooldowns, lined up with Colossus Smash
+  -- Right side: offensive cooldowns, lined up with Colossus Smash.
   if cfg.showCDs ~= false and S.combat and S.hostile then
     local big = S.boss or S.aoe
     local csSoon = S.cs > 1 or S.csCd <= 3 or not known(ID.cs)
-    -- priority: Recklessness > Avatar / Bloodbath > Skull Banner > Berserker Rage (only 3 slots)
+    -- Order: Recklessness, then Avatar or Bloodbath, then Skull Banner, then Berserker Rage. Only 3 slots.
     if big and not S.prot then
       if ready(ID.reck, S) and (csSoon or S.exec) then R(ID.reck, true) end
       if ready(ID.avatar, S) and (csSoon or S.exec) then R(ID.avatar, true) end
@@ -970,7 +970,7 @@ local function gcd(now)
   return rem, s, d
 end
 E.gcd = gcd
--- spells that are not on the global cooldown: no GCD swipe / grey-out for them in the Next icons
+-- Not on the global cooldown, so the Next icons don't give them a GCD swipe or grey them out for the GCD.
 local OFFGCD = { [ID.attack] = true, [ID.hs] = true, [ID.cleave] = true, [ID.charge] = true, [ID.chargeOld] = true, [ID.pummel] = true }
 function entry(e, S, side)
   if not e then return nil end
@@ -993,9 +993,9 @@ function entry(e, S, side)
            start = s, duration = d }
 end
 
--- buff / debuff trackers: 4 small icons, contents depend on the spec
+-- Buff and debuff trackers. Four small icons. What they show depends on your spec.
 local function track(tbl, id, label, alertWhenMissing, minStacks, need)
-  -- need = the spell that makes this tracker relevant; not learned yet (low level) -> tracker hidden
+  -- need is the spell that makes this tracker matter. Not learned yet (low level) means the tracker stays hidden.
   if need and not known(need) then return nil end
   local a = aura(tbl, id)
   local st = a and a.stacks or 0
@@ -1026,12 +1026,12 @@ local function trackers(S)
   return t
 end
 
--- auto attack and cast feedback ------------------------------------------------
--- (the swing timer was removed in v1.6, so the engine no longer listens to the combat log or attack speed)
+-- Auto attack, and whether the cast you just finished was the one we suggested.
+-- The swing timer was removed in v1.6, so the engine no longer listens to the combat log or to attack speed.
 local function autoAttacking()
   if IsCurrentSpell then return IsCurrentSpell(ID.attack) and true or false end
   if C_Spell and C_Spell.IsCurrentSpell then return C_Spell.IsCurrentSpell(ID.attack) and true or false end
-  return nil -- API missing: never nag about auto attack
+  return nil -- API missing, so never nag about auto attack
 end
 E.autoAttacking = autoAttacking
 function E:Cast(id, now)
@@ -1059,7 +1059,7 @@ if CreateFrame then
   E.frame = f
 end
 
--- one evaluation per 0.1 s shared by every aura
+-- One pass every 0.1 s, shared by every aura.
 function E:Tick()
   local now = GetTime()
   if now - self.last < 0.1 then return self.R, false end
@@ -1070,7 +1070,7 @@ function E:Tick()
   local list = {}
   if S.arms then arms(S, list) elseif S.fury then fury(S, list) elseif S.prot then prot(S, list) else leveling(S, list) end
   if not S.leveling and S.level < 20 then earlySpec(S, list) end
-  -- auto attack: white swings build the rage, so start them first, and never lead with a spell you can't afford
+  -- Auto attack. White swings are what build the rage, so start them first, and don't lead with a spell you can't pay for.
   S.attacking = autoAttacking()
   S.melee = S.hostile and meleeCheck(5)
   if S.melee then
@@ -1079,8 +1079,8 @@ function E:Tick()
       if C_Spell and C_Spell.IsSpellUsable then local _, noMana = C_Spell.IsSpellUsable(e.id) if noMana then return true end end
       return false
     end
-    -- an instant melee attack (Heroic Strike, Mortal Strike, Victory Rush...) starts auto attack by itself, so when one is
-    -- usable it stays first and Attack is only the fallback (v1.4: Attack used to win even with rage for Heroic Strike)
+    -- An instant melee attack (Heroic Strike, Mortal Strike, Victory Rush, and the rest) starts auto attack by itself, so when one is
+    -- usable it stays first and Attack is only the fallback. In v1.4, Attack used to win even when you had rage for Heroic Strike.
     local function usableMelee(e) return e and not e.wait and not starved(e) and SWINGS[e.id] and true or false end
     if S.attacking == false then
       if not usableMelee(list[1]) then
@@ -1127,8 +1127,8 @@ function E:Tick()
   R.tray = tray(S, R)
   R.mode = specName .. (S.aoe and (" AoE " .. S.n) or "") .. (S.exec and " EXEC" or "")
   R.rage = { v = S.rage, max = S.rageMax, dump = S.rage >= S.dump }
-  -- resources line: spec counters only (no stance or level text since v1.6; the left-side stance reminder
-  -- still flags a wrong stance). Leveling has no counters, so the line is hidden there.
+  -- Resources line: spec counters only. No stance or level text since v1.6. The left-side stance reminder
+  -- still flags a wrong stance. Leveling has no counters, so the line stays hidden there.
   local res
   if S.arms then res = string.format("TfB %d", stacks(BUFF, ID.tfb))
   elseif S.fury then res = string.format("RB %d  MC %d", S.rbc or 0, S.mc or 0)
@@ -1139,8 +1139,8 @@ function E:Tick()
   end
   R.res = res
   R.trk = trackers(S)
-  -- v1.7 Sunder icon (Arms / Fury / Leveling; Prot keeps its own WA tracker): Sunder Armor's icon with the
-  -- Weakened Armor stacks and timer from anyone, grey when missing, red glow when Sunder is needed
+  -- v1.7 Sunder icon (Arms, Fury, and Leveling; Prot keeps its own WA tracker). Sunder Armor's icon, with the
+  -- Weakened Armor stacks and timer from anyone. Grey when it's missing, red glow when you need to Sunder.
   if sunderOn() and not S.prot and S.hostile and known(ID.sunder) then
     local wa = aura(TDEBUFF_ALL, ID.warmor)
     local low = not wa or wa.stacks < 3 or wa.rem < SUNDER_REFRESH
@@ -1161,7 +1161,7 @@ function E:Tick()
     local ba = aura(BUFF, ID.sbarrier)
     R.sbar = { rem = ba and ba.rem or 0, exp = ba and ba.exp or 0, dur = ba and ba.dur or 6, amount = ba and ba.points or nil }
   end
-  -- cast feedback
+  -- Last cast: flash if it was the suggested spell, and the small "last" icon for 3 s.
   local lc = self.lastCast
   if lc then
     local age = now - lc.t
