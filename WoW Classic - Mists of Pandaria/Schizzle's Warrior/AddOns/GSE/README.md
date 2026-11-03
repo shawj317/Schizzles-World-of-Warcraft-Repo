@@ -128,7 +128,7 @@ If the import string won't paste, build the sequences in the editor (Raw Edit is
 - `source/sequence.lua`: the sequences as plain data (macro text per block, names and metadata).
 - `source/gse_format.lua`: Jon's own reader and writer for GSE's `!GSE3!` strings. The format is `!GSE3!` followed by Base64 of Deflate-compressed CBOR, the same as WoW's `C_EncodingUtil` defaults that GSE uses. No GSE code is copied: GSE is "All Rights Reserved", so its source is only read to check the format. Decoding two real GSE exports and writing them back with this encoder produced the same data.
 - `source/build.lua`: writes the import string and the readable sheet. Run `lua build.lua` with LibDeflate on disk (`WA_LIBS`, default `/workspace`).
-- `source/verify.lua`: 99 checks. It runs on the export, on a checkout of the GSE source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
+- `source/verify.lua`: 100 checks. It runs on the export, on a checkout of the GSE source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
   - the string decodes and re-encodes to the same text
   - the collection and the current `Versions` format that GSE needs (GSE now refuses the old `Macros` format)
   - the block types, the GSEVersion, and that MoP's interface is in GSE.toc
@@ -136,7 +136,7 @@ If the import string won't paste, build the sequences in the editor (Raw Edit is
   - no more than one GCD ability per block
   - every block stays within 255 characters
   - the readable sheet is up to date
-  - nothing personal is in the files
+  - nothing personal is in the files (names to look for go in the `PRIVATE_WORDS` environment variable, so the list itself never ships)
 
 ## Version history
 - **v1** (Nov 3 2026): first release, with the level 8 main sequence (Victory Rush and Execute blocks, Heroic Strike rage dump, Blood Fury, Shift-Charge) and a Charge opener.

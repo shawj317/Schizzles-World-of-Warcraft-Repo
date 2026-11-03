@@ -146,9 +146,16 @@ for _, def in ipairs(S.sequences) do
 end
 
 -- 5. Nothing personal in what ships
-for _, path in ipairs({"/../Schizzle's Warrior Level 8.txt", "/../Level 8 Sequences (readable).md", "/sequence.lua"}) do
+-- PRIVATE_WORDS: comma-separated names that must never ship (character names and so on). Kept out of the repo on
+-- purpose, so the list itself is never committed.
+local private = {}
+for w in (os.getenv("PRIVATE_WORDS") or ""):gmatch("[^,]+") do private[#private + 1] = w end
+for _, path in ipairs({"/../Schizzle's Warrior Level 8.txt", "/../Level 8 Sequences (readable).md", "/sequence.lua",
+                       "/../README.md"}) do
   local s = readFile(HERE .. path)
-  check(not s:find("REDACTED") and not s:find("Peanut"), path .. ": no personal names")
+  local clean = true
+  for _, w in ipairs(private) do if s:find(w, 1, true) then clean = false end end
+  check(clean, path .. ": none of PRIVATE_WORDS")
 end
 local decodedText = F.cbor(data)
 check(not decodedText:find("@", 1, true), "no Name@Realm inside the export")
