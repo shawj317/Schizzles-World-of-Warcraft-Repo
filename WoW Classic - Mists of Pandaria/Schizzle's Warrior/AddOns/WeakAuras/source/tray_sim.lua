@@ -29,8 +29,9 @@ assert(ok and type(t) == "table" and t.m == "d" and t.d and t.c and t.v == 1421,
 local data = t.d
 print(("decoded OK: group %q uid=%s, %d children"):format(data.id, data.uid, #t.c))
 check(not decompressed:lower():find("peanut"), "no Peanut naming")
-check(data.id == "Schizzle's XP & Rep Tray v1.2", "group name carries v1.2")
-check((data.desc or ""):find("v1%.2%.$") ~= nil, "description ends with v1.2")
+check(data.id == "Schizzle's XP & Rep Tray v1.3", "group name carries v1.3")
+check((data.desc or ""):find("v1%.3%.$") ~= nil, "description ends with v1.3")
+check(#t.c == 3, "three bars")
 check(data.uid == "SchizzleXPRepTray" and data.regionType == "dynamicgroup", "standalone dynamic group, own uid")
 local by = {}
 for i, c in ipairs(t.c) do
@@ -43,8 +44,8 @@ for i, c in ipairs(t.c) do
     if s.type == "subborder" then check(s.border_offset == 0 and s.border_size == 1, "border drawn inside the bar " .. c.id) end
   end
 end
-local XP, REP = by["Schizzle Tray XP"], by["Schizzle Tray Rep"]
-check(t.c[1] == XP and t.c[2] == REP, "XP on top, Rep under it")
+local XP, REP, GUILD = by["Schizzle Tray XP"], by["Schizzle Tray Rep"], by["Schizzle Tray Guild"]
+check(t.c[1] == XP and t.c[2] == REP and t.c[3] == GUILD, "XP on top, watched Rep under it, Guild at the bottom")
 check(XP.overlays and #XP.overlays == 2 and XP.overlayclip == true, "two overlay colours, clipped to the bar end")
 local function isBlue(c) return c[3] > c[1] and c[3] > c[2] end
 local function isGreen(c) return c[2] > c[1] and c[2] > c[3] end
@@ -59,7 +60,7 @@ check(XP.overlayclip and #XP.overlays == 2, "green is overlay 1 (above the fill)
 ---------------- layout: replay WeakAuras' DOWN grower (DynamicGroup.lua) ----------------
 check(data.grow == "DOWN" and data.align == "RIGHT" and data.space == 2 and data.sort == "none" and (data.stagger or 0) == 0, "grow down, right aligned, 2 px apart, list order")
 check(data.selfPoint == "TOPRIGHT" and data.anchorPoint == "BOTTOMRIGHT" and data.anchorFrameType == "SCREEN", "group TOPRIGHT on the screen's BOTTOMRIGHT")
-check(data.xOffset == -4 and data.yOffset == 26 and (data.scale or 1) == 1, "group at -4, +26, scale 1")
+check(data.xOffset == -4 and data.yOffset == 38 and (data.scale or 1) == 1, "group at -4, +38, scale 1")
 local function layout(visible)
   local y, boxes = 0, {}
   for _, c in ipairs(visible) do
@@ -68,17 +69,22 @@ local function layout(visible)
   end
   return boxes
 end
-local both = layout({ XP, REP })
-check(both[1].top == 26 and both[1].bottom == 16 and both[2].top == 14 and both[2].bottom == 4, "XP 16..26, Rep 4..14 px up")
-check(both[1].right == -4 and both[1].left == -504 and both[2].left == -504, "both bars span 4..504 px in from the right (500 wide)")
-local H = both[1].top - both[2].bottom
-check(H == 22, "tray height 22 px")
--- Details! windows (250 x 153 each, side by side) start at the tray's top edge: same width, no gap, no overlap
-check(both[1].top == 4 + 22 and -4 - 2 * 250 == both[1].left, "Details! pair (500 wide, bottom 26 px up) sits exactly on the tray")
-local solo = layout({ REP })
-check(solo[1].top == 26, "XP hidden (level 90): Rep moves up to sit right under Details!")
-solo = layout({ XP })
-check(solo[1].top == 26 and solo[1].bottom == 16, "Rep hidden (no watched faction): XP stays under Details!")
+local all = layout({ XP, REP, GUILD })
+check(all[1].top == 38 and all[1].bottom == 28 and all[2].top == 26 and all[2].bottom == 16 and all[3].top == 14 and all[3].bottom == 4, "XP 28..38, Rep 16..26, Guild 4..14 px up")
+check(all[1].right == -4 and all[1].left == -504 and all[2].left == -504 and all[3].left == -504, "all bars span 4..504 px in from the right (500 wide)")
+local H = all[1].top - all[3].bottom
+check(H == 34, "tray height 34 px (3 x 10 + 2 x 2)")
+-- Details! windows (250 x 141 each, side by side) start at the tray's top edge: same width, no gap, no overlap
+check(all[1].top == 4 + 34 and -4 - 2 * 250 == all[1].left, "Details! pair (500 wide, bottom 38 px up) sits exactly on the tray")
+check(38 + 141 + 20 == 199, "Details! title bars still top out 199 px up")
+local solo = layout({ REP, GUILD })
+check(solo[1].top == 38 and solo[2].top == 26, "XP hidden (level 90): Rep and Guild move up, no hole under Details!")
+solo = layout({ XP, GUILD })
+check(solo[1].top == 38 and solo[2].top == 26, "Rep hidden: Guild moves up under XP")
+solo = layout({ XP, REP })
+check(solo[1].top == 38 and solo[2].bottom == 16, "Guild hidden (no guild): XP and Rep stay under Details!, strip at the bottom empty")
+solo = layout({ GUILD })
+check(solo[1].top == 38, "only Guild: it sits right under Details!")
 
 ---------------- mock game ----------------
 local W = {}
@@ -101,7 +107,10 @@ _G.SelectQuestLogEntry = function(i) W.sel = i W.selects = W.selects + 1 end
 _G.GetQuestLogRewardXP = function() local q = W.log[W.sel] return q and not q.header and q.xp or 0 end
 _G.BreakUpLargeNumbers = function(n) local s = tostring(math.floor(n)) local r = s:reverse():gsub("(%d%d%d)", "%1,"):reverse() return (r:gsub("^,", "")) end
 for i, l in ipairs({ "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }) do _G["FACTION_STANDING_LABEL" .. i] = l end
-_G.C_Reputation = { GetWatchedFactionData = function() return W.watch end }
+_G.C_Reputation = { GetWatchedFactionData = function() return W.watch end, GetGuildFactionData = function() return W.guildFaction end }
+_G.IsInGuild = function() return W.guildName ~= nil end
+_G.GetGuildInfo = function() return W.guildName, "Member", 3 end
+_G.C_GuildInfo = { IsGuildReputationEnabled = function() return not W.guildRepOff end }
 _G.C_GossipInfo = { GetFriendshipReputation = function(id) return W.friend and W.friend[id] or { friendshipFactionID = 0 } end }
 
 T.loadAddonFile("WeakAuras/AuraEnvironment.lua", "WeakAuras", Private)
@@ -117,7 +126,7 @@ do local ev = " " .. XP.triggers[1].trigger.events .. " "
   check(not ev:find(" UNIT_QUEST_LOG_CHANGED ", 1, true), "no bare UNIT_ event") end
 check(XP.triggers[1].trigger.events:find("PLAYER_XP_UPDATE") and XP.triggers[1].trigger.events:find("UPDATE_EXHAUSTION") and XP.triggers[1].trigger.events:find("PLAYER_LEVEL_UP"), "XP events")
 check(REP.triggers[1].trigger.events:find("UPDATE_FACTION"), "Rep events")
-local states = { [XP.id] = {}, [REP.id] = {} }
+local states = { [XP.id] = {}, [REP.id] = {}, [GUILD.id] = {} }
 local function run(c, event, ...)
   Private.ActivateAuraEnvironment(c.id, nil, nil, states[c.id])
   local r = fns[c.id](states[c.id], event, ...)
@@ -234,6 +243,81 @@ _G.GetWatchedFactionInfo = function() return "Golden Lotus", 3, -3000, 0, -1500,
 r, s = run(REP, "UPDATE_FACTION")
 check(s.show and s.lefttext == "Golden Lotus   Unfriendly" and s.value == 1500 and s.total == 3000 and s.tier == 3, "GetWatchedFactionInfo fallback")
 _G.C_Reputation = keep
+-- watched faction is the guild: the Rep bar shows it under the guild's own name
+W.guildName = "Example Guild"
+W.watch = { factionID = 1168, name = "Guild", reaction = 5, currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 4500 }
+r, s = run(REP, "UPDATE_FACTION")
+check(s.show and s.lefttext == "Example Guild   Friendly" and s.value == 1500 and s.total == 6000, "watched guild faction: Rep bar uses the guild name")
+W.watch = nil
+
+-- guild reputation
+W.guildName, W.guildFaction = nil, nil
+r, s = run(GUILD, "STATUS")
+check(not (s and s.show), "not in a guild: Guild hidden")
+W.guildName = "Example Guild"
+W.guildFaction = { factionID = 1168, name = "Guild", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 15000 }
+r, s = run(GUILD, "PLAYER_GUILD_UPDATE")
+check(r and s.show and s.value == 6000 and s.total == 12000 and s.tier == 6, "guild faction progress inside the standing")
+check(s.lefttext == "Example Guild   Honored" and s.righttext == "6,000 / 12,000   50.0%", "Guild text: " .. tostring(s.lefttext) .. " | " .. tostring(s.righttext))
+check(tipText(s) == "Example Guild | Guild standing = Honored | Progress = 6,000 / 12,000  (50.0%) | To Revered = 6,000  (50.0%)", "Guild tooltip: " .. tipText(s))
+check(not tipText(s):lower():find("cap", 1, true), "no cap line (MoP Classic has no guild reputation cap API)")
+check(run(GUILD, "UPDATE_FACTION") == false, "no redraw when nothing changed")
+W.guildFaction.currentStanding = 16500
+r, s = run(GUILD, "UPDATE_FACTION")
+check(r and s.value == 7500, "guild rep gain updates the bar")
+W.watch = { factionID = 1270, name = "Shado-Pan", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 12000 }
+r, s = run(GUILD, "UPDATE_FACTION")
+check(s.show, "another faction watched: Guild still shown")
+W.watch = { factionID = 1168, name = "Guild", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 16500 }
+r, s = run(GUILD, "UPDATE_FACTION")
+check(r and not s.show, "watching the guild faction: Guild bar hides (the Rep bar shows it)")
+W.watch = nil
+r, s = run(GUILD, "UPDATE_FACTION")
+check(r and s.show, "unwatching the guild: Guild bar back")
+W.guildFaction = { factionID = 1168, name = "Guild", reaction = 8, currentReactionThreshold = 42000, nextReactionThreshold = 42000, currentStanding = 42999 }
+r, s = run(GUILD, "UPDATE_FACTION")
+check(s.tier == 8 and s.value == 1 and s.total == 1 and s.righttext == "Exalted" and tipText(s):find("Progress = maxed", 1, true), "Exalted guild: full bar")
+W.guildFaction = { factionID = 1168, name = "Guild", reaction = 4, currentReactionThreshold = 0, nextReactionThreshold = 3000, currentStanding = 0 }
+r, s = run(GUILD, "UPDATE_FACTION")
+check(s.show and s.tier == 4 and s.value == 0 and s.lefttext == "Example Guild   Neutral", "new guild member: Neutral 0 / 3,000")
+W.guildRepOff = true
+r, s = run(GUILD, "UPDATE_FACTION")
+check(not s.show, "client says guild reputation is off: hidden")
+W.guildRepOff = nil
+W.guildName = nil
+r, s = run(GUILD, "PLAYER_GUILD_UPDATE")
+check(not s.show, "leaving the guild hides it")
+W.guildName = "Example Guild"
+run(GUILD, "UPDATE_FACTION")
+W.guildName = nil
+r, s = run(GUILD, "PLAYER_GUILD_UPDATE")
+check(r and not s.show, "leaving the guild while the bar shows: hidden on PLAYER_GUILD_UPDATE")
+W.guildName = "Example Guild"
+local keepGF = C_Reputation.GetGuildFactionData
+C_Reputation.GetGuildFactionData = function() return nil end
+r, s = run(GUILD, "UPDATE_FACTION")
+check(not s.show, "guild data not loaded yet: hidden, no error")
+C_Reputation.GetGuildFactionData = keepGF
+-- older client: GetGuildFactionInfo fallback (guildName, description, standingID, barMin, barMax, barValue)
+local keepC = _G.C_Reputation
+_G.C_Reputation = nil
+_G.GetGuildFactionInfo = function() return "Example Guild", "", 5, 3000, 9000, 6000 end
+_G.GetWatchedFactionInfo = function() return nil end
+r, s = run(GUILD, "UPDATE_FACTION")
+check(s.show and s.value == 3000 and s.total == 6000 and s.tier == 5, "GetGuildFactionInfo fallback")
+_G.GetWatchedFactionInfo = function() return "Example Guild", 5, 3000, 9000, 6000, 1168 end
+r, s = run(GUILD, "UPDATE_FACTION")
+check(not s.show, "fallback: watched guild hides the Guild bar too")
+_G.C_Reputation, _G.GetGuildFactionInfo, _G.GetWatchedFactionInfo = keepC, nil, nil
+W.guildFaction = { factionID = 1168, name = "Guild", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 15000 }
+r, s = run(GUILD, "UPDATE_FACTION")
+check(#GUILD.conditions == 8, "Guild: 8 standing colours")
+for i, c in ipairs(GUILD.conditions) do
+  check(c.check.variable == "tier" and tonumber(c.check.value) == i and c.changes[1].property == "barColor", "Guild standing colour " .. i)
+end
+do local ev = " " .. GUILD.triggers[1].trigger.events .. " "
+  check(ev:find(" UPDATE_FACTION ", 1, true) and ev:find(" PLAYER_GUILD_UPDATE ", 1, true) and ev:find(" PLAYER_ENTERING_WORLD ", 1, true), "Guild events") end
+
 -- one colour condition per standing, each a real bar colour change
 check(#REP.conditions == 8, "8 standing colours")
 for i, c in ipairs(REP.conditions) do
@@ -309,6 +393,11 @@ check(TT.shown, "leaving doesn't hide a tooltip someone else owns")
 rr.state = nil TT.shown = false
 rr.schizTip.scripts.OnEnter(rr.schizTip)
 check(not TT.shown, "no state (bar hidden): no tooltip, no error")
+local gr = regionsById[GUILD.id] gr.state = states[GUILD.id][""]
+gr.schizTip.scripts.OnEnter(gr.schizTip)
+check(TT.shown and TT.lines[1][1] == "Example Guild" and TT.lines[2][1] == "Guild standing" and #TT.lines == 4, "hovering Guild shows guild lines")
+check(TT.point[1] == "BOTTOMRIGHT" and TT.point[3] == "BOTTOMLEFT", "Guild tooltip left of the tray too")
+gr.schizTip.scripts.OnLeave(gr.schizTip)
 -- client without EnableMouseMotion: plain EnableMouse fallback
 do local reg = newFrame() local fr0 = newFrame
   _G.CreateFrame = function(_, _, parent) local fr = fr0(parent) fr.EnableMouseMotion = nil frames[#frames + 1] = fr return fr end
@@ -322,9 +411,13 @@ WeakAuras.GetData, WeakAuras.GetRegion, Private.EnsureRegion = keepGD, keepGR, k
 if UISRC then
   local function grep(pat, path) local p = io.popen("grep -rqs -- '" .. pat .. "' '" .. UISRC .. "/" .. path .. "' && echo y") local o = p:read("*a") p:close() return o:find("y") ~= nil end
   local doc = "Interface/AddOns/Blizzard_APIDocumentationGenerated"
-  for _, api in ipairs({ "GetWatchedFactionData", "GetFriendshipReputation", "GetMaxLevelForPlayerExpansion", "IsXPUserDisabled" }) do
+  for _, api in ipairs({ "GetWatchedFactionData", "GetGuildFactionData", "IsGuildReputationEnabled", "IsInGuild", "GetFriendshipReputation", "GetMaxLevelForPlayerExpansion", "IsXPUserDisabled" }) do
     check(grep('Name = "' .. api .. '"', doc), "5.5 API documented: " .. api)
   end
+  check(grep('LiteralName = "PLAYER_GUILD_UPDATE"', doc) and grep('LiteralName = "UPDATE_FACTION"', doc), "5.5 events documented: PLAYER_GUILD_UPDATE, UPDATE_FACTION")
+  check(not grep("Cap", doc .. "/ReputationInfoDocumentation.lua"), "5.5 C_Reputation has no reputation cap field (so no cap line)")
+  check(grep("C_Reputation.GetGuildFactionData()", "Interface/AddOns/Blizzard_Communities/GuildRewards.lua"), "5.5 guild UI reads C_Reputation.GetGuildFactionData()")
+  check(grep('GetGuildInfo("player")', "Interface/AddOns"), "used by the 5.5 FrameXML: GetGuildInfo(\"player\")")
   check(grep('LiteralName = "QUEST_LOG_UPDATE"', doc) and grep('LiteralName = "UNIT_QUEST_LOG_CHANGED"', doc) and grep('LiteralName = "QUEST_TURNED_IN"', doc), "5.5 events documented: QUEST_LOG_UPDATE, UNIT_QUEST_LOG_CHANGED, QUEST_TURNED_IN")
   check(grep("xp = GetQuestLogRewardXP();", "Interface/AddOns/Blizzard_UIPanels_Game/Wrath/QuestInfo.lua"), "5.5 quest panel reads quest XP with GetQuestLogRewardXP() on the selected entry")
   check(grep("Wrath\\\\QuestInfo.lua \\[AllowLoadGameType wrath, cata, mists\\]", "Interface/AddOns/Blizzard_UIPanels_Game/Blizzard_UIPanels_Game_Classic.toc"), "that quest panel is the one MoP Classic loads")

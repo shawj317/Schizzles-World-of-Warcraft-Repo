@@ -1,5 +1,6 @@
--- Builds "Schizzle's XP & Rep Tray" (!WA:2! export): a 500 px wide stack of two slim bars, experience on top and the
--- watched reputation under it, in the bottom-right corner directly under the side-by-side Details! windows.
+-- Builds "Schizzle's XP & Rep Tray" (!WA:2! export): a 500 px wide stack of three slim bars, experience on top, the
+-- watched reputation under it and guild reputation at the bottom, in the bottom-right corner directly under the
+-- side-by-side Details! windows.
 -- Usage: lua tray_build.lua   (writes "../XP & Rep Tray.txt"; LibSerialize / LibDeflate must be on disk)
 local HERE = (arg and arg[0] and arg[0]:match("^(.*)/[^/]*$")) or "."
 local LIBDIR = os.getenv("WA_LIBS") or "/workspace"
@@ -8,14 +9,14 @@ local LibDeflate = dofile(LIBDIR .. "/LibDeflate/LibDeflate.lua")
 local OUT = os.getenv("WA_OUT") or (HERE .. "/../XP & Rep Tray.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE goes into the group name and the description only; the uids never carry it, so re-importing updates in place.
-local RELEASE = "1.2"
+local RELEASE = "1.3"
 local GROUP = "Schizzle's XP & Rep Tray v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
--- Geometry. Two 500 x 10 bars, 2 px apart: the tray is 22 px tall (TRAY_H). Its top edge is fixed at 26 px up
--- (4 px screen margin + 22), which is where the Details! windows' bottom edge sits, so the windows rest on it.
-local BAR_W, BAR_H, GAP, MARGIN = 500, 10, 2, 4
-local TRAY_H = BAR_H * 2 + GAP
+-- Geometry. Three 500 x 10 bars, 2 px apart: the tray is 34 px tall (TRAY_H). Its top edge is fixed at 38 px up
+-- (4 px screen margin + 34), which is where the Details! windows' bottom edge sits, so the windows rest on it.
+local BAR_W, BAR_H, GAP, MARGIN, BARS = 500, 10, 2, 4, 3
+local TRAY_H = BAR_H * BARS + GAP * (BARS - 1)
 local TOP_Y = MARGIN + TRAY_H
 
 local XP_BLUE, QUEST_GREEN, RESTED_PURPLE = { 0.25, 0.5, 1, 1 }, { 0.25, 0.8, 0.3, 0.6 }, { 0.6, 0.35, 0.9, 0.6 }
@@ -198,6 +199,11 @@ function(allstates, event)
 ]] .. HIDE .. [[
 
   end
+  -- the guild faction (1168) as the watched one: show the guild's own name
+  if fid == 1168 and type(GetGuildInfo) == "function" then
+    local g = GetGuildInfo("player")
+    if g and g ~= "" then name = g end
+  end
   local labels = ]] .. LABELS .. [[
 
   local label = _G["FACTION_STANDING_LABEL" .. reaction] or labels[reaction] or ""
@@ -246,8 +252,80 @@ for i, c in ipairs(STANDING) do
 end
 children[#children + 1] = rep
 
--- Dynamic group: grows down from its top-right corner, right aligned, 2 px between bars, in list order (XP, then Rep).
--- The group's TOPRIGHT sits on the screen's BOTTOMRIGHT at (-4, +26): the top edge never moves, so the bars stay
+-- Guild reputation (v1.3): the player's guild faction (faction 1168, "Guild") from C_Reputation.GetGuildFactionData,
+-- which the 5.5.4 guild UI itself reads (Blizzard_Communities/GuildRewards.lua, GuildInviteFrame.lua); the older
+-- GetGuildFactionInfo is a fallback. Hidden when not in a guild, when the client says guild reputation is off, and when
+-- the watched faction already is the guild (the Rep bar above shows it then, so it isn't drawn twice). MoP Classic's
+-- API has no guild reputation cap (no weekly-cap field or function), so the tooltip has no cap line.
+local GUILD_TSU = [[
+function(allstates, event)
+  local inGuild = type(IsInGuild) ~= "function" or IsInGuild()
+  if inGuild and C_GuildInfo and type(C_GuildInfo.IsGuildReputationEnabled) == "function" and not C_GuildInfo.IsGuildReputationEnabled() then inGuild = false end
+  local name, reaction, lo, hi, val, fid
+  if inGuild then
+    if C_Reputation and type(C_Reputation.GetGuildFactionData) == "function" then
+      local d = C_Reputation.GetGuildFactionData()
+      if type(d) == "table" and d.factionID and d.factionID ~= 0 then
+        name, reaction, lo, hi, val, fid = d.name, d.reaction, d.currentReactionThreshold, d.nextReactionThreshold, d.currentStanding, d.factionID
+      end
+    elseif type(GetGuildFactionInfo) == "function" then
+      local _desc
+      name, _desc, reaction, lo, hi, val = GetGuildFactionInfo()
+      fid = 1168
+    end
+  end
+  local dup = false
+  if fid then
+    local wid
+    if C_Reputation and type(C_Reputation.GetWatchedFactionData) == "function" then
+      local w = C_Reputation.GetWatchedFactionData()
+      if type(w) == "table" then wid = w.factionID end
+    elseif type(GetWatchedFactionInfo) == "function" then
+      wid = select(6, GetWatchedFactionInfo())
+    end
+    dup = wid ~= nil and wid ~= 0 and (wid == fid or wid == 1168)
+  end
+  if dup or not name or type(reaction) ~= "number" then
+]] .. HIDE .. [[
+
+  end
+  local guild = type(GetGuildInfo) == "function" and GetGuildInfo("player") or nil
+  if not guild or guild == "" then guild = name end
+  local labels = ]] .. LABELS .. [[
+
+  local label = _G["FACTION_STANDING_LABEL" .. reaction] or labels[reaction] or ""
+  lo, hi, val = lo or 0, hi or 0, val or 0
+  local total, cur, maxed = hi - lo, val - lo, false
+  if total <= 0 then total, cur, maxed = 1, 1, true end
+  if cur > total then cur = total end
+  if cur < 0 then cur = 0 end
+  local fmt = type(BreakUpLargeNumbers) == "function" and BreakUpLargeNumbers or tostring
+  local left = guild .. "   " .. label
+  local right = maxed and label or string.format("%s / %s   %.1f%%", fmt(cur), fmt(total), cur / total * 100)
+  local tip = { { "Guild standing", label } }
+  if maxed then tip[#tip + 1] = { "Progress", "maxed" }
+  else
+    local nextLabel = _G["FACTION_STANDING_LABEL" .. (reaction + 1)] or labels[reaction + 1] or "next standing"
+    tip[#tip + 1] = { "Progress", fmt(cur) .. " / " .. fmt(total) .. "  (" .. string.format("%.1f%%", cur / total * 100) .. ")" }
+    tip[#tip + 1] = { "To " .. nextLabel, fmt(total - cur) .. "  (" .. string.format("%.1f%%", (total - cur) / total * 100) .. ")" }
+  end
+  local st = allstates[""]
+  if st and st.show and st.value == cur and st.total == total and st.tier == reaction and st.lefttext == left and st.righttext == right then return false end
+  allstates[""] = { show = true, changed = true, progressType = "static", value = cur, total = total, autoHide = false,
+    tier = reaction, lefttext = left, righttext = right, tipTitle = guild, tip = tip }
+  return true
+end]]
+local guildBar = bar("Schizzle Tray Guild", STANDING[4])
+guildBar.triggers = trig(GUILD_TSU, "UPDATE_FACTION PLAYER_GUILD_UPDATE PLAYER_ENTERING_WORLD",
+  "{ value = true, total = true, tier = 'number', lefttext = 'string', righttext = 'string' }")
+for i, c in ipairs(STANDING) do
+  guildBar.conditions[i] = { check = { trigger = 1, variable = "tier", op = "==", value = tostring(i) },
+                             changes = { { property = "barColor", value = c } } }
+end
+children[#children + 1] = guildBar
+
+-- Dynamic group: grows down from its top-right corner, right aligned, 2 px between bars, in list order (XP, Rep, Guild).
+-- The group's TOPRIGHT sits on the screen's BOTTOMRIGHT at (-4, +38): the top edge never moves, so the bars stay
 -- tucked under Details! and a hidden bar just leaves the bottom strip empty.
 local group = {
   id = GROUP, uid = "SchizzleXPRepTray", regionType = "dynamicgroup", internalVersion = INTERNAL, tocversion = TOC,
@@ -262,7 +340,7 @@ local group = {
     subeventSuffix = "_CAST_START", spellIds = {}, unit = "player", debuffType = "HELPFUL" }, untrigger = {} } },
   conditions = {}, load = LOAD(), actions = { init = {}, start = {}, finish = {} }, animation = ANIM,
   config = {}, authorOptions = {}, information = { saved = true },
-  desc = "Schizzle's XP & Rep Tray: two slim 500 px bars (experience in blue with completed-quest XP in green and rested XP in purple, and your watched reputation) in the bottom-right corner, under the Details! windows. Hover a bar for details. v" .. RELEASE .. ".",
+  desc = "Schizzle's XP & Rep Tray: three slim 500 px bars (experience in blue with completed-quest XP in green and rested XP in purple, your watched reputation and your guild reputation) in the bottom-right corner, under the Details! windows. Hover a bar for details. v" .. RELEASE .. ".",
 }
 for _, c in ipairs(children) do group.controlledChildren[#group.controlledChildren + 1] = c.id end
 

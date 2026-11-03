@@ -58,9 +58,10 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
   ElvUI or Plater (indexed in the Warrior README under "Non-ElvUI interface kit"). Keep its shared design: charcoal
   {0.06,0.06,0.06}, bronze {0.72,0.45,0.2}, gold {1,0.82,0}, tan {0.78,0.61,0.43}, ember {1,0.47,0}; Fira Sans Condensed
   Medium; the "Minimalist" texture. Nothing may sit in the WeakAuras HUD box (x within 170 px of centre, y from 220 px below
-  to 120 px above centre), on the Details! windows (two 250x153 side by side, 4 px from the right edge, bottom 26 px up), on the
-  WeakAuras XP & Rep Tray under them (500x22, 4 px from the right and bottom edges; keep the two in step: windows'
-  bottom = 4 + tray height) or over the
+  to 120 px above centre), on the Details! windows (two 250x141 side by side, 4 px from the right edge, bottom 38 px up, title bars topping
+  out 199 px up), on the WeakAuras XP & Rep Tray under them (three 500x10 bars 2 px apart = 500x34, 4 px from the right
+  and bottom edges, XP / watched rep / guild rep top to bottom, hidden bars collapse upwards; keep the two in step:
+  windows' bottom = 4 + tray height, window height = 161 - tray height) or over the
   BetterBlizzFrames unit frames at their Blizzard spots (Baganator's bag is the one exception: it covers the meters only
   while it's open). One owner per job: Bartender4 owns bars, the stance bar and the
   extra action button; BetterBlizzFrames owns unit frames, cast bar and error text; Prat owns chat; SexyMap owns the

@@ -8,7 +8,7 @@ local FONT = os.getenv("DETAILS_FONT") or "Fira Sans Condensed Medium"
 local fails, checks = 0, 0
 local function check(cond, msg) checks = checks + 1 if not cond then fails = fails + 1 print("FAIL: " .. msg) end end
 check(R.skinsOk, "Details skins.lua loaded: " .. tostring(R.skinsErr))
-local W_EXPECT, H_EXPECT, MARGIN, BOTTOM = 250, 153, 4, 26 -- bottom 26 = 4 px edge + the 22 px XP & Rep Tray
+local W_EXPECT, H_EXPECT, MARGIN, BOTTOM, TRAY_H = 250, 141, 4, 38, 34 -- bottom 38 = 4 px edge + the 34 px XP & Rep Tray (v1.3)
 local attrSrc = readfile(SRC .. "functions/attributes.lua")
 local TITLE = tonumber(readfile(SRC .. "classes/class_instance_snap.lua"):match("local TITLE_BAR_HEIGHT = (%d+)"))
 check(TITLE == 20, "Details title bar height is 20 (window 1 sits on top of window 2's title bar)")
@@ -137,7 +137,7 @@ for _, spec in ipairs(SPECS) do
     check(w.toolbar_side == 1, tag .. "window " .. i .. " title bar on top")
     check(w.libwindow.point == "BOTTOMRIGHT" and w.libwindow.scale == 1, tag .. "window " .. i .. " anchored bottom right at scale 1")
   end
-  check(w1.libwindow.y == BOTTOM and w2.libwindow.y == BOTTOM, tag .. "both windows' bottom edges 26 px up, on top of the XP & Rep Tray")
+  check(w1.libwindow.y == BOTTOM and w2.libwindow.y == BOTTOM, tag .. "both windows' bottom edges 38 px up, on top of the XP & Rep Tray")
   check(w2.libwindow.x == -MARGIN and w1.libwindow.x == -MARGIN - W_EXPECT, tag .. "window 2 4 px from the right edge, window 1 directly to its left (no gap)")
   check(w1.__snapH == true and w1.__snapV == false and w1.__snap[3] == 2 and w2.__snap[1] == 1 and w1.__snap[2] == nil and w2.__snap[4] == nil, tag .. "side-by-side snap: 1 left of 2")
   ---------------------------------------------------------------- 5. simulate ImportProfile + ApplyProfile
@@ -181,7 +181,7 @@ for _, spec in ipairs(SPECS) do
   check(D.auto_combatlog == nil, tag .. "(sim) profile load alone doesn't carry auto_combatlog; the import's playerData does")
   check(windows[1].row_info.texts[1].font.outline == "SLUG" and windows[2].row_info.texts[1].font.outline == "SLUG", tag .. "Slug outline survives the row-text migration")
   check(windows[1].bg_alpha == 0.25 and windows[2].backdrop_texture == "Blizzard Out of Control", tag .. "designer settings survive the merge")
-  check(lw1.y == 4 + 22 and lw2.y == 4 + 22, tag .. "windows start right on top of the 500x22 XP & Rep Tray (4 px up), no gap")
+  check(lw1.y == 4 + TRAY_H and lw2.y == 4 + TRAY_H, tag .. "windows start right on top of the 500x34 XP & Rep Tray (4 px up), no gap")
 end
 check(strings.arms == strings.fury, "Arms and Fury strings are identical (same layout; the name is typed at import)")
 
