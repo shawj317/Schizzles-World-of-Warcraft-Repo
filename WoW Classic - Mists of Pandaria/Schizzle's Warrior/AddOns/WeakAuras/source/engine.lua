@@ -4,7 +4,18 @@
 -- tier 6 (Avatar / Bloodbath / Storm Bolt) only show the talent you actually took.
 -- Before level 10 you have no spec yet, so it runs a Leveling priority from the spells you've learned.
 -- When a suggestion looks odd, /dump SchizzleWarrior.R.why
-local VERSION = 9
+-- Luacheck: SchizzleWarrior is our one global (every trigger reads it). The rest are WoW and WeakAuras API globals.
+-- luacheck: globals SchizzleWarrior
+-- luacheck: read globals _G GetSpecialization C_SpecializationInfo WeakAuras C_ActionBar C_Item C_NamePlate C_Spell
+-- luacheck: read globals C_SpellBook C_UnitAuras CheckInteractDistance CreateFrame FindBaseSpellByID GetActionBarPage
+-- luacheck: read globals GetActionInfo GetBindingKey GetInventoryItemID GetItemInfoInstant GetMacroSpell
+-- luacheck: read globals GetNumShapeshiftForms GetShapeshiftFormInfo GetSpellCharges GetSpellCooldown GetSpellInfo
+-- luacheck: read globals GetSpellTexture GetTime IsCurrentSpell IsPlayerSpell IsSpellInRange IsUsableSpell
+-- luacheck: read globals RANGE_INDICATOR UnitAffectingCombat UnitAura UnitBuff UnitCanAttack UnitCastingInfo
+-- luacheck: read globals UnitChannelInfo UnitClassification UnitDebuff UnitDetailedThreatSituation UnitExists
+-- luacheck: read globals UnitGroupRolesAssigned UnitHealth UnitHealthMax UnitIsDead UnitIsUnit UnitLevel UnitPower
+-- luacheck: read globals UnitPowerMax
+local VERSION = 10
 if SchizzleWarrior and SchizzleWarrior.v and SchizzleWarrior.v >= VERSION then
   SchizzleWarrior.cfg = aura_env.config or SchizzleWarrior.cfg
   return
@@ -361,7 +372,7 @@ function E:RefreshKeys(now)
       end
     end
   end
-  for nm, rec in pairs(keysrc) do local best = byName[nm] if best then rec.key, rec.src, rec.slot = best.key, best.desc, best.slot end end
+  for nm, src in pairs(keysrc) do local best = byName[nm] if best then src.key, src.src, src.slot = best.key, best.desc, best.slot end end
   self.keys, self.keysByName, self.keysrc = keys, byName, keysrc
   self.keysAt = now
 end
@@ -640,7 +651,7 @@ local function gapCloser(S, add)
   if ch then add(ch, { glow = true }, "Charge: target out of melee range") return end
   if ready(ID.hthrow, S) and not outOfRange(ID.hthrow) then add(ID.hthrow, nil, "Heroic Throw: target out of melee range") end
 end
-local function victorious(S) return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end
+local function victorious() return known(ID.vr) and aura(BUFF, ID.victorious) ~= nil end
 -- v1.7 Sunder Armor tracker. Option "Track Sunder Armor (Weakened Armor)", key sunder, on by default.
 -- Weakened Armor (113746) is a shared raid debuff from anyone (Sunder Armor, Devastate, Faerie Fire, Expose Armor, and the rest),
 -- 3 stacks, 30 s. Sunder is asked for only when the option is on, you're in combat with a hostile target, you have
@@ -666,7 +677,7 @@ local function sunder(S, add)
 end
 local function leveling(S, out)
   local add = adder(out)
-  local vic = victorious(S)
+  local vic = victorious()
   if known(ID.iv) and ready(ID.iv, S) and S.hp < 60 and S.rage >= 10 then add(ID.iv, { glow = true }, "Impending Victory heal") end
   if vic and S.hp < 70 then add(ID.vr, { glow = true }, "Victory Rush: heal") end
   gapCloser(S, add)
@@ -684,7 +695,7 @@ local function earlySpec(S, list)
   local add = adder(pre)
   gapCloser(S, add)
   if not list[1] or list[1].wait then
-    if victorious(S) and S.hostile then add(ID.vr, nil, "Victory Rush (free hit)") end
+    if victorious() and S.hostile then add(ID.vr, nil, "Victory Rush (free hit)") end
     if S.hostile and ready(ID.hs, S) and S.rage >= 30 then add(ID.hs, nil, "Heroic Strike: spare rage while spec spells are on cooldown") end
   end
   for i = #pre, 1, -1 do table.insert(list, 1, pre[i]) end
@@ -965,9 +976,9 @@ local function gcd(now)
   if type(info) ~= "table" then return 0, 0, 0 end
   local s, d = info.startTime or 0, info.duration or 0
   if s == 0 or d == 0 then return 0, 0, 0 end
-  local rem = s + d - now
-  if rem <= 0 then return 0, 0, 0 end
-  return rem, s, d
+  local left = s + d - now
+  if left <= 0 then return 0, 0, 0 end
+  return left, s, d
 end
 E.gcd = gcd
 -- Not on the global cooldown, so the Next icons don't give them a GCD swipe or grey them out for the GCD.
@@ -980,12 +991,12 @@ function entry(e, S, side)
   if gr > r then s, d = gs, gd end
   local noRes = false
   if C_Spell and C_Spell.IsSpellUsable then
-    local u, noMana = C_Spell.IsSpellUsable(e.id)
+    local _, noMana = C_Spell.IsSpellUsable(e.id)
     noRes = (not side) and noMana and true or false
   end
   local waiting = (e.wait or r > 0 or gr > 0 or noRes) and true or false
   local oor = outOfRange(e.id)
-  if e.building then waiting, noRes = false, false end
+  if e.building then waiting = false end
   return { id = e.id, icon = spellIcon(e.id), name = spellName(e.id), key = E:Key(e.id),
            glow = e.glow and true or false, waiting = waiting, wait = waiting,
            tag = e.tag, why = e.why,

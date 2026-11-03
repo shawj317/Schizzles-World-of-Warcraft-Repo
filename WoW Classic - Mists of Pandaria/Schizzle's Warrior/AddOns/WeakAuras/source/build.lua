@@ -10,7 +10,7 @@ local OUT = os.getenv("WA_OUT") or (HERE .. "/../All-in-One Rotation.txt")
 local TOC, INTERNAL, VER = 50504, 90, "5.22.1"
 -- RELEASE is the only version number. It goes into the in-game group name and the description. Change it here and nowhere else.
 -- The group uid ("SchizzleWarriorGroup") and the child ids and uids never include it, so importing again updates the same aura.
-local RELEASE = "1.7"
+local RELEASE = "1.7.1"
 local GROUP = "Schizzle's Warrior Rotation v" .. RELEASE
 local FONT = "Fira Sans Condensed Medium"
 
@@ -22,6 +22,7 @@ local function hide()
 end
 local HEAD = [[
 function(allstates)
+  -- luacheck: globals SchizzleWarrior
   local E = SchizzleWarrior
   if not E or not E.Tick then return false end
   local R = E:Tick()
@@ -216,7 +217,7 @@ local function border(r, g, b) return { type = "subborder", border_visible = tru
 -- Rage bar. Turns orange when Heroic Strike or Cleave should dump rage. Since v1.6 it only shows in combat, and only with rage above 0.
 local RAGE_TSU = HEAD .. [[
   local r = R.show and R.rage
-  if not r or not (R.S and R.S.combat) or not (r.v > 0) then
+  if not r or not (R.S and R.S.combat) or not (r.v > 0) then -- luacheck: ignore 581
 ]] .. hide() .. [[
 
   end

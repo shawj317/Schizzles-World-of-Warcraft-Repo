@@ -701,7 +701,7 @@ do
   local res = by["SWR Resources"]
   check(res.yOffset - res.fontSize / 2 > rg.yOffset + rg.height / 2, "resources line clear above the rage bar")
   check(data.xOffset == 0 and data.yOffset == -40 and data.anchorPoint == "CENTER", "group still at CENTER 0,-40")
-  check(data.id:find("v1%.7$") ~= nil, "group name carries v1.7")
+  check(data.id:find("v1%.7%.1$") ~= nil, "group name carries v1.7.1")
   check(data.scale == 0.8 and data.alpha == 0.8, "Group Scale 0.8 and Group Alpha 0.8 " .. tostring(data.scale) .. " " .. tostring(data.alpha))
 end
 

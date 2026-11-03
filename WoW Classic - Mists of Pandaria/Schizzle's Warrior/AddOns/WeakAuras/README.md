@@ -6,11 +6,11 @@ An all-in-one WeakAuras rotation helper for Warriors in MoP Classic 5.5.x: **Arm
 
 This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep-tray-separate-import)**, three slim experience, reputation and guild reputation bars that sit under the Details! windows.
 
-**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (33,528 chars, starts `!WA:2!`). Current version: **v1.7** (engine `VERSION = 9`).
+**File:** [`All-in-One Rotation.txt`](All-in-One%20Rotation.txt) (33,990 chars, starts `!WA:2!`). Current version: **v1.7.1** (engine `VERSION = 10`).
 **Built for:** WeakAuras 5.22.1, Mists build (interface 50504, internalVersion 90). Font: **Fira Sans Condensed Medium** (it ships with WeakAuras).
 **Switches automatically:** the aura reads your specialization (`GetSpecialization`) and swaps the priority list, trackers and bars when you change spec. You don't need separate imports for tanking in dungeons, DPS in raids and the other DPS spec in PvP. Before level 10 (no specialization yet) it runs a **Leveling** mode instead, and it switches to the spec priority as soon as a spec is picked, with no `/reload`.
 **Talents handled:** every spell is gated by `IsPlayerSpell`, so only the talent you actually took shows up. That covers tier 4 (Bladestorm, Shockwave or Dragon Roar) and tier 6 (Avatar, Bloodbath or Storm Bolt), plus Impending Victory, Enraged Regeneration and Disrupting Shout.
-**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 364 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the rage bar visibility, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
+**Verified offline:** the export string decodes the same way WeakAuras' importer does. All custom code compiles inside WeakAuras' own aura sandbox with 0 warnings, and a mock-API rotation simulator passes 413 checks across all three specs, the no-spec Leveling mode (levels 1, 3, 5, 7 and 9), freshly specced level 10 characters, the auto attack logic, the rage bar visibility, the GCD swipe and the cast feedback. **It has not been tested in the game client yet.** See "Known limits" below.
 
 ## Install (step by step)
 
@@ -18,13 +18,13 @@ This folder also holds a second, separate import: the **[XP & Rep Tray](#xp--rep
 2. Open `All-in-One Rotation.txt` on GitHub, then click the **Copy raw file** button (two overlapping squares, top right of the file). This copies the whole string.
 3. In game, type `/wa` and click **Import** (top left of the WeakAuras window).
 4. Paste with **Ctrl+V** (Cmd+V on Mac), then click **Import**.
-5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.7" group. Click **Import** again to accept it.
+5. WeakAuras shows a summary of the "Schizzle's Warrior Rotation v1.7.1" group. Click **Import** again to accept it.
 6. Type `/reload`.
 7. Target a training dummy. The HUD appears under the middle of your screen (the group defaults to x 0, y -40: its centre sits on the screen's centre, 40 px down).
 8. To move it, open `/wa`, click the group name and drag, or set the X/Y offset on the group's **Display** tab.
-9. Options live on **Schizzle's Warrior Rotation v1.7 → SWR Next → Custom Options** (see "Options" below).
+9. Options live on **Schizzle's Warrior Rotation v1.7.1 → SWR Next → Custom Options** (see "Options" below).
 
-**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.7" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
+**Group name and updates:** the in-game group name carries the version ("Schizzle's Warrior Rotation v1.7.1" now), so it changes with every release. The child auras keep fixed names ("SWR Next", "SWR Rage" and so on). WeakAuras matches an import to an installed group by its internal ID (uid), not by its name, and that ID has never changed (it is the same one the first upload, "Schizzle's Warrior Rotation WeakAura", used). So importing a new version shows WeakAuras' **Update** dialog for the existing group. Leave **Aura Names** ticked in that dialog (it is ticked by default) so the group picks up the new name; untick it to keep the old name. Settings in Custom Options carry over unless you also tick Custom Configuration. Only if the import shows up as a second group (for example after choosing "Import as Copy") should you delete the older one.
 
 **Position on update:** a fresh import puts the group at x 0, y -40 (group CENTER on the screen's CENTER). When you update an existing group, WeakAuras leaves its position alone unless you tick **Size & Position** in the Update dialog (it is unticked by default). That category covers the group's x/y offsets, anchor points, anchor frame, strata, size and scale. Tick it to move the group to 0, -40; leave it unticked to keep where you dragged it. The child auras' layout inside the group (their positions and sizes) falls under **Group Arrangement** (ticked by default).
 
@@ -331,6 +331,10 @@ No SavedVariables or personal data are included.
 
 The XP & Rep Tray has its own version: **v1.0** (Nov 3, 2026) was the first release; **v1.1** (Nov 3, 2026) makes the XP fill blue, turns the rested overlay purple and adds a green overlay (and right-side text) for XP waiting in completed quests that haven't been turned in; **v1.2** (Nov 3, 2026) fixes that green overlay, which never showed in game because `GetQuestLogRewardXP` reads the selected quest rather than a questID, and adds mouseover tooltips to both bars; **v1.3** (Nov 3, 2026) adds a third bar for guild reputation (the tray is now 34 px tall and the group's default y moved from 26 to 38; update with Size & Position ticked, plus the v1.7 Details! profiles). Update it with Import → **Update**. The list below is the rotation's.
 
+- **v1.7.1** (Nov 3, 2026): code clean-up after Wago's Luacheck report, with no change in what the aura does.
+  - Renamed two locals that hid outer names (`rec` in the keybind scan, `rem` in the GCD helper), dropped an unused variable and a value that was never read in the icon builder, and an unused argument.
+  - Added Luacheck directives so the checker knows `SchizzleWarrior` is the aura's own global (in the engine and at the top of every trigger) and which WoW and WeakAuras API globals the engine reads. Luacheck 1.2.0 now reports 0 warnings for the init and all 30 triggers (apart from long lines).
+  - Engine `VERSION = 10`, so an already-loaded v1.7 engine is replaced without a `/reload`. 413 simulator checks. **Updating:** import and click **Update** with the default ticks, then `/reload`.
 - **v1.7** (Nov 3, 2026): new **Track Sunder Armor (Weakened Armor)** option (Custom Options, on by default) and a layout fix.
   - On: in combat with a hostile target and 15+ rage, Sunder Armor is suggested (tag `WA`) when Weakened Armor on the target (from anyone) is missing, under 3 stacks or under 5 s left. Arms: after Storm Bolt, before Slam and the shout; in the CS window after Overpower, before Heroic Throw. Fury: after Storm Bolt, before the shout and the Wild Strike filler; not in the CS window. Never in the execute phase. Leveling's Sunder now follows the option too (and waits for combat). Nothing is suggested when someone keeps it at 3 stacks.
   - New **SWR Sunder** icon right of the trackers (Arms/Fury/Leveling): Weakened Armor stacks and timer, red glow when Sunder is needed.
