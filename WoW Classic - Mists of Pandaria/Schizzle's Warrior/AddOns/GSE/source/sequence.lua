@@ -10,9 +10,13 @@ return {
   author = "Jon Shaw (Schizzle)",
   helplink = "https://github.com/shawj317/Schizzles-World-of-Warcraft-Repo",
   toc = 50504,          -- MoP Classic 5.5.4
-  gseVersion = 3330,    -- 3.3.30: anything this new or newer imports it (EnforceCompatability)
+  -- GSE turns its version "3.3.36-a" into 3*1000 + 3*100 + 36 = 3336 (GSE.ParseVersion). A sequence stamped lower
+  -- than the installed GSE gets the "created with an older version" notice; one stamped higher is refused
+  -- (EnforceCompatability). 3336 is exactly GSE 3.3.36, so 3.3.36 imports it with no notice.
+  gseVersionString = "3.3.36",
+  gseVersion = 3336,
   specID = 1,           -- 1 = Warrior class-wide, so it works before a spec is picked at level 10
-  lastUpdated = "20261103030000",
+  lastUpdated = "20261103025000",
   sequences = {
     {
       name = "SCHIZ_WAR_L8",

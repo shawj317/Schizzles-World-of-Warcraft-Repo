@@ -41,6 +41,17 @@ check(utils:find('actiontable.type == "COLLECTION"', 1, true) ~= nil, "GSE impor
 check(utils:find("input.Macros ~= nil and input.Versions == nil", 1, true) ~= nil,
   "GSE refuses the old Macros schema (so we must ship Versions)")
 check(utils:find("v.MetaData.GSEVersion > 3200", 1, true) ~= nil, "GSE needs GSEVersion above 3200")
+check(utils:find("v.MetaData.GSEVersion < GSE.VersionNumber", 1, true) ~= nil,
+  "GSE shows the older-version notice only when GSEVersion is below its own VersionNumber")
+check(utils:find("GSE.ParseVersion(sequence.MetaData.GSEVersion) > (GSE.VersionNumber)", 1, true) ~= nil,
+  "GSE refuses (EnforceCompatability) only when GSEVersion is above its own VersionNumber")
+local init = readFile(GSE_SRC .. "/GSE/API/Init.lua")
+check(init:find("(tonumber(numbers[1]) * 1000) + (tonumber(numbers[2]) * 100) + (tonumber(numbers[3]))", 1, true) ~= nil,
+  "GSE.ParseVersion encodes a.b.c as a*1000 + b*100 + c")
+check(init:find('local parts = GSE.split(version, "-")', 1, true) ~= nil, "GSE.ParseVersion drops a -suffix such as -a")
+local va, vb, vc = S.gseVersionString:match("^(%d+)%.(%d+)%.(%d+)$")
+check(S.gseVersionString == "3.3.36" and va and tonumber(va) * 1000 + tonumber(vb) * 100 + tonumber(vc) == S.gseVersion
+  and S.gseVersion == 3336, "GSEVersion " .. S.gseVersion .. " is GSE " .. S.gseVersionString .. " (3.3.36-a parses to 3336)")
 local storage = readFile(GSE_SRC .. "/GSE/API/Storage.lua")
 check(storage:find("node.macro = node.macrotext", 1, true) ~= nil, "GSE stores macro text under 'macro'")
 
@@ -118,8 +129,9 @@ for _, def in ipairs(S.sequences) do
   local md = seq.MetaData or {}
   check(seq.Macros == nil and type(seq.Versions) == "table" and #seq.Versions == 1, def.name .. ": one Version, no Macros")
   check(md.Name == def.name and md.SpecID == S.specID and md.TOC == S.toc and md.Default == 1, def.name .. ": MetaData")
-  check(md.GSEVersion == S.gseVersion and md.GSEVersion > 3200 and md.GSEVersion >= (minChecksum or 0),
-    def.name .. ": GSEVersion is current-format")
+  check(md.GSEVersion == 3336 and md.GSEVersion == S.gseVersion and md.GSEVersion > 3200 and md.GSEVersion >= (minChecksum or 0),
+    def.name .. ": GSEVersion is 3336 (GSE 3.3.36), current-format")
+  check(seq.LastUpdated == S.lastUpdated and md.EnforceCompatability == true, def.name .. ": LastUpdated and EnforceCompatability")
   check(md.Checksum == nil, def.name .. ": no forged checksum")
   check(md.Author == "Jon Shaw (Schizzle)", def.name .. ": author credit")
   check(#def.name <= 16 and def.name:match("^[%u%d_]+$"), def.name .. ": unique button-safe name")

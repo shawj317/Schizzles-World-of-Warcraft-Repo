@@ -52,11 +52,11 @@ These drop a dead or friendly target, pick the nearest enemy in front of you if 
 At level 8 your only GCD abilities are Victory Rush and Execute, and both are usable only some of the time. So most of your damage comes from auto-attacks and Heroic Strike. Execute comes before Heroic Strike in block 2, so when the target is low, the rage goes to Execute first. Full text: [Level 8 Sequences (readable).md](Level%208%20Sequences%20%28readable%29.md).
 
 ## Import
-1. Install **GSE: Sequences, Variables, Macros** from CurseForge, gse.tools or the GSE GitHub releases (version 3.3.30 or newer) and log in to your Warrior.
+1. Install **GSE: Sequences, Variables, Macros** from CurseForge, gse.tools or the GSE GitHub releases (version **3.3.36** or newer; older GSE refuses these sequences) and log in to your Warrior.
 2. Open `Schizzle's Warrior Level 8.txt` on GitHub, click **Raw**, and copy everything, from the leading `!GSE3!` to the end.
 3. In game, type `/gse` to open the Sequence Editor, then click **Import** in the tree on the left.
 4. Paste the string and click **Import**. GSE shows the collection with **SCHIZ_WAR_L8** and **SCHIZ_WAR_L8_CHG** ticked. Click **Import** again.
-5. Chat may say the sequences were "created with an older version of GSE". That's only a note: it names the GSE version they were built for, and both still import.
+5. Both sequences are stamped for GSE 3.3.36 (GSEVersion 3336), so GSE 3.3.36 imports them without the "created with an older version of GSE" note. A newer GSE may show that note; it is only a note, and both still import.
 6. Both sequences now appear under **Sequences > Warrior**. They're class-wide (class ID 1), so they're already there at level 1 and stay after you choose a spec at level 10.
 
 ## Put them on keys
@@ -128,10 +128,10 @@ If the import string won't paste, build the sequences in the editor (Raw Edit is
 - `source/sequence.lua`: the sequences as plain data (macro text per block, names and metadata).
 - `source/gse_format.lua`: Jon's own reader and writer for GSE's `!GSE3!` strings. The format is `!GSE3!` followed by Base64 of Deflate-compressed CBOR, the same as WoW's `C_EncodingUtil` defaults that GSE uses. No GSE code is copied: GSE is "All Rights Reserved", so its source is only read to check the format. Decoding two real GSE exports and writing them back with this encoder produced the same data.
 - `source/build.lua`: writes the import string and the readable sheet. Run `lua build.lua` with LibDeflate on disk (`WA_LIBS`, default `/workspace`).
-- `source/verify.lua`: 100 checks. It runs on the export, on a checkout of the GSE source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
+- `source/verify.lua`: 107 checks. It runs on the export, on a checkout of the GSE source (`GSE_SRC`) and on the 5.5.4 spell tables from wago.tools (`DB2_DIR`). It checks:
   - the string decodes and re-encodes to the same text
   - the collection and the current `Versions` format that GSE needs (GSE now refuses the old `Macros` format)
-  - the block types, the GSEVersion, and that MoP's interface is in GSE.toc
+  - the block types, that MoP's interface is in GSE.toc, and that the GSEVersion is 3336, which is how GSE's own version parser reads 3.3.36 (so 3.3.36 shows no older-version note)
   - each spell's ID, level (8 or lower), skill line and GCD status
   - no more than one GCD ability per block
   - every block stays within 255 characters
@@ -139,6 +139,7 @@ If the import string won't paste, build the sequences in the editor (Raw Edit is
   - nothing personal is in the files (names to look for go in the `PRIVATE_WORDS` environment variable, so the list itself never ships)
 
 ## Version history
+- **v1.1** (Nov 3 2026): stamped for GSE 3.3.36 (GSEVersion 3336 instead of 3330), so GSE 3.3.36 no longer says the sequences come from an older version. GSE 3.3.36 or newer is now required. The macros are unchanged.
 - **v1** (Nov 3 2026): first release, with the level 8 main sequence (Victory Rush and Execute blocks, Heroic Strike rage dump, Blood Fury, Shift-Charge) and a Charge opener.
 
 ## License
