@@ -2,7 +2,7 @@
 ## Title: Schizzle's Warrior Setup
 ## Notes: Applies Schizzle's Warrior settings (keybinds, Bartender4, Prat, SexyMap, Questie, GatherMate2, TomTom). Type /schizzle.
 ## Author: Jon Shaw (Schizzle)
-## Version: 2
+## Version: 3
 ## OptionalDeps: Bartender4, Prat-3.0, SexyMap, Questie, GatherMate2, TomTom
 ## SavedVariablesPerCharacter: SchizzlesWarriorSetupCharDB
 

@@ -172,21 +172,90 @@ do
 	check(not personal and D.SexyMap.presets == nil, "SexyMap: no 'Name-Realm' keys or presets in the source file")
 end
 
--- Bartender4: real code path against a recording mock of its AceDB object.
-local calls = {}
-local namespaces = {}
-Bartender4 = {
-	db = { profile = { outofrange = "none", keep = 1 }, SetProfile = function(_, p) calls[#calls + 1] = "SetProfile:" .. p end,
-		GetNamespace = function(_, name) namespaces[name] = namespaces[name] or { profile = { stale = true } }; return namespaces[name] end },
-	GetModule = function(_, name) if name == "Presets" then return { ResetProfile = function(_, t) calls[#calls + 1] = "Reset:" .. t end } end end,
-	UpdateModuleConfigs = function() calls[#calls + 1] = "Update" end,
-}
-check(ns.pieces.bars.run() == true, "bars piece reports success")
-check(table.concat(calls, ",") == "SetProfile:" .. PROFILE .. ",Reset:DEFAULT,Update", "Bartender4: new profile, Blizzard preset, overlay, refresh")
-check(Bartender4.db.profile.outofrange == D.Bartender4.profile.outofrange and Bartender4.db.profile.keep == 1, "Bartender4: profile overlay merged")
-local allNs = true
-for name, t in pairs(D.Bartender4.namespaces) do if not deepEqual(t, namespaces[name].profile) then allNs = false end end
-check(allNs, "Bartender4: every module namespace merged")
+-- Bartender4: the real bars piece against a real AceDB-3.0 object carrying the shape of
+-- Bartender4's own defaults (Bartender4.lua, Bar.lua, ButtonBar.lua, ActionBars.lua, modules).
+do
+	local function with(base, extra)
+		local r = ns.copy(base)
+		ns.merge(r, extra)
+		return r
+	end
+	local barDef = { alpha = 1, fadeout = false, fadeoutalpha = 0.1, fadeoutdelay = 0.2, clickthrough = false,
+		visibility = { vehicleui = true, overridebar = true, stance = {} },
+		position = { scale = 1, growVertical = "DOWN", growHorizontal = "RIGHT" } }
+	local buttonBarDef = with(barDef, { padding = 2, rows = 1, hidemacrotext = false, hidehotkey = false, hideequipped = false, hideborder = false, skin = { Zoom = false } })
+	local abDef = { ["**"] = with(buttonBarDef, { enabled = true, buttons = 12, buttonOffset = 0, showgrid = false, flyoutDirection = "UP",
+		elements = { ["**"] = { font = "Arial Narrow", fontSize = 13, fontFlags = "OUTLINE", fontColor = { 1, 1, 1 }, textAnchor = "CENTER" },
+			hotkey = { fontSize = 13, fontColor = { 0.9, 0.9, 0.9 }, textAnchor = "TOPRIGHT" }, count = { fontSize = 16 }, macro = { font = "Friz Quadrata TT", fontSize = 10 } } }),
+		[7] = { enabled = false }, [8] = { enabled = false }, [9] = { enabled = false }, [10] = { enabled = false } }
+	local nsDefaults = {
+		ActionBars = { actionbars = abDef },
+		StatusTrackingBar = with(barDef, { enabled = false, width = 1024, barPadding = 0 }),
+		BlizzardArt = with(barDef, { enabled = false, artLayout = "CLASSIC" }),
+		MicroMenu = with(buttonBarDef, { enabled = true, padding = -3, position = { scale = 0.8 } }),
+		ExtraActionBar = with(barDef, { enabled = true, hideArtwork = false }),
+		StanceBar = with(buttonBarDef, { enabled = true, position = { scale = 1.5 } }),
+		PetBar = with(buttonBarDef, { enabled = true }),
+		Vehicle = with(buttonBarDef, { enabled = true }),
+		BagBar = with(buttonBarDef, { enabled = true, keyring = true }),
+	}
+	-- A character that already ran an older setup: stale values in the same profile.
+	Bartender4DB = { profileKeys = { ["Testwarrior - Test Realm"] = PROFILE }, profiles = { [PROFILE] = { outofrange = "hotkey", focuscastmodifier = false } },
+		namespaces = { ActionBars = { profiles = { [PROFILE] = { actionbars = { { position = { x = 999, y = 999, point = "TOP" } }, [5] = { rows = 1 } } } } },
+			StatusTrackingBar = { profiles = { [PROFILE] = { enabled = true } } }, XPBar = { profiles = { [PROFILE] = { enabled = true } } } } }
+	local db = AceDB:New("Bartender4DB", { profile = { tooltip = "enabled", buttonlock = true, outofrange = "button", selfcastmodifier = true,
+		focuscastmodifier = true, snapping = true, blizzardVehicle = false, colors = { range = { r = 0.8, g = 0.1, b = 0.1 } } } }, true)
+	for name, d in pairs(nsDefaults) do db:RegisterNamespace(name, { profile = d }) end
+	local updates = 0
+	Bartender4 = { db = db, UpdateModuleConfigs = function() updates = updates + 1 end }
+	check(ns.pieces.bars.run() == true, "bars piece reports success")
+	check(db:GetCurrentProfile() == PROFILE and updates >= 1, "Bartender4: on the \"" .. PROFILE .. "\" profile, modules refreshed")
+	local P, AB = db.profile, db:GetNamespace("ActionBars").profile.actionbars
+	check(P.outofrange == "button" and P.focuscastmodifier == true and P.blizzardVehicle == true, "Bartender4: stale profile values reset; Blizzard vehicle UI on")
+	check(db:GetNamespace("StatusTrackingBar").profile.enabled == false and Bartender4DB.namespaces.XPBar.profiles[PROFILE] == nil,
+		"Bartender4: status tracking bar off (Jon's file), old XP bar settings cleared")
+	check(AB[1].position.x ~= 999 and AB[1].position.point == "BOTTOM" and AB[5].rows == 6, "Bartender4: stale bar values replaced")
+	check(AB[1].buttons == 12 and AB[4].buttons == 8 and AB[1].elements.hotkey.fontFlags == "OUTLINE" and AB[1].position.growVertical == "DOWN",
+		"Bartender4: bars keep Bartender4's defaults behind Jon's values")
+	check(AB[1].elements.hotkey.font == "Fira Sans Condensed Medium" and AB[1].elements.hotkey.fontSize == 10 and AB[4].elements.hotkey.fontSize == 12,
+		"Bartender4: Fira Sans hotkeys, 10 on bars 1-3 and 12 on bars 4-6")
+	for i = 1, 6 do
+		local mo = (i == 4 or i == 5)
+		check(AB[i].enabled == true and (AB[i].fadeout == mo) and (not mo or AB[i].fadeoutalpha == 0),
+			"Bartender4: bar " .. i .. (mo and " fades out until moused over" or " has no mouseover fade"))
+	end
+	check(AB[2].visibility.nocombat == true and AB[3].visibility.nocombat == true and AB[1].visibility.nocombat == nil,
+		"Bartender4: bars 2 and 3 hidden out of combat (Jon's file), bar 1 always")
+	check(db:GetNamespace("MicroMenu").profile.fadeout == true and db:GetNamespace("MicroMenu").profile.fadeoutalpha == 0, "Bartender4: micro menu still mouseover")
+	check(db:GetNamespace("BagBar").profile.enabled == false and db:GetNamespace("PetBar").profile.enabled == false and db:GetNamespace("BlizzardArt").profile.enabled == false,
+		"Bartender4: bag bar, pet bar and Blizzard art off")
+	-- Log out: AceDB strips defaults, leaving exactly what Bartender4 would save. It must match
+	-- the source file both ways (the same sparse shape as Jon's own saved variables).
+	local logout
+	for _, f in ipairs(frames) do if f.events.PLAYER_LOGOUT then logout = f end end
+	if logout then logout.script(logout, "PLAYER_LOGOUT") end
+	local function prune(t)
+		if type(t) ~= "table" then return t end
+		local r = {}
+		for k, v in pairs(t) do local x = prune(v); if type(x) ~= "table" or next(x) then r[k] = x end end
+		return r
+	end
+	local function same(a, b) return deepEqual(a, b) and deepEqual(b, a) end
+	check(logout ~= nil and same(prune(Bartender4DB.profiles[PROFILE]), D.Bartender4.profile), "Bartender4: saved profile after logout is exactly the source file")
+	local allNs = true
+	for name, t in pairs(D.Bartender4.namespaces) do
+		if not same(prune(Bartender4DB.namespaces[name].profiles[PROFILE]), t) then allNs = false; print("     namespace differs: " .. name) end
+	end
+	for name, n in pairs(Bartender4DB.namespaces) do
+		local p = n.profiles and prune(n.profiles[PROFILE])
+		if p and next(p) and not D.Bartender4.namespaces[name] then allNs = false; print("     extra namespace saved: " .. name) end
+	end
+	check(allNs, "Bartender4: every saved module namespace is exactly the source file")
+	local personal = false
+	local function scan(t) for k, x in pairs(t) do if type(k) == "string" and k:find(" %- ") then personal = true end; if type(x) == "table" then scan(x) end end end
+	scan(D.Bartender4)
+	check(not personal and D.Bartender4.profileKeys == nil, "Bartender4: no 'Name - Realm' keys in the source file")
+end
 
 -- 4. Setting keys exist in each addon's code ------------------------------------------------
 local function sourceOf(folder)

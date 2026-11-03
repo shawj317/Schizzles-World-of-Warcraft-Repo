@@ -22,7 +22,7 @@ In combat it does nothing and asks you to leave combat first.
 | `/schizzle` | lists the commands and which add-ons are loaded |
 | `/schizzle all` | everything below, then asks to reload |
 | `/schizzle binds` | the Warrior keybinds (account-wide) |
-| `/schizzle bars` | Bartender4: Blizzard preset, then the Schizzle's Warrior layout |
+| `/schizzle bars` | Bartender4: the Schizzle's Warrior layout, on a fresh profile |
 | `/schizzle chat` | Prat 3.0 |
 | `/schizzle map` | SexyMap |
 | `/schizzle quests` | Questie |
@@ -65,7 +65,7 @@ Blizzard binds these keys replace: Q/E (strafe, now on A/D), A/D (turn), R (repl
 See each add-on's README: [Bartender4](../Bartender4/), [Prat 3.0](../Prat%203.0/), [SexyMap](../SexyMap/), [Questie](../Questie/), [GatherMate2](../GatherMate2/), [TomTom](../TomTom/).
 
 ## How it applies settings
-- **Bartender4:** switches to a new "Schizzle's Warrior" profile, runs Bartender4's own **Blizzard preset** (the same as the Presets button in its options), then lays the Schizzle's Warrior settings over it.
+- **Bartender4:** switches to a "Schizzle's Warrior" profile, resets it to Bartender4's own defaults (no preset), then writes Jon's settings on top. Bartender4 only saves what differs from its defaults, so this gives exactly Jon's layout.
 - **Prat, Questie, GatherMate2, TomTom:** writes a "Schizzle's Warrior" profile into that add-on's saved settings and points this character at it. The add-on loads it on the reload.
 - **SexyMap:** writes SexyMap's **global profile** (its "use a global profile" option) and points this character at it. Other characters already on SexyMap's global profile get it too.
 - **Keybinds:** sets the keys and saves the account-wide binding set.
@@ -75,7 +75,7 @@ See each add-on's README: [Bartender4](../Bartender4/), [Prat 3.0](../Prat%203.0
 - `Data.lua` matches the per-addon `Profile.lua` / `Keybinds.lua` files;
 - the keybind code, run against the stock Blizzard binds plus stale ones, leaves exactly the key map above, keeps bar 1, and saves the account-wide set;
 - after the profile writes, the add-ons' own **AceDB-3.0** (from their downloads) loads the character onto "Schizzle's Warrior" with every value from the source files, and old profiles are left alone;
-- Bartender4 gets a new profile, its Blizzard preset, the overlay on every module, then a refresh;
+- Bartender4, run against the real AceDB-3.0 with Bartender4's default layout, clears stale values from an older run, keeps Bartender4's defaults behind every bar, fades bars 4 and 5 until moused over, and after a logout saves exactly the values in `Bartender4/Profile.lua`;
 - SexyMap points the character at the new global profile, and that profile holds exactly the values in SexyMap's `Profile.lua` (map size and spot, border, button visibility, font sizes, movers), with no character names or realms in it;
 - every setting key used appears in that add-on's own code.
 
@@ -86,6 +86,7 @@ lua verify.lua /path/to/Interface/AddOns
 ```
 
 ## Version history
+- **v3 (Nov 2 2026):** the Bartender4 layout is now Jon's own in-game setup, with bars 4 and 5 faded out until you mouse over them. The helper resets the profile to Bartender4's defaults instead of running its Blizzard preset first, and it now merges into each bar instead of replacing the bar list, so Bartender4's per-bar defaults stay in place. See the [Bartender4 README](../Bartender4/) for what moved. A character that already ran the helper keeps its old bars until `/schizzle bars` is typed again, followed by `/reload`.
 - **v2 (Nov 2 2026):** the SexyMap settings are now Jon's own in-game setup: a bigger map in the top-right corner, a tooltip-style bronze border, smaller text and the add-on buttons shown on the map. See the [SexyMap README](../SexyMap/) for the full list. A character that already ran the helper keeps its old map until `/schizzle map` is typed again.
 - **v1 (Nov 2 2026):** first release.
 

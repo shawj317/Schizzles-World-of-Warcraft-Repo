@@ -2,89 +2,276 @@
 local _, ns = ...
 ns.data = {}
 ns.data["Bartender4"] = (function()
--- Schizzle's Warrior: Bartender4 profile overlay (v1) by Jon Shaw (Schizzle). MIT with attribution.
--- Applied by the SchizzlesWarriorSetup helper (/schizzle bars) on top of Bartender4's own
--- "Blizzard" preset, into a profile named "Schizzle's Warrior". Keys are Bartender4's own
--- profile keys (Bartender4.lua, ActionBars.lua, ButtonBar.lua, Bar.lua and the module files).
+-- Schizzle's Warrior: Bartender4 profile (v2) by Jon Shaw (Schizzle). MIT with attribution.
+-- Applied by the SchizzlesWarriorSetup helper (/schizzle bars) into a profile named
+-- "Schizzle's Warrior". The helper first resets that profile to Bartender4's own defaults (no
+-- preset), then writes these values on top, so the result is exactly Jon's in-game setup.
 --
--- Positions use Bartender4's LibWindow storage: point on UIParent, x/y of the bar's top-left
--- corner, in UIParent units. Bars 1-3 are 12 buttons at scale 0.9 with padding 3, so each is
--- (36 + 3) * 12 - 3 + 8 = 473 bar units = 425.7 UI units wide and 39.6 tall.
-local FONT = "Fira Sans Condensed Medium"
-
-local function elements()
-	return {
-		hotkey = { font = FONT, fontSize = 12, fontFlags = "OUTLINE", fontColor = { 0.78, 0.61, 0.43 } },
-		count = { font = FONT, fontSize = 13, fontFlags = "OUTLINE", fontColor = { 1, 1, 1 } },
-		macro = { font = FONT, fontSize = 10, fontFlags = "OUTLINE" },
-	}
-end
-
-local function bar(x, y, rows)
-	return {
-		enabled = true,
-		padding = 3,
-		rows = rows or 1,
-		hidemacrotext = true,
-		showgrid = false,
-		elements = elements(),
-		position = { point = "BOTTOM", x = x, y = y, scale = 0.9, growVertical = "DOWN", growHorizontal = "RIGHT" },
-	}
-end
-
+-- The values are Jon's Bartender4 saved variables for this profile, as Bartender4 stores them:
+-- only the settings that differ from its defaults. One change on top: bars 4 and 5 fade out
+-- until moused over (fadeout, fadeoutalpha 0), like the micro menu.
+--
+-- Positions are Bartender4's LibWindow storage: a point on UIParent and the offset of the bar's
+-- top-left corner from it, in the bar's own scale. version = 3 is Bartender4's config version;
+-- it stops Bartender4 from re-running its old position migration on these bars.
+-- A module with no "enabled" key keeps Bartender4's default: the status tracking (XP and
+-- reputation) bar and the Blizzard art default to off; the micro menu, stance bar, extra action
+-- button and vehicle bar default to on. The bag bar and pet bar are switched off here.
 return {
-	profile = {
-		outofrange = "button",
-		colors = { range = { r = 0.8, g = 0.1, b = 0.1 } },
-		selfcastmodifier = true,
-		focuscastmodifier = true,
-		snapping = true,
-		buttonlock = true,
-	},
 	namespaces = {
 		ActionBars = {
 			actionbars = {
-				-- Bottom stack, centred: bar 1 (1 to =) at the bottom, bar 2 (Shift binds) in the
-				-- middle, bar 3 (Q E R F T G ...) on top, nearest the HUD. Top edge 124, which
-				-- leaves 40+ px under the WeakAuras tray (its bottom is about 168 px up).
-				[1] = bar(-213, 50),
-				[2] = bar(-213, 87),
-				[3] = bar(-213, 124),
-				-- Bars 4 and 5 as 6x2 blocks either side of the stack, bar 6 above bar 4.
-				-- Empty buttons are hidden (showgrid off), so unused bars take no space.
-				[4] = bar(-436, 87, 2),
-				[5] = bar(221, 87, 2),
-				[6] = bar(-436, 164, 2),
+				[1] = {
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 12,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 10,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "BOTTOM",
+						scale = 0.8999999761581421,
+						x = -212.3997505891784,
+						y = 40,
+					},
+					showgrid = true,
+					version = 3,
+				},
+				[2] = {
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 13,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 10,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "BOTTOM",
+						scale = 0.8999999761581421,
+						x = -212.3997505891784,
+						y = 81.7732362065517,
+					},
+					showgrid = true,
+					version = 3,
+					visibility = {
+						nocombat = true,
+					},
+				},
+				[3] = {
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 13,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 10,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "BOTTOM",
+						scale = 0.8999999761581421,
+						x = -212.3999703157351,
+						y = 116.7253249717996,
+					},
+					showgrid = true,
+					version = 3,
+					visibility = {
+						nocombat = true,
+					},
+				},
+				[4] = {
+					-- Mouseover: faded out until the cursor is over the bar (the one change from Jon's file).
+					fadeout = true,
+					fadeoutalpha = 0,
+					buttons = 8,
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 13,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 12,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "BOTTOM",
+						scale = 0.8999999761581421,
+						x = -71.9998916376062,
+						y = 189.6378337214301,
+					},
+					rows = 2,
+					showgrid = true,
+					version = 3,
+				},
+				[5] = {
+					-- Mouseover: faded out until the cursor is over the bar (the one change from Jon's file).
+					fadeout = true,
+					fadeoutalpha = 0,
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 13,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 12,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "RIGHT",
+						scale = 0.8999999761581421,
+						x = -73,
+						y = 107.1000883242996,
+					},
+					rows = 6,
+					showgrid = true,
+					version = 3,
+				},
+				[6] = {
+					elements = {
+						count = {
+							font = "Fira Sans Condensed Medium",
+							fontSize = 13,
+						},
+						hotkey = {
+							font = "Fira Sans Condensed Medium",
+							fontColor = { 0.78, 0.61, 0.43 },
+							fontSize = 12,
+						},
+						macro = {
+							font = "Fira Sans Condensed Medium",
+						},
+					},
+					hidemacrotext = true,
+					padding = 3,
+					position = {
+						point = "CENTER",
+						scale = 0.8999999761581421,
+						x = 476.8875938218407,
+						y = 36.89995285486657,
+					},
+					rows = 2,
+					version = 3,
+				},
 			},
 		},
-		StanceBar = {
-			enabled = true,
-			padding = 3,
-			hidehotkey = true,
-			position = { point = "BOTTOM", x = -436, y = 206, scale = 0.9 },
+		BagBar = {
+			enabled = false,
+			keyring = false,
+			position = {
+				point = "BOTTOM",
+				x = 346,
+				y = 38,
+			},
+			scale = 0.9,
+			version = 3,
+		},
+		BlizzardArt = {
+			position = {
+				point = "BOTTOM",
+				x = -512,
+				y = 47,
+			},
+			version = 3,
 		},
 		ExtraActionBar = {
-			enabled = true,
 			hideArtwork = true,
-			position = { point = "BOTTOM", x = 236, y = 176, scale = 0.9 },
+			position = {
+				point = "BOTTOM",
+				scale = 0.9,
+				x = 236,
+				y = 176,
+			},
+			version = 3,
 		},
 		MicroMenu = {
-			enabled = true,
 			fadeout = true,
 			fadeoutalpha = 0,
-			position = { point = "BOTTOMRIGHT", x = -300, y = 30, scale = 0.8 },
+			padding = -4,
+			position = {
+				point = "BOTTOMRIGHT",
+				x = -300,
+				y = 30,
+			},
+			version = 3,
 		},
-		-- Baganator shows bag slots, so the bag bar is off.
-		BagBar = { enabled = false },
-		-- Warriors have no pet bar; Blizzard art off for the clean look.
-		PetBar = { enabled = false },
-		BlizzardArt = { enabled = false },
-		-- MoP Classic XP bar (MainMenuExpBar, 1024 wide) shrunk to a thin strip under bar 1.
-		XPBar = {
-			enabled = true,
-			position = { point = "BOTTOM", x = -213, y = 8, scale = 0.416 },
+		PetBar = {
+			enabled = false,
+			position = {
+				point = "BOTTOM",
+				x = -120,
+				y = 143,
+			},
+			version = 3,
 		},
-		RepBar = { enabled = false },
+		StanceBar = {
+			padding = 3,
+			position = {
+				point = "BOTTOM",
+				scale = 0.8999999761581421,
+				x = -180,
+				y = 171,
+			},
+			version = 3,
+		},
+		StatusTrackingBar = {
+			position = {
+				point = "BOTTOM",
+				x = -519,
+				y = 72,
+			},
+			version = 3,
+		},
+		Vehicle = {
+			position = {
+				point = "CENTER",
+				x = 104.5,
+				y = 42.50006103515625,
+			},
+			version = 3,
+		},
+	},
+	profile = {
+		blizzardVehicle = true,
 	},
 }
 end)()

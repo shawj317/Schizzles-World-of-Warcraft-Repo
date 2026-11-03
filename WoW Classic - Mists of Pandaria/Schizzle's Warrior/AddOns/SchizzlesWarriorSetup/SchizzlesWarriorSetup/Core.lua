@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "2"
+local VERSION = "3"
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -21,10 +21,12 @@ local function copy(v)
 end
 ns.copy = copy
 
--- Deep merge. Array-style tables (positions, colours) are replaced whole.
+-- Deep merge into existing tables, so AceDB's defaults (and its "**" templates, such as
+-- Bartender4's per-bar defaults) stay behind every value that isn't set. Lists of plain values
+-- (colours like { 0.78, 0.61, 0.43 }) are replaced whole.
 local function merge(dst, src)
 	for k, v in pairs(src) do
-		if type(v) == "table" and v[1] == nil and type(dst[k]) == "table" then
+		if type(v) == "table" and type(v[1]) ~= "number" and type(v[1]) ~= "string" and type(dst[k]) == "table" then
 			merge(dst[k], v)
 		else
 			dst[k] = copy(v)
@@ -113,8 +115,9 @@ pieces.bars = {
 		local BT4 = Bartender4
 		if not (BT4 and BT4.db) then return false, "Bartender4 not ready" end
 		BT4.db:SetProfile(PROFILE)
-		local presets = BT4.GetModule and BT4:GetModule("Presets", true)
-		if presets and presets.ResetProfile then presets:ResetProfile("DEFAULT") end
+		-- Back to Bartender4's own defaults (no preset; this resets every module namespace too).
+		-- The data holds only what differs from them, the way Bartender4 saves it.
+		BT4.db:ResetProfile()
 		merge(BT4.db.profile, D.Bartender4.profile)
 		for name, t in pairs(D.Bartender4.namespaces) do
 			local n = BT4.db:GetNamespace(name, true)

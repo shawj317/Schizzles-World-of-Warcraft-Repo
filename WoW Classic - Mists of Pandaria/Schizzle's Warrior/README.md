@@ -19,7 +19,7 @@ A full Warrior interface without ElvUI (ElvUI and Plater off), for MoP Classic 5
 | Folder | What it is | Format |
 |---|---|---|
 | [AddOns/SchizzlesWarriorSetup](AddOns/SchizzlesWarriorSetup/) | **Schizzle's Warrior Setup**: a small helper addon. Click **Yes** once (or type `/schizzle all`) and it sets up Bartender4, Prat 3.0, SexyMap, Questie, GatherMate2 and TomTom and the account-wide Warrior keybinds. | helper addon |
-| [AddOns/Bartender4](AddOns/Bartender4/) | three centred bars, two side blocks, the Warrior keybinds | applied by the helper |
+| [AddOns/Bartender4](AddOns/Bartender4/) | Jon's in-game bar layout (three centred bars, bars 4 and 5 on mouseover), the Warrior keybinds | applied by the helper |
 | [AddOns/Prat 3.0](AddOns/Prat%203.0/) | Fira chat, short channel names, bronze timestamps, copyable links | applied by the helper |
 | [AddOns/SexyMap](AddOns/SexyMap/) | Jon's own square minimap, 1.5x size in the top-right corner, with a bronze tooltip-style border and small zone text, clock and coordinates | applied by the helper |
 | [AddOns/Questie](AddOns/Questie/) | smaller map icons, a darker Fira tracker that hides in dungeons | applied by the helper |
