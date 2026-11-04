@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: RXP|cRXP_FRIENDLY_|rGuides |cFFFF5522Ashen Trail Forever Horde|r
+## Title: |cFF00FF96RXP|rGuides |cFFFF5522Ashen Trail Forever Horde|r
 ## Notes: Fallback copy of the Ashen Trail Horde route. Requires RXPGuides. The standalone AshenTrail addon does not load this pack.
 ## Author: Ashen Trail
 ## Version: 1.0.0

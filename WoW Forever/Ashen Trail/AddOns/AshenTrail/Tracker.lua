@@ -44,6 +44,18 @@ local DEFAULTS = {
   drownSeconds = 10,
   arrowScale = 1,
   updateInterval = 0.2,
+  routeMode = "speed",
+  soundStep = false,
+  soundTurnIn = false,
+  soundLevel = false,
+  skipElites = false,
+  eliteWarn = true,
+  logHints = true,
+  supplyHints = true,
+  trainHints = true,
+  hearthHints = true,
+  rareHints = true,
+  gatherHints = true,
 }
 
 local function copyDefaults(target)
@@ -61,22 +73,106 @@ local function copyDefaults(target)
   return target
 end
 
+local function cloneOptions(source)
+  local copy = {}
+  for key, value in pairs(source or {}) do
+    if type(value) == "table" then
+      local inner = {}
+      for innerKey, innerValue in pairs(value) do inner[innerKey] = innerValue end
+      copy[key] = inner
+    else
+      copy[key] = value
+    end
+  end
+  return copy
+end
+
 function AT.DB()
   if not AshenTrailChar then AshenTrailChar = {} end
+  if not AshenTrailAccount then AshenTrailAccount = {} end
   local db = AshenTrailChar
   db.turnedIn = db.turnedIn or {}
   db.flights = db.flights or {}
   db.history = db.history or { order = {}, byId = {} }
   db.history.order = db.history.order or {}
   db.history.byId = db.history.byId or {}
-  db.options = copyDefaults(db.options or {})
+  if db.useAccount ~= false then
+    if not AshenTrailAccount.options then
+      AshenTrailAccount.options = cloneOptions(db.options)
+    end
+    db.options = copyDefaults(AshenTrailAccount.options)
+    AshenTrailAccount.options = db.options
+  else
+    db.options = copyDefaults(db.options or {})
+  end
   db.skipped = db.skipped or {}
   db.junkList = db.junkList or {}
   db.junkKeep = db.junkKeep or {}
   db.flightTimes = db.flightTimes or {}
   db.point = db.point or { "CENTER", "CENTER", 0, 0 }
   db.minimapAngle = db.minimapAngle or 220
+  db.levels = db.levels or {}
+  db.best = db.best or {}
   return db
+end
+
+function AT.ExportText()
+  local db = AT.DB()
+  local skips = {}
+  for key, value in pairs(db.skipped or {}) do
+    if value then skips[#skips + 1] = key end
+  end
+  table.sort(skips)
+  return L.ExportRoute(db.race, db.chapterIndex or 1, db.step or 1, skips)
+end
+
+function AT.ImportText(text)
+  local parsed = L.ImportRoute(text)
+  if not parsed then
+    AT.Say("That route string is not an Ashen Trail export.")
+    return
+  end
+  if parsed.race and AshenTrailData and AshenTrailData.routes and not AshenTrailData.routes[parsed.race] then
+    AT.Say("That route is not in this pack.")
+    return
+  end
+  local db = AT.DB()
+  if parsed.race then db.race = parsed.race end
+  db.chapterIndex = parsed.chapter or 1
+  db.step = parsed.step or 1
+  local ids = AT.RouteIds()
+  if #ids > 0 then
+    if db.chapterIndex < 1 then db.chapterIndex = 1 end
+    if db.chapterIndex > #ids then db.chapterIndex = #ids end
+    local chapter = AshenTrailData.chapters[ids[db.chapterIndex]]
+    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken()) or {}
+    if db.step < 1 then db.step = 1 end
+    if #steps > 0 and db.step > #steps then db.step = #steps end
+  end
+  db.skipped = {}
+  for i = 1, #parsed.skips do db.skipped[parsed.skips[i]] = true end
+  db.holdStep = nil
+  db.finished = false
+  AT.focus = nil
+  AT.planKey = nil
+  AT.Say("Imported the route position.")
+  if AshenTrailUI and AshenTrailUI.Refresh then AshenTrailUI.Refresh() end
+end
+
+function AT.SetUseAccount(enabled)
+  if not AshenTrailChar then AshenTrailChar = {} end
+  if not AshenTrailAccount then AshenTrailAccount = {} end
+  local db = AshenTrailChar
+  if enabled then
+    db.useAccount = true
+    if not AshenTrailAccount.options then
+      AshenTrailAccount.options = cloneOptions(db.options)
+    end
+  else
+    db.useAccount = false
+    db.options = cloneOptions(AshenTrailAccount.options or db.options)
+  end
+  AT.DB()
 end
 
 function AT.Say(text)
@@ -365,6 +461,7 @@ function AT.AdvanceDone(aggressive)
   local auto = aggressive or (db.options and db.options.autoAdvance ~= false)
   if not auto and not (db.options and db.options.skipOverleveled) then return end
   local guard = 0
+  local cuedStep = false
   while guard < 80 do
     guard = guard + 1
     local steps = AT.Steps()
@@ -395,8 +492,17 @@ function AT.AdvanceDone(aggressive)
       if db.holdStep then
         break
       end
-      local move = (auto and status == "done") or skipped or over or (aggressive and stepIsBehind(index, steps))
+      local eliteMove = false
+      if db.options.skipElites and AT.StepThreat then
+        local elite, group = AT.StepThreat(step)
+        eliteMove = elite or (group and group > 1)
+      end
+      local move = (auto and status == "done") or skipped or over or eliteMove or (aggressive and stepIsBehind(index, steps))
       if move then
+        if auto and status == "done" and not cuedStep then
+          cuedStep = true
+          AT.Cue("step")
+        end
         db.holdStep = nil
         if index < #steps then
           db.step = index + 1
@@ -1028,25 +1134,33 @@ function AT.RefreshNameplates()
   end
 end
 
-function AT.WorldDistance(mapID, ax, ay, bx, by)
-  if not mapID or not ax or not bx or not C_Map or not C_Map.GetWorldPosFromMapPos then return nil end
-  local function world(x, y)
-    local vec = { x = x / 100, y = y / 100 }
-    if CreateVector2D then
-      local okVec, made = pcall(CreateVector2D, x / 100, y / 100)
-      if okVec and made then vec = made end
-    end
-    local ok, first, second, third = pcall(C_Map.GetWorldPosFromMapPos, mapID, vec)
-    if not ok then return nil end
-    if type(second) == "number" and type(third) == "number" then return second, third end
-    if type(second) == "table" and second.x then return second.x, second.y end
-    if type(first) == "table" and first.x then return first.x, first.y end
-    return nil
+local function worldPos(mapID, x, y)
+  if not mapID or not x or not y or not C_Map or not C_Map.GetWorldPosFromMapPos then return nil end
+  local vec = { x = x / 100, y = y / 100 }
+  if CreateVector2D then
+    local okVec, made = pcall(CreateVector2D, x / 100, y / 100)
+    if okVec and made then vec = made end
   end
-  local axw, ayw = world(ax, ay)
-  local bxw, byw = world(bx, by)
+  local ok, first, second, third = pcall(C_Map.GetWorldPosFromMapPos, mapID, vec)
+  if not ok then return nil end
+  if type(second) == "number" and type(third) == "number" then return second, third end
+  if type(second) == "table" and second.x then return second.x, second.y end
+  if type(first) == "table" and first.x then return first.x, first.y end
+  return nil
+end
+
+function AT.WorldDistance(mapID, ax, ay, bx, by)
+  local axw, ayw = worldPos(mapID, ax, ay)
+  local bxw, byw = worldPos(mapID, bx, by)
   if not axw or not bxw then return nil end
   return L.Distance(axw, ayw, bxw, byw)
+end
+
+function AT.WorldDelta(mapID, ax, ay, bx, by)
+  local axw, ayw = worldPos(mapID, ax, ay)
+  local bxw, byw = worldPos(mapID, bx, by)
+  if not axw or not bxw then return nil end
+  return bxw - axw, byw - ayw
 end
 
 function AT.ArrowGoal()
@@ -2111,6 +2225,21 @@ function AT.Boot()
   else
     AT.Refresh()
   end
+  AT.session = {
+    started = time and time() or 0,
+    gold = GetMoney and GetMoney() or 0,
+    quests = 0,
+  }
+  local level = UnitLevel and UnitLevel("player") or 1
+  local previous = db.levelOpen
+  if previous and tostring(previous) ~= tostring(level) then
+    local oldRow = db.levels[tostring(previous)]
+    if oldRow then oldRow.started = nil end
+  end
+  local openRow = db.levels[tostring(level)]
+  if openRow then openRow.started = nil end
+  db.levelOpen = level
+  AT.FlushLevel()
   AT.booted = true
   AT.UpdateTargetMacro()
 end
@@ -2144,6 +2273,8 @@ events:RegisterEvent("MIRROR_TIMER_START")
 events:RegisterEvent("MIRROR_TIMER_STOP")
 events:RegisterEvent("PLAYER_CONTROL_LOST")
 events:RegisterEvent("PLAYER_CONTROL_GAINED")
+events:RegisterEvent("PLAYER_LOGOUT")
+events:RegisterEvent("TRAINER_SHOW")
 events:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "PLAYER_LOGIN" or (event == "PLAYER_ENTERING_WORLD" and not AT.booted) then
     AT.Boot()
@@ -2166,6 +2297,8 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     end
   elseif event == "QUEST_TURNED_IN" then
     AT.MarkTurnedIn(arg1)
+    if AT.session then AT.session.quests = (AT.session.quests or 0) + 1 end
+    AT.Cue("turnin")
     AT.Sync(false)
   elseif event == "QUEST_ACCEPTED" then
     AT.RecordAccepted(arg1)
@@ -2198,10 +2331,17 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     if AshenTrailUI and AshenTrailUI.ApplyPendingLayout then AshenTrailUI.ApplyPendingLayout() end
     AT.RefreshNameplates()
   elseif event == "PLAYER_LEVEL_UP" then
+    AT.CloseOpenLevel(arg1 or (UnitLevel and UnitLevel("player")) or 1)
+    AT.Cue("level")
     if not (InCombatLockdown and InCombatLockdown()) then
       local line = AT.TalentLine()
       if line then AT.Say(line .. ". Vanilla opener. Forever may differ.") end
     end
+  elseif event == "PLAYER_LOGOUT" then
+    if AT.PauseLevel then AT.PauseLevel() end
+  elseif event == "TRAINER_SHOW" then
+    local level = UnitLevel and UnitLevel("player") or nil
+    if level then AT.DB().trainNoted = level end
   elseif event == "TAXIMAP_OPENED" then
     AT.LearnFlights()
     AT.Refresh()
@@ -2235,6 +2375,238 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.Refresh()
   end
 end)
+
+function AT.Cue(kind)
+  local options = AT.DB().options
+  local allowed = false
+  if kind == "step" then allowed = options.soundStep
+  elseif kind == "turnin" then allowed = options.soundTurnIn
+  elseif kind == "level" then allowed = options.soundLevel
+  end
+  if not allowed then return end
+  local now = GetTime and GetTime() or 0
+  if AT.cueAt and (now - AT.cueAt) < 0.4 then return end
+  AT.cueAt = now
+  local sound = (SOUNDKIT and SOUNDKIT.RAID_WARNING) or "RaidWarning"
+  if PlaySound then pcall(PlaySound, sound) end
+end
+
+function AT.HearthRemain()
+  if not GetItemCooldown or not GetTime then return nil, true end
+  local start, duration = GetItemCooldown(6948)
+  if not duration or duration == 0 or not start or start == 0 then return 0, true end
+  local remain = duration - (GetTime() - start)
+  if remain < 0 then remain = 0 end
+  return remain, remain <= 0
+end
+
+function AT.RouteQuestIds()
+  local ids = {}
+  local chapters = AshenTrailData and AshenTrailData.chapters
+  if not chapters then return ids end
+  local db = AT.DB()
+  local route = AT.RouteIds()
+  for ci = 1, #route do
+    local chapter = chapters[route[ci]]
+    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken()) or {}
+    for si = 1, #steps do
+      local lines = steps[si].lines or {}
+      for li = 1, #lines do
+        local id = lines[li].id
+        if id then ids[id] = true end
+      end
+    end
+  end
+  return ids
+end
+
+function AT.OffRouteQuests()
+  if not GetNumQuestLogEntries or not GetQuestLogTitle then return 0, {} end
+  local onRoute = AT.RouteQuestIds()
+  local count, names = 0, {}
+  local entries = GetNumQuestLogEntries() or 0
+  for i = 1, entries do
+    local title, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(i)
+    if not isHeader and questID and questID ~= 0 then
+      count = count + 1
+      if not onRoute[questID] then
+        names[#names + 1] = title or ("Quest " .. tostring(questID))
+      end
+    end
+  end
+  return count, names
+end
+
+function AT.StepThreat(step)
+  local lines = step and step.lines or {}
+  for i = 1, #lines do
+    local id = tonumber(lines[i].id)
+    if id then
+      local elite, group = false, 0
+      if C_QuestLog and C_QuestLog.GetQuestTagInfo then
+        local ok, info = pcall(C_QuestLog.GetQuestTagInfo, id)
+        if ok and type(info) == "table" then
+          elite = info.isElite and true or false
+          if type(info.tagName) == "string" and string.find(string.lower(info.tagName), "group", 1, true) then
+            group = math.max(group, 2)
+          end
+        end
+      end
+      if C_QuestLog and C_QuestLog.GetSuggestedGroupSize then
+        local ok, size = pcall(C_QuestLog.GetSuggestedGroupSize, id)
+        if ok and tonumber(size) and tonumber(size) > group then group = tonumber(size) end
+      end
+      if elite or group > 1 then return elite, group end
+    end
+  end
+  return false, 0
+end
+
+function AT.RareLine()
+  if AT.DB().options.rareHints == false then return nil end
+  if not RareScanner and not _G.scanner_button then return nil end
+  local button = _G.scanner_button
+  if not button or not button.IsShown or not button:IsShown() then return nil end
+  local title
+  if button.title and button.title.GetText then title = button.title:GetText() end
+  if title and title ~= "" then return "RareScanner: " .. title end
+  return "RareScanner has a rare nearby."
+end
+
+function AT.GatherLine()
+  if AT.DB().options.gatherHints == false then return nil end
+  local GM = _G.GatherMate2
+  if not GM or not GM.GetNodesForZone then return nil end
+  local prof
+  if GetNumSkillLines and GetSkillLineInfo then
+    local lines = GetNumSkillLines() or 0
+    for i = 1, lines do
+      local name = GetSkillLineInfo(i)
+      if name == "Mining" or name == "Herbalism" then
+        prof = name
+        break
+      end
+    end
+  end
+  if not prof then return nil end
+  local mapID = AT.PlayerPos().mapID
+  if not mapID then return nil end
+  local zone = mapID
+  if GM.GetZoneID then
+    local ok, id = pcall(GM.GetZoneID, GM, mapID)
+    if ok and id then zone = id end
+  end
+  local filter = prof == "Mining" and "Mining" or "Herb Gathering"
+  local ok, nodes = pcall(GM.GetNodesForZone, GM, zone, filter)
+  if not ok or type(nodes) ~= "table" then return nil end
+  local count = 0
+  for _ in pairs(nodes) do
+    count = count + 1
+    if count > 0 then break end
+  end
+  if count < 1 then return nil end
+  return prof .. " nodes from GatherMate are saved for this map."
+end
+
+local function playerName()
+  if UnitName then
+    local name = UnitName("player")
+    if name and name ~= "" then return name end
+  end
+  return nil
+end
+
+local function mirrorLevel(level, seconds)
+  local name = playerName()
+  if not name or not AshenTrailAccount then return end
+  AshenTrailAccount.levelTimes = AshenTrailAccount.levelTimes or {}
+  AshenTrailAccount.levelTimes[name] = AshenTrailAccount.levelTimes[name] or {}
+  AshenTrailAccount.levelTimes[name][tostring(level)] = seconds
+end
+
+function AT.PauseLevel()
+  local db = AT.DB()
+  local level = db.levelOpen
+  if not level then return end
+  local row = db.levels[tostring(level)]
+  if row and row.started then
+    local total = L.CloseLevel(row, time and time() or 0)
+    mirrorLevel(level, total)
+  end
+end
+
+function AT.FlushLevel(now)
+  local db = AT.DB()
+  local level = db.levelOpen or (UnitLevel and UnitLevel("player"))
+  if not level then return end
+  now = now or (time and time() or 0)
+  local key = tostring(level)
+  local row = db.levels[key] or { seconds = 0 }
+  if row.started then
+    row.seconds = L.LevelSeconds(row, now)
+    row.started = now
+  else
+    row.started = now
+  end
+  db.levels[key] = row
+  db.levelOpen = level
+  mirrorLevel(level, row.seconds or 0)
+end
+
+function AT.CloseOpenLevel(newLevel)
+  local db = AT.DB()
+  local old = db.levelOpen
+  local now = time and time() or 0
+  if old and tostring(old) ~= tostring(newLevel) then
+    local key = tostring(old)
+    local row = db.levels[key]
+    if row then
+      local total = L.CloseLevel(row, now)
+      db.levels[key] = row
+      if total > 0 then
+        if not db.best[key] or total < db.best[key] then db.best[key] = total end
+        mirrorLevel(old, total)
+      end
+    end
+  end
+  db.levelOpen = newLevel
+  local key = tostring(newLevel)
+  db.levels[key] = db.levels[key] or { seconds = 0 }
+  db.levels[key].started = now
+end
+
+function AT.SessionLines()
+  local session = AT.session
+  if not session then return {} end
+  local now = time and time() or session.started or 0
+  local elapsed = math.max(0, now - (session.started or now))
+  local rows = {}
+  local xp = AT.xpText
+  if xp and xp ~= "" then rows[#rows + 1] = xp end
+  local questRate = L.PerHour(session.quests or 0, elapsed)
+  if questRate then
+    rows[#rows + 1] = string.format("%.1f quests/hr", questRate)
+  elseif (session.quests or 0) > 0 then
+    rows[#rows + 1] = tostring(session.quests) .. " quests this session"
+  end
+  if GetMoney and session.gold then
+    rows[#rows + 1] = "Gold this session: " .. L.FormatMoney((GetMoney() or 0) - (session.gold or 0))
+  end
+  local level = UnitLevel and UnitLevel("player") or AT.DB().levelOpen
+  if level then
+    local row = AT.DB().levels[tostring(level)]
+    local spent = L.LevelSeconds(row, now)
+    if spent > 0 then
+      local line = "This level: " .. L.FormatClock(spent)
+      local best, who = L.BestOther(AshenTrailAccount and AshenTrailAccount.levelTimes, playerName(), level)
+      if best then
+        line = line .. ". Fastest alt (" .. who .. ") " .. L.FormatClock(best)
+      end
+      rows[#rows + 1] = line
+    end
+  end
+  return rows
+end
 
 function AT.SampleXp()
   if InCombatLockdown and InCombatLockdown() then return end
@@ -2280,13 +2652,30 @@ function AT.SampleXp()
 end
 
 local ticker = CreateFrame("Frame")
-local nameElapsed = 0
+local nameElapsed, xpElapsed, miniElapsed, levelElapsed = 0, 0, 0, 0
 ticker:SetScript("OnUpdate", function(_, elapsed)
   if not AT.booted then return end
+  elapsed = elapsed or 0
+  xpElapsed = xpElapsed + elapsed
+  miniElapsed = miniElapsed + elapsed
+  levelElapsed = levelElapsed + elapsed
+  if xpElapsed >= 1 then
+    xpElapsed = 0
+    if AT.SampleXp then AT.SampleXp() end
+    if AshenTrailUI and AshenTrailUI.SyncXpLabel then AshenTrailUI.SyncXpLabel() end
+  end
+  if miniElapsed >= 0.5 then
+    miniElapsed = 0
+    if AshenTrailUI and AshenTrailUI.UpdateMinimapPins then AshenTrailUI.UpdateMinimapPins() end
+  end
+  if levelElapsed >= 60 then
+    levelElapsed = 0
+    if AT.FlushLevel then AT.FlushLevel() end
+  end
   local interval = tonumber(AT.DB().options.updateInterval) or 0.2
   if interval < 0.05 then interval = 0.05 end
   if interval > 2 then interval = 2 end
-  nameElapsed = nameElapsed + (elapsed or 0)
+  nameElapsed = nameElapsed + elapsed
   if nameElapsed < interval then return end
   nameElapsed = 0
   if AT.questSyncPending then
@@ -2297,7 +2686,6 @@ ticker:SetScript("OnUpdate", function(_, elapsed)
       AT.Sync(false)
     end
   end
-  if AT.SampleXp then AT.SampleXp() end
   AT.RefreshNameplates()
   AT.UpdateFlight()
   AT.UpdateBreath()

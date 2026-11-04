@@ -1026,11 +1026,15 @@ function L.BreathLow(remaining, threshold)
   return remaining <= threshold
 end
 
--- Vanilla leveling openers. Forever talent trees can differ, so the UI says so.
+-- Five-point openers checked against Talents Forever on questing.wiki
+-- (export 2026-10-16, beta build 1.60.1.70425). The UI still says Forever may differ.
+-- Cruelty is Fury row 1 slot 3, so it is legal at level 10. Improved Heroic Strike is also row 1, and only 3 ranks.
+-- Deadly Aspects is the Beast Mastery row-1 talent that affects Aspect of the Hawk.
+-- Improved Sinister Strike is 2 ranks. The next three points are Malice, also row 1.
 local TALENT = {
   Warrior = { "Cruelty", "Cruelty", "Cruelty", "Cruelty", "Cruelty" },
-  Hunter = { "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk" },
-  Rogue = { "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike" },
+  Hunter = { "Deadly Aspects", "Deadly Aspects", "Deadly Aspects", "Deadly Aspects", "Deadly Aspects" },
+  Rogue = { "Improved Sinister Strike", "Improved Sinister Strike", "Malice", "Malice", "Malice" },
   Priest = { "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap" },
   Mage = { "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt" },
   Warlock = { "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption" },
@@ -1109,4 +1113,181 @@ function L.RouteEta(plan, saved)
     end
   end
   return { seconds = seconds, missingFlight = missingFlight }
+end
+
+-- Outdoor radii match the usual minimap zoom yards. Indoor is the smaller set.
+local MINIMAP_OUTDOOR = { 233.333, 200, 166.667, 133.333, 100, 66.667 }
+local MINIMAP_INDOOR = { 150, 120, 90, 60, 40, 25 }
+
+function L.MinimapRadius(zoom, indoors)
+  local list = indoors and MINIMAP_INDOOR or MINIMAP_OUTDOOR
+  zoom = math.floor(tonumber(zoom) or 0)
+  if zoom < 0 then zoom = 0 end
+  if zoom > 5 then zoom = 5 end
+  return list[zoom + 1]
+end
+
+function L.MinimapOffset(dx, dy, radiusYards, edgePixels)
+  dx = tonumber(dx) or 0
+  dy = tonumber(dy) or 0
+  radiusYards = tonumber(radiusYards) or 0
+  edgePixels = tonumber(edgePixels) or 0
+  local dist = math.sqrt(dx * dx + dy * dy)
+  if radiusYards <= 0 or edgePixels <= 0 then return 0, 0, dist end
+  local scale = edgePixels / radiusYards
+  local px, py = dx * scale, dy * scale
+  local hyp = math.sqrt(px * px + py * py)
+  if hyp > edgePixels and hyp > 0 then
+    px = px / hyp * edgePixels
+    py = py / hyp * edgePixels
+  end
+  return px, py, dist
+end
+
+function L.RouteModeLabel(mode)
+  if mode == "discover" then return "Discovery" end
+  return "Speedrun"
+end
+
+function L.AbandonHint(count, cap, names)
+  count = tonumber(count) or 0
+  cap = tonumber(cap) or 40
+  if count < cap - 8 or type(names) ~= "table" or #names == 0 then return nil end
+  local shown = {}
+  local limit = math.min(3, #names)
+  for i = 1, limit do shown[i] = names[i] end
+  local list = table.concat(shown, ", ")
+  if #names > limit then list = list .. " +" .. tostring(#names - limit) end
+  return "Quest log " .. count .. "/" .. cap .. ". Off the route: " .. list .. "."
+end
+
+function L.GroupWarning(elite, suggested)
+  suggested = tonumber(suggested) or 0
+  if elite and suggested > 1 then return "Elite group quest ahead." end
+  if elite then return "Elite quest ahead." end
+  if suggested > 1 then return "Group quest ahead (" .. suggested .. ")." end
+  return nil
+end
+
+function L.SupplyReminder(leaving, class)
+  if not leaving then return nil end
+  local extra = "class reagents"
+  if class == "Hunter" or class == "Warrior" or class == "Rogue" then extra = "ammo" end
+  return "Before you leave town: bags, food, water, and " .. extra .. "."
+end
+
+function L.LeavingTown(step, nextStep)
+  if not step or not nextStep then return false end
+  local here, there, town
+  local lines = step.lines or {}
+  for i = 1, #lines do
+    local line = lines[i]
+    if line.k == "home" or line.k == "fp" or line.k == "vendor" then town = true end
+    if line.zone and line.zone ~= "" then here = line.zone end
+  end
+  local nextLines = nextStep.lines or {}
+  for i = 1, #nextLines do
+    local zone = nextLines[i].zone
+    if zone and zone ~= "" then there = zone end
+  end
+  if not town or not here or not there then return false end
+  return here ~= there
+end
+
+function L.TrainReminder(level, notedLevel)
+  level = tonumber(level) or 1
+  notedLevel = tonumber(notedLevel) or 0
+  if level < 4 then return false end
+  return (level - notedLevel) >= 2
+end
+
+function L.HearthLabel(ready, remain)
+  if ready then return "Hearthstone is ready." end
+  remain = tonumber(remain)
+  if remain and remain > 0 then return "Hearthstone " .. L.FormatClock(remain) .. "." end
+  return nil
+end
+
+function L.PerHour(count, seconds)
+  seconds = tonumber(seconds) or 0
+  count = tonumber(count) or 0
+  if seconds < 20 or count < 1 then return nil end
+  return count / seconds * 3600
+end
+
+function L.FormatMoney(copper)
+  copper = math.floor(tonumber(copper) or 0)
+  if copper < 0 then copper = 0 end
+  local gold = math.floor(copper / 10000)
+  local silver = math.floor((copper % 10000) / 100)
+  if gold > 0 then return gold .. "g " .. silver .. "s" end
+  return silver .. "s"
+end
+
+function L.LevelSeconds(record, now)
+  if not record then return 0 end
+  local total = tonumber(record.seconds) or 0
+  if record.started and now then
+    total = total + math.max(0, now - record.started)
+  end
+  return total
+end
+
+function L.CloseLevel(record, now)
+  if not record then return 0 end
+  local total = L.LevelSeconds(record, now)
+  record.seconds = total
+  record.started = nil
+  return total
+end
+
+function L.BestOther(timesByChar, selfName, level)
+  local key = tostring(level)
+  local best, who
+  for name, levels in pairs(timesByChar or {}) do
+    if name ~= selfName and type(levels) == "table" then
+      local seconds = tonumber(levels[key])
+      if seconds and seconds > 0 and (not best or seconds < best) then
+        best = seconds
+        who = name
+      end
+    end
+  end
+  return best, who
+end
+
+function L.ExportRoute(race, chapter, step, skips)
+  local parts = {
+    string.format("AT1\t%s\t%d\t%d", race or "", tonumber(chapter) or 1, tonumber(step) or 1),
+  }
+  for i = 1, #(skips or {}) do
+    local key = tostring(skips[i])
+    parts[#parts + 1] = string.format("%d:%s", #key, key)
+  end
+  return table.concat(parts, "\t")
+end
+
+function L.ImportRoute(text)
+  if type(text) ~= "string" then return nil end
+  local race, chapter, step, rest = string.match(text, "^AT1\t([^\t]*)\t(%d+)\t(%d+)\t?(.*)$")
+  if not chapter then return nil end
+  local skips = {}
+  local cursor = rest or ""
+  while cursor ~= "" do
+    local lenText, tail = string.match(cursor, "^(%d+):(.*)$")
+    local len = tonumber(lenText)
+    if not len then return nil end
+    local key = string.sub(tail, 1, len)
+    if #key ~= len then return nil end
+    skips[#skips + 1] = key
+    cursor = string.sub(tail, len + 1)
+    if string.sub(cursor, 1, 1) == "\t" then cursor = string.sub(cursor, 2) end
+  end
+  local raceId = race ~= "" and race or nil
+  return {
+    race = raceId,
+    chapter = tonumber(chapter),
+    step = tonumber(step),
+    skips = skips,
+  }
 end

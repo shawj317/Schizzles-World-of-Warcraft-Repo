@@ -44,9 +44,10 @@ local NEAR_FILTERS = {
   { id = "zeppelin", label = "Zeppelin" },
 }
 
-local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath, targetHolder, questItemHolder, xpLabel, dungeonFrame
+local frame, arrow, pages, hint, progressBar, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath, targetHolder, questItemHolder, xpLabel, dungeonFrame
+local guideBody, tabButtons
 local pendingLayout = false
-local linePool, rowPool, pinPool, stepPool, menuPool = {}, {}, {}, {}, {}
+local linePool, rowPool, stepPool, menuPool = {}, {}, {}, {}
 local mapPins = {}
 local nearFilter = "all"
 
@@ -178,40 +179,82 @@ local function showPage(id)
   end
 end
 
+local function applyHolder(holder, key, x, y)
+  if not holder or holder.dragging then return end
+  local saved = AT.DB()[key]
+  holder:ClearAllPoints()
+  if saved and saved[1] then
+    holder:SetPoint(saved[1], UIParent, saved[2] or "CENTER", saved[3] or 0, saved[4] or 0)
+  else
+    holder:SetPoint("CENTER", UIParent, "CENTER", x, y)
+  end
+end
+
 local function layoutFrame()
+  if not frame then return end
   if InCombatLockdown and InCombatLockdown() then
     pendingLayout = true
     return
   end
   pendingLayout = false
   local db = AT.DB()
-  local compact = db.options.compact
+  local compact = db.options.compact and db.race
   local scale = db.options.scale or 1
-  frame:SetSize(440, compact and 500 or 600)
+  frame:SetSize(440, compact and 240 or 600)
   frame:SetScale(scale)
   frame:SetAlpha(1)
   frame:SetMovable(not db.options.locked)
   if db.hidden then frame:Hide() else frame:Show() end
+  if activeTitle then
+    activeTitle:ClearAllPoints()
+    if compact then
+      activeTitle:SetPoint("TOPLEFT", 14, -58)
+    else
+      activeTitle:SetPoint("BOTTOMLEFT", 14, 146)
+    end
+  end
+  if activeBody then
+    activeBody:ClearAllPoints()
+    if compact then
+      activeBody:SetPoint("TOPLEFT", 14, -78)
+      activeBody:SetPoint("TOPRIGHT", -14, -78)
+    else
+      activeBody:SetPoint("BOTTOMLEFT", 14, 108)
+      activeBody:SetPoint("BOTTOMRIGHT", -14, 108)
+    end
+    activeBody:SetHeight(compact and 44 or 36)
+  end
+  if hint then
+    hint:ClearAllPoints()
+    if compact then
+      hint:SetPoint("TOPLEFT", 14, -126)
+      hint:SetPoint("TOPRIGHT", -14, -126)
+    else
+      hint:SetPoint("BOTTOMLEFT", 14, 78)
+      hint:SetPoint("BOTTOMRIGHT", -14, 78)
+    end
+    hint:SetHeight(compact and 36 or 28)
+  end
+  if guideBody then
+    if compact then guideBody:Hide() else guideBody:Show() end
+  end
+  if tabButtons then
+    for i = 1, #tabButtons do
+      if compact then tabButtons[i]:Hide() else tabButtons[i]:Show() end
+    end
+  end
   if targetHolder then
-    targetHolder:SetScale(scale)
+    applyHolder(targetHolder, "targetPoint", 0, -220)
     if db.hidden then targetHolder:Hide() else targetHolder:Show() end
   end
   if questItemHolder then
-    questItemHolder:SetScale(scale)
+    applyHolder(questItemHolder, "questItemPoint", 0, -190)
     if db.hidden then questItemHolder:Hide() end
   end
 end
 
 function UI.ApplyPendingLayout()
   if pendingLayout then layoutFrame() end
-end
-
-local function lineColor(state)
-  local colors = theme()
-  if state == "done" then return colors.done end
-  if state == "open" then return colors.open end
-  if state == "note" then return colors.muted end
-  return colors.text
 end
 
 local function fillWrapped(parent, rows, onClick)
@@ -235,36 +278,6 @@ local function fillWrapped(parent, rows, onClick)
   hidePool(linePool, #rows + 1)
   parent:SetHeight(math.max(24, -y + 8))
   if onClick then onClick(rows) end
-end
-
-local function guideRows()
-  local db = AT.DB()
-  local chapter = AT.Chapter()
-  local step, steps = AT.CurrentStep()
-  local rows = {}
-  if db.finished then
-    rows[#rows + 1] = { text = "Ashen Trail is finished. Bank heirlooms, lock Dual Spec, and claim the Legacy Point.", color = MOSS }
-    return rows
-  end
-  if not step then
-    rows[#rows + 1] = { text = "This chapter has no steps for your race and class.", color = MUTED }
-    return rows
-  end
-  local ctx = AT.Context()
-  for i = 1, #(step.lines or {}) do
-    local line = step.lines[i]
-    if line.k ~= "goto" then
-      local state = L.LineState(line, ctx)
-      local text = L.FormatLine(line)
-      if text and text ~= "" then
-        rows[#rows + 1] = { text = text, color = lineColor(state) }
-      end
-    end
-  end
-  if chapter and chapter.notes and chapter.notes[1] and db.step == 1 then
-    rows[#rows + 1] = { text = chapter.notes[1], color = MUTED }
-  end
-  return rows
 end
 
 local function hintText()
@@ -297,6 +310,60 @@ local function hintText()
     parts[#parts + 1] = "Arrow: " .. pin.name .. "."
   elseif pin and pin.zone then
     parts[#parts + 1] = "Arrow: " .. pin.zone .. "."
+  end
+  if db.options.routeMode == "discover" then
+    local chapter = AT.Chapter()
+    local notes = chapter and chapter.notes
+    if notes and notes[1] and notes[1] ~= "" then
+      parts[#parts + 1] = notes[1]
+    end
+  end
+  if db.options.hearthHints ~= false and AT.HearthRemain then
+    local remain, ready = AT.HearthRemain()
+    local hearth = L.HearthLabel(ready, remain)
+    if hearth then parts[#parts + 1] = hearth end
+  end
+  if db.options.eliteWarn ~= false and step and AT.StepThreat then
+    local elite, group = AT.StepThreat(step)
+    local warning = L.GroupWarning(elite, group)
+    if warning then
+      if db.options.skipElites then warning = warning .. " Skip elites is on." end
+      parts[#parts + 1] = warning
+    end
+  end
+  if db.options.logHints ~= false and AT.OffRouteQuests then
+    local count, names = AT.OffRouteQuests()
+    local logHint = L.AbandonHint(count, 40, names)
+    if logHint then parts[#parts + 1] = logHint end
+  end
+  if db.options.supplyHints ~= false then
+    local _, steps = AT.CurrentStep()
+    local nextStep = steps and steps[(db.step or 1) + 1]
+    local supply = L.SupplyReminder(L.LeavingTown(step, nextStep), db.class)
+    if supply then parts[#parts + 1] = supply end
+  end
+  local trainLevel = UnitLevel and UnitLevel("player") or 1
+  if db.options.trainHints ~= false and L.TrainReminder(trainLevel, db.trainNoted) and AT.Nearest then
+    local ranked = AT.Nearest("trainer")
+    local nearest = ranked and ranked[1]
+    if nearest and nearest.node then
+      local where = nearest.node.name or "Trainer"
+      if nearest.same and nearest.dist then
+        local eta = nearest.dist * 6
+        where = where .. ", about " .. L.FormatClock(eta)
+      elseif nearest.node.zone then
+        where = where .. " in " .. nearest.node.zone
+      end
+      parts[#parts + 1] = "New ranks may be available. Nearest trainer: " .. where .. "."
+    end
+  end
+  if AT.RareLine then
+    local rare = AT.RareLine()
+    if rare then parts[#parts + 1] = rare end
+  end
+  if AT.GatherLine then
+    local gather = AT.GatherLine()
+    if gather then parts[#parts + 1] = gather end
   end
   return table.concat(parts, "\n")
 end
@@ -347,10 +414,11 @@ local function renderGuide()
   local index = db.step or 1
   local total = #steps
   local manual = db.options.chapterMode == "manual"
+  local modeLabel = L.RouteModeLabel(db.options.routeMode)
   if chapter then
-    chapterLabel:SetText((manual and "Manual  " or "") .. (chapter.name or "Ashen Trail"))
+    chapterLabel:SetText((manual and "Manual  " or "") .. modeLabel .. "  " .. (chapter.name or "Ashen Trail"))
   else
-    chapterLabel:SetText(manual and "Manual" or "Ashen Trail")
+    chapterLabel:SetText((manual and "Manual  " or "") .. modeLabel)
   end
   local pct = 0
   if total > 0 then pct = math.min(1, (index - 1) / total) end
@@ -624,8 +692,12 @@ local function renderLog()
   local order = AT.DB().history.order or {}
   local byId = AT.DB().history.byId or {}
   local rows = {}
+  local session = AT.SessionLines and AT.SessionLines() or {}
+  for i = 1, #session do
+    rows[#rows + 1] = { text = session[i], color = EMBER }
+  end
   if #order == 0 then
-    rows[1] = { text = "Turn-ins you complete while Ashen Trail is running show up here.", color = MUTED }
+    rows[#rows + 1] = { text = "Turn-ins you complete while Ashen Trail is running show up here.", color = MUTED }
   else
     local startAt = math.max(1, #order - 19)
     local n = 0
@@ -637,11 +709,7 @@ local function renderLog()
     end
   end
   fillWrapped(child, rows)
-  hint:SetText("History is saved per character. Reset clears it.")
-end
-
-local function renderOptions()
-  UI.OpenOptions()
+  hint:SetText("History is saved per character. Level times are kept for alts. Reset clears the turn-in list.")
 end
 
 local function renderGate()
@@ -679,10 +747,6 @@ function UI.ApplyChrome()
   if chapterLabel then
     chapterLabel:SetFont(fontPath(), size + 1, "")
     chapterLabel:SetTextColor(colors.text[1], colors.text[2], colors.text[3])
-  end
-  if stepLabel then
-    stepLabel:SetFont(fontPath(), math.max(10, size - 1), "")
-    stepLabel:SetTextColor(colors.muted[1], colors.muted[2], colors.muted[3])
   end
   if activeTitle then
     activeTitle:SetFont(fontPath(), size, "")
@@ -782,6 +846,16 @@ function UI.PaintJunk()
   end
 end
 
+function UI.SyncXpLabel()
+  if not xpLabel then return end
+  local xp = AT.xpText or ""
+  local talent = AT.TalentLine and AT.TalentLine() or nil
+  if talent and talent ~= "" then
+    if xp ~= "" then xp = xp .. "   " .. talent else xp = talent end
+  end
+  xpLabel:SetText(xp)
+end
+
 function UI.Refresh()
   if not frame then return end
   if AT.EnsureTheme then AT.EnsureTheme() end
@@ -791,14 +865,7 @@ function UI.Refresh()
   UI.ApplyMinimap()
   UI.SyncDiscard()
   UI.SyncBreath()
-  if xpLabel then
-    local xp = AT.XpText or ""
-    local talent = AT.TalentLine and AT.TalentLine() or nil
-    if talent and talent ~= "" then
-      if xp ~= "" then xp = xp .. "   " .. talent else xp = talent end
-    end
-    xpLabel:SetText(xp)
-  end
+  UI.SyncXpLabel()
   if AT.UpdateQuestItemButton then AT.UpdateQuestItemButton() end
   if UI.UpdateMinimapPins then UI.UpdateMinimapPins() end
   local blocked = renderGate()
@@ -929,6 +996,7 @@ function UI.UpdateMapPins()
       pins[#pins + 1] = guide[i]
     end
   end
+  local step = AT.CurrentStep()
   if C_QuestLog and C_QuestLog.GetNextWaypoint and step then
     for _, line in ipairs(step.lines or {}) do
       if line.id then
@@ -992,23 +1060,37 @@ function UI.UpdateMinimapPins()
   local pins = AT.GuidePins()
   local origin = AT.PlayerPos()
   local shown = 0
+  local zoom = Minimap.GetZoom and Minimap:GetZoom() or 0
+  local indoors = IsIndoors and IsIndoors()
+  local radius = L.MinimapRadius(zoom, indoors)
+  local edge = (Minimap:GetWidth() or 140) / 2 - 12
+  if edge < 20 then edge = 50 end
   for i = 1, #pins do
     local poi = pins[i]
     if origin.zone and poi.zone == origin.zone and origin.x and poi.x then
       shown = shown + 1
       local pin = takeMini(shown)
       if pin then
-        local dx = poi.x - origin.x
-        local dy = origin.y - poi.y
-        local dist = math.sqrt(dx * dx + dy * dy)
-        local edge = (Minimap:GetWidth() or 140) / 2 - 12
-        if edge < 20 then edge = 50 end
-        local scale = 1
-        if dist < 12 then scale = dist / 12 end
-        if dist < 0.05 then scale = 0 end
-        local angle = math.atan2(dy, dx)
+        local px, py
+        local dx, dy
+        if origin.mapID and AT.WorldDelta then
+          dx, dy = AT.WorldDelta(origin.mapID, origin.x, origin.y, poi.x, poi.y)
+        end
+        if dx then
+          px, py = L.MinimapOffset(dx, dy, radius, edge)
+        else
+          local mdx = poi.x - origin.x
+          local mdy = origin.y - poi.y
+          local dist = math.sqrt(mdx * mdx + mdy * mdy)
+          local scale = 1
+          if dist < 12 then scale = dist / 12 end
+          if dist < 0.05 then scale = 0 end
+          local angle = math.atan2(mdy, mdx)
+          px = math.cos(angle) * edge * scale
+          py = math.sin(angle) * edge * scale
+        end
         pin:ClearAllPoints()
-        pin:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * edge * scale, math.sin(angle) * edge * scale)
+        pin:SetPoint("CENTER", Minimap, "CENTER", px, py)
         if poi.k == "turnin" then
           pin.icon:SetVertexColor(0.45, 0.75, 0.45)
         else
@@ -1162,7 +1244,7 @@ local function buildOptions(parent)
   y = addPairs({
     { key = "showMinimap", label = "Minimap button" },
     { key = "locked", label = "Lock frame" },
-    { key = "compact", label = "Compact window" },
+    { key = "compact", label = "Compact step only" },
   }, y)
   y = addSlider("AshenTrailFontSlider", "Font size", y, 10, 18, 1, function(value)
     AT.DB().options.fontSize = value
@@ -1180,6 +1262,12 @@ local function buildOptions(parent)
   y = addPairs({
     { key = "autoAdvance", label = "Auto-complete steps" },
     { key = "skipOverleveled", label = "Skip overleveled steps" },
+    { key = "skipElites", label = "Skip elite and group steps" },
+    { key = "eliteWarn", label = "Warn on elite and group steps" },
+    { key = "logHints", label = "Suggest off-route quests" },
+    { key = "supplyHints", label = "Town supply reminder" },
+    { key = "trainHints", label = "Trainer reminder" },
+    { key = "hearthHints", label = "Hearthstone cooldown" },
   }, y)
   local chapterButton = button(parent, "Chapters: Auto", 160, 20)
   chapterButton:SetPoint("TOPLEFT", 8, y)
@@ -1190,6 +1278,14 @@ local function buildOptions(parent)
     UI.Refresh()
   end)
   parent.chapterButton = chapterButton
+  local routeButton = button(parent, "Route: Speedrun", 160, 20)
+  routeButton:SetPoint("LEFT", chapterButton, "RIGHT", 8, 0)
+  routeButton:SetScript("OnClick", function()
+    local options = AT.DB().options
+    if options.routeMode == "discover" then options.routeMode = "speed" else options.routeMode = "discover" end
+    UI.Refresh()
+  end)
+  parent.routeButton = routeButton
   y = y - 26
   y = addSlider("AshenTrailGapSlider", "Levels past the chapter", y, 0, 8, 1, function(value)
     AT.DB().options.overlevelGap = value
@@ -1293,7 +1389,38 @@ local function buildOptions(parent)
     { key = "showNameplates", label = "Nameplate icons" },
     { key = "showObjectiveCount", label = "Objective counter" },
     { key = "trackTownsfolk", label = "Townsfolk markers" },
+    { key = "rareHints", label = "RareScanner nearby" },
+    { key = "gatherHints", label = "GatherMate nodes" },
   }, y)
+
+  y = addSection("Cues", y)
+  y = addPairs({
+    { key = "soundStep", label = "Sound when a step finishes" },
+    { key = "soundTurnIn", label = "Sound when a quest turns in" },
+    { key = "soundLevel", label = "Sound on level up" },
+  }, y)
+
+  y = addSection("Share", y)
+  local shareBox = CreateFrame("EditBox", "AshenTrailShareInput", parent, "InputBoxTemplate")
+  shareBox:SetAutoFocus(false)
+  shareBox:SetSize(250, 20)
+  shareBox:SetPoint("TOPLEFT", 14, y)
+  shareBox:SetFont(fontPath(), 11, "")
+  shareBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  parent.shareBox = shareBox
+  local exportRoute = button(parent, "Export", 70, 20)
+  exportRoute:SetPoint("LEFT", shareBox, "RIGHT", 8, 0)
+  exportRoute:SetScript("OnClick", function()
+    shareBox:SetText(AT.ExportText())
+    shareBox:HighlightText()
+  end)
+  local importRoute = button(parent, "Import", 70, 20)
+  importRoute:SetPoint("TOPLEFT", exportRoute, "BOTTOMLEFT", 0, -4)
+  importRoute:SetScript("OnClick", function()
+    AT.ImportText(shareBox:GetText())
+    shareBox:ClearFocus()
+  end)
+  y = y - 48
 
   y = addSection("Window", y)
   y = addSlider("AshenTrailScaleSlider", "Window scale", y, 0.7, 1.4, 0.05, function(value)
@@ -1306,6 +1433,15 @@ local function buildOptions(parent)
     if frame then backdrop(frame) end
     if optionsFrame then backdrop(optionsFrame) end
   end, "55%", "100%")
+  local accountButton = button(parent, "Account options: On", 180, 20)
+  accountButton:SetPoint("TOPLEFT", 8, y)
+  accountButton:SetScript("OnClick", function()
+    local db = AT.DB()
+    AT.SetUseAccount(db.useAccount == false)
+    UI.Refresh()
+  end)
+  parent.accountButton = accountButton
+  y = y - 28
 
   local function sync()
     parent.syncing = true
@@ -1330,6 +1466,13 @@ local function buildOptions(parent)
       themeButton:SetText(active and ("[" .. caption .. "]") or caption)
     end
     chapterButton:SetText(options.chapterMode == "manual" and "Chapters: Manual" or "Chapters: Auto")
+    if parent.routeButton then
+      parent.routeButton:SetText("Route: " .. L.RouteModeLabel(options.routeMode))
+    end
+    if parent.accountButton then
+      local shared = AT.DB().useAccount ~= false
+      parent.accountButton:SetText(shared and "Account options: On" or "Account options: Off")
+    end
     arrowButton:SetText(options.arrowMode == "tomtom" and "Arrow: TomTom" or "Arrow: Built-in")
     if parent.junkList then parent.junkList:SetText(AT.JunkSummary()) end
     local values = {
@@ -1642,7 +1785,8 @@ function UI.Build()
   progressBar.bar:SetTexture("Interface\\Buttons\\WHITE8x8")
   progressBar.bar:SetVertexColor(EMBER[1], EMBER[2], EMBER[3], 1)
 
-  local body = CreateFrame("Frame", nil, frame)
+  guideBody = CreateFrame("Frame", nil, frame)
+  local body = guideBody
   body:SetPoint("TOPLEFT", 8, -56)
   body:SetPoint("BOTTOMRIGHT", -8, 168)
   backdrop(body, 0.04, 0.04, 0.05, 1)
@@ -1716,9 +1860,25 @@ function UI.Build()
   prev:SetPoint("BOTTOMLEFT", 14, 46)
   prev:SetScript("OnClick", function() AT.Prev() end)
 
+  local function dragHolder(holder, key, secure)
+    holder:SetMovable(true)
+    holder:SetClampedToScreen(true)
+    secure:RegisterForDrag("LeftButton")
+    secure:SetScript("OnDragStart", function()
+      if InCombatLockdown and InCombatLockdown() then return end
+      holder.dragging = true
+      holder:StartMoving()
+    end)
+    secure:SetScript("OnDragStop", function()
+      holder:StopMovingOrSizing()
+      holder.dragging = nil
+      local point, _, rel, x, y = holder:GetPoint(1)
+      AT.DB()[key] = { point or "CENTER", rel or "CENTER", x or 0, y or 0 }
+    end)
+  end
+
   targetHolder = CreateFrame("Frame", "AshenTrailTargetHolder", UIParent)
   targetHolder:SetSize(140, 24)
-  targetHolder:SetPoint("BOTTOM", frame, "BOTTOM", 0, 46)
   targetHolder:SetFrameStrata("MEDIUM")
   local target = CreateFrame("Button", "AshenTrailTargetButton", targetHolder, "SecureActionButtonTemplate,UIPanelButtonTemplate")
   target:SetAllPoints(targetHolder)
@@ -1731,10 +1891,10 @@ function UI.Build()
     GameTooltip:Show()
   end)
   target:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  dragHolder(targetHolder, "targetPoint", target)
 
   questItemHolder = CreateFrame("Frame", "AshenTrailQuestItemHolder", UIParent)
   questItemHolder:SetSize(140, 24)
-  questItemHolder:SetPoint("BOTTOM", targetHolder, "TOP", 0, 4)
   questItemHolder:SetFrameStrata("MEDIUM")
   questItemHolder:Hide()
   local questItem = CreateFrame("Button", "AshenTrailQuestItemButton", questItemHolder, "SecureActionButtonTemplate,UIPanelButtonTemplate")
@@ -1748,11 +1908,13 @@ function UI.Build()
     GameTooltip:Show()
   end)
   questItem:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  dragHolder(questItemHolder, "questItemPoint", questItem)
 
   local nextButton = button(frame, "Next", 90, 24)
   nextButton:SetPoint("BOTTOMRIGHT", -14, 46)
   nextButton:SetScript("OnClick", function() AT.Next() end)
 
+  tabButtons = {}
   local tabX = 10
   for i = 1, #PAGES do
     local spec = PAGES[i]
@@ -1767,6 +1929,7 @@ function UI.Build()
       AT.DB().racePicker = false
       UI.Refresh()
     end)
+    tabButtons[i] = tab
     tabX = tabX + 64
   end
 

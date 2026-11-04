@@ -527,7 +527,9 @@ step
 step
     .goto The Barrens,54,25,50
     >>Clear Razormane camps north-east of Crossroads
-    .complete 871,1 >>Razormane
+    .complete 871,1 >>Razormane Water Seeker
+    .complete 871,2 >>Razormane Thornweaver
+    .complete 871,3 >>Razormane Hunter
 step
     .goto The Barrens,51.5,30.2
     .goto The Barrens,51.5,30.2
@@ -695,8 +697,17 @@ step
 step
     >>Inside Blackfathom Deeps. Talk to Argent Guard Thaelrid. Accept: Blackfathom Villainy.
 step
-    .goto Ashenvale,35,48.6
-    >>Talk to Llana. Accept: Lost in the Thicket Things.
+    .goto Orgrimmar,57.4,53.4
+    .accept 95697 >>Talk to Borstan. Accept: Changing Tastes
+step
+    .goto Orgrimmar,57.4,53.4
+    .turnin 95697 >>Talk to Borstan. Turn in: Changing Tastes
+step
+    .goto Thunder Bluff,70.8,33.8
+    .accept 98823 >>Talk to Bashana Runetotem. Accept: Earthen Echo
+step
+    .goto Mulgore,33.4,22.4
+    .turnin 98823 >>Talk to Muln Earthfury. Turn in: Earthen Echo
 step
     >>Clear Blackfathom Deeps once with those quests, then go back to outdoor Ashenvale quests.
 step
