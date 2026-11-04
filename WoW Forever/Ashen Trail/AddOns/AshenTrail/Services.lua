@@ -3,7 +3,6 @@
 
 AshenTrailServices = {
   nodes = {
-    { id = "fp-senjin", kind = "fp", name = "Sen'jin Village", zone = "Durotar", x = 52.0, y = 68.3 },
     { id = "inn-senjin", kind = "inn", name = "Sen'jin Village", zone = "Durotar", x = 52.0, y = 68.3, repair = true, bind = { "Sen'jin Village" } },
     { id = "fp-razorhill", kind = "fp", name = "Razor Hill", zone = "Durotar", x = 51.9, y = 43.5 },
     { id = "inn-razorhill", kind = "inn", name = "Razor Hill", zone = "Durotar", x = 51.9, y = 43.5, repair = true, bind = { "Razor Hill" } },
