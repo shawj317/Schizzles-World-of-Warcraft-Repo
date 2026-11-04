@@ -44,8 +44,8 @@ local NEAR_FILTERS = {
   { id = "zeppelin", label = "Zeppelin" },
 }
 
-local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, minimapButton, discardButton, breath
-local linePool, rowPool, pinPool, markPool = {}, {}, {}, {}
+local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath
+local linePool, rowPool, pinPool, stepPool, menuPool = {}, {}, {}, {}, {}
 local mapPins = {}
 local nearFilter = "all"
 
@@ -88,19 +88,29 @@ end
 local function paint(fs, r, g, b)
   fs:SetFont(fontPath(), fontSize(), "")
   fs:SetTextColor(r, g, b)
+  if fs.SetShadowColor then
+    fs:SetShadowColor(0, 0, 0, 1)
+    fs:SetShadowOffset(1, -1)
+  end
 end
 
 local function backdrop(widget, r, g, b, a)
-  if not widget.SetBackdrop then return end
   local colors = theme()
-  widget:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-  })
-  widget:SetBackdropColor(r or colors.bg[1], g or colors.bg[2], b or colors.bg[3], a or 0.94)
-  widget:SetBackdropBorderColor(colors.edge[1], colors.edge[2], colors.edge[3], 0.95)
+  if not widget.ashenEdge then
+    local edge = widget:CreateTexture(nil, "BACKGROUND")
+    edge:SetAllPoints()
+    edge:SetTexture("Interface\\Buttons\\WHITE8x8")
+    widget.ashenEdge = edge
+    local bg = widget:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", widget, "TOPLEFT", 1, -1)
+    bg:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -1, 1)
+    bg:SetTexture("Interface\\Buttons\\WHITE8x8")
+    widget.ashenPlate = bg
+  end
+  widget.ashenEdge:SetVertexColor(colors.edge[1], colors.edge[2], colors.edge[3], 1)
+  local alpha = a
+  if not alpha then alpha = tonumber(AT.DB().options.alpha) or 0.96 end
+  widget.ashenPlate:SetVertexColor(r or colors.bg[1], g or colors.bg[2], b or colors.bg[3], alpha)
 end
 
 local function button(parent, text, width, height)
@@ -155,9 +165,9 @@ end
 local function layoutFrame()
   local db = AT.DB()
   local compact = db.options.compact
-  frame:SetSize(460, compact and 430 or 560)
+  frame:SetSize(440, compact and 500 or 600)
   frame:SetScale(db.options.scale or 1)
-  frame:SetAlpha(db.options.alpha or 0.94)
+  frame:SetAlpha(1)
   frame:SetMovable(not db.options.locked)
   if db.hidden then frame:Hide() else frame:Show() end
 end
@@ -170,51 +180,25 @@ local function lineColor(state)
   return colors.text
 end
 
-local function ensureMark(parent, index)
-  local widget = markPool[index]
-  if widget then return widget end
-  widget = button(parent, "Mark", 52, 18)
-  markPool[index] = widget
-  return widget
-end
-
 local function fillWrapped(parent, rows, onClick)
   local width = parent:GetWidth()
   if width < 40 then width = 400 end
   local y = -4
-  local marks = 0
   for i = 1, #rows do
     local row = rows[i]
     local fs = ensureLine(parent, i)
     fs:SetParent(parent)
     paint(fs, row.color[1], row.color[2], row.color[3])
-    local markWidth = 0
-    if row.mark then
-      marks = marks + 1
-      local pin = row.mark
-      local mark = ensureMark(parent, marks)
-      mark:SetParent(parent)
-      mark:ClearAllPoints()
-      mark:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, y)
-      mark:SetScript("OnClick", function()
-        AT.FocusNode({ zone = pin.zone, x = pin.x, y = pin.y, name = pin.name, kind = "goto" })
-        AT.Say("Arrow set to " .. (pin.name or "that spot") .. ".")
-      end)
-      mark:Show()
-      markWidth = 58
-    end
-    fs:SetWidth(width - 16 - markWidth)
+    fs:SetWidth(width - 16)
     fs:SetText(row.text)
     fs:ClearAllPoints()
     fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, y)
     fs:Show()
     local height = fs:GetStringHeight()
     if not height or height < 8 then height = fontSize() + 2 end
-    if row.mark and height < 18 then height = 18 end
     y = y - height - 6
   end
   hidePool(linePool, #rows + 1)
-  hidePool(markPool, marks + 1)
   parent:SetHeight(math.max(24, -y + 8))
   if onClick then onClick(rows) end
 end
@@ -239,11 +223,7 @@ local function guideRows()
       local state = L.LineState(line, ctx)
       local text = L.FormatLine(line)
       if text and text ~= "" then
-        local row = { text = text, color = lineColor(state) }
-        if line.zone and line.x and line.y and (line.k == "dungeon" or line.k == "accept" or line.k == "turnin" or line.k == "trainer") then
-          row.mark = { zone = line.zone, x = line.x, y = line.y, name = line.npc or line.mark or line.name }
-        end
-        rows[#rows + 1] = row
+        rows[#rows + 1] = { text = text, color = lineColor(state) }
       end
     end
   end
@@ -278,22 +258,58 @@ local function hintText()
   elseif not plan and status ~= "manual" then
     parts[#parts + 1] = "No mapped road for this step. Follow the text."
   end
-  if step then
-    for i = 1, #(step.lines or {}) do
-      local line = step.lines[i]
-      if line.k == "dungeon" and line.x and line.zone then
-        parts[#parts + 1] = "Press Mark beside a line to point the arrow at that NPC."
-        break
-      end
-    end
+  local pin = step and L.ActivePin(step, AT.Context())
+  if pin and pin.name and pin.name ~= pin.zone then
+    parts[#parts + 1] = "Arrow: " .. pin.name .. "."
+  elseif pin and pin.zone then
+    parts[#parts + 1] = "Arrow: " .. pin.zone .. "."
   end
   return table.concat(parts, "\n")
 end
 
+local function stepBody(step)
+  local parts = {}
+  for i = 1, #(step.lines or {}) do
+    local text = L.FormatLine(step.lines[i])
+    if text and text ~= "" then parts[#parts + 1] = text end
+  end
+  if #parts == 0 then return "Follow the route." end
+  return table.concat(parts, "\n")
+end
+
+local function ensureStep(parent, index)
+  local row = stepPool[index]
+  if row then return row end
+  row = CreateFrame("Button", nil, parent)
+  row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  row.bar = row:CreateTexture(nil, "BACKGROUND")
+  row.bar:SetAllPoints()
+  row.bar:SetTexture("Interface\\Buttons\\WHITE8x8")
+  row.text = row:CreateFontString(nil, "OVERLAY")
+  row.text:SetPoint("TOPLEFT", 8, -5)
+  row.text:SetJustifyH("LEFT")
+  row.text:SetJustifyV("TOP")
+  row.text:SetWordWrap(true)
+  row.num = row:CreateFontString(nil, "OVERLAY")
+  row.num:SetPoint("TOPRIGHT", -6, -5)
+  row.num:SetJustifyH("RIGHT")
+  row:SetScript("OnEnter", function(self)
+    if self.hot and self.bar then self.bar:SetVertexColor(self.hot[1], self.hot[2], self.hot[3], self.hot[4]) end
+  end)
+  row:SetScript("OnLeave", function(self)
+    if self.idle and self.bar then self.bar:SetVertexColor(self.idle[1], self.idle[2], self.idle[3], self.idle[4]) end
+  end)
+  stepPool[index] = row
+  return row
+end
+
+local guideScrollStep
+
 local function renderGuide()
   local db = AT.DB()
-  local chapter = AT.Chapter()
+  local chapter, chapterId = AT.Chapter()
   local _, steps = AT.CurrentStep()
+  steps = steps or {}
   local index = db.step or 1
   local total = #steps
   local manual = db.options.chapterMode == "manual"
@@ -302,18 +318,78 @@ local function renderGuide()
   else
     chapterLabel:SetText(manual and "Manual" or "Ashen Trail")
   end
-  if db.finished then
-    stepLabel:SetText("Route complete")
-  else
-    stepLabel:SetText(string.format("Step %d / %d", math.min(index, math.max(total, 1)), math.max(total, 1)))
-  end
   local pct = 0
   if total > 0 then pct = math.min(1, (index - 1) / total) end
   if db.finished then pct = 1 end
-  local width = progressBar.bg:GetWidth()
-  progressBar.bar:SetWidth(math.max(1, width * pct))
+  if progressBar and progressBar.bg then
+    progressBar.bar:SetWidth(math.max(1, (progressBar.bg:GetWidth() or 1) * pct))
+  end
   local child = pages.guide.child
-  fillWrapped(child, guideRows())
+  local width = child:GetWidth()
+  if width < 40 then width = 390 end
+  local colors = theme()
+  local y = -2
+  local currentTop = 0
+  for i = 1, total do
+    local step = steps[i]
+    local row = ensureStep(child, i)
+    row:SetParent(child)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", child, "TOPLEFT", 2, y)
+    row:SetWidth(width - 8)
+    local skipped = AT.IsSkipped(chapterId, step)
+    local current = (not db.finished) and i == index
+    local textColor = colors.text
+    if skipped then textColor = colors.muted
+    elseif current then textColor = colors.open end
+    paint(row.text, textColor[1], textColor[2], textColor[3])
+    paint(row.num, current and colors.title[1] or colors.muted[1], current and colors.title[2] or colors.muted[2], current and colors.title[3] or colors.muted[3])
+    row.text:SetWidth(width - 52)
+    row.text:SetText(stepBody(step))
+    row.num:SetText(tostring(i))
+    local height = row.text:GetStringHeight()
+    if not height or height < 8 then height = fontSize() + 2 end
+    row:SetHeight(height + 10)
+    local idleAlpha = 0
+    if current then idleAlpha = 0.22
+    elseif skipped then idleAlpha = 0.06 end
+    row.idle = { colors.accent[1], colors.accent[2], colors.accent[3], idleAlpha }
+    row.hot = { colors.accent[1], colors.accent[2], colors.accent[3], math.min(0.4, idleAlpha + 0.12) }
+    row.bar:SetVertexColor(row.idle[1], row.idle[2], row.idle[3], row.idle[4])
+    local captured = i
+    row:SetScript("OnClick", function(_, button)
+      if button == "RightButton" then
+        UI.ShowMenu(captured)
+      else
+        AT.ToggleStep(captured)
+      end
+    end)
+    row:Show()
+    if current then currentTop = -y end
+    y = y - (height + 12)
+  end
+  hidePool(stepPool, total + 1)
+  child:SetHeight(math.max(24, -y + 8))
+  if guideScrollStep ~= index and pages.guide.SetVerticalScroll then
+    guideScrollStep = index
+    local offset = currentTop - 12
+    if offset < 0 then offset = 0 end
+    pages.guide:SetVerticalScroll(offset)
+  end
+  local active = steps[index]
+  if activeTitle then
+    if db.finished then
+      activeTitle:SetText("Route complete")
+    else
+      activeTitle:SetText(string.format("Step %d", math.min(index, math.max(total, 1))))
+    end
+    paint(activeTitle, colors.title[1], colors.title[2], colors.title[3])
+  end
+  if activeBody then
+    local body = db.finished and "Bank heirlooms, lock Dual Spec, and claim the Legacy Point." or (active and stepBody(active) or "This chapter has no steps for your race and class.")
+    paint(activeBody, colors.text[1], colors.text[2], colors.text[3])
+    activeBody:SetText(body)
+  end
   hint:SetText(hintText())
 end
 
@@ -375,7 +451,7 @@ local function renderPins()
   end
   hidePool(rowPool, #rows + 1)
   child:SetHeight(math.max(24, -y))
-  hint:SetText("Click a pin to point the arrow at it. Mark on a dungeon line does the same thing. Step changes clear that override.")
+  hint:SetText("Click a pin to aim the arrow there until the step changes. The guide aims the active step on its own.")
 end
 
 local function renderNear()
@@ -515,8 +591,7 @@ local function renderLog()
 end
 
 local function renderOptions()
-  hint:SetText("Themes and these switches are saved on this character. Auto chapters are the default. Junk never sells or drops a whitelisted item.")
-  if pages.options.sync then pages.options.sync() end
+  UI.OpenOptions()
 end
 
 local function renderGate()
@@ -559,13 +634,22 @@ function UI.ApplyChrome()
     stepLabel:SetFont(fontPath(), math.max(10, size - 1), "")
     stepLabel:SetTextColor(colors.muted[1], colors.muted[2], colors.muted[3])
   end
+  if activeTitle then
+    activeTitle:SetFont(fontPath(), size, "")
+    activeTitle:SetTextColor(colors.title[1], colors.title[2], colors.title[3])
+  end
+  if activeBody then
+    activeBody:SetFont(fontPath(), math.max(11, size - 1), "")
+    activeBody:SetTextColor(colors.text[1], colors.text[2], colors.text[3])
+  end
   if hint then
     hint:SetFont(fontPath(), math.max(10, size - 2), "")
     hint:SetTextColor(colors.muted[1], colors.muted[2], colors.muted[3])
   end
-  if progressBar and progressBar.bar and progressBar.bar.SetColorTexture then
-    progressBar.bar:SetColorTexture(colors.accent[1], colors.accent[2], colors.accent[3], 1)
+  if progressBar and progressBar.bar and progressBar.bar.SetVertexColor then
+    progressBar.bar:SetVertexColor(colors.accent[1], colors.accent[2], colors.accent[3], 1)
   end
+  if optionsFrame then backdrop(optionsFrame) end
   if breath then backdrop(breath) end
 end
 
@@ -640,6 +724,10 @@ function UI.Refresh()
   UI.SyncBreath()
   local blocked = renderGate()
   local page = db.options.page or "guide"
+  if page == "options" then
+    page = "guide"
+    db.options.page = "guide"
+  end
   if blocked then
     showPage("gate")
   else
@@ -650,7 +738,6 @@ function UI.Refresh()
     elseif page == "route" then renderRoute()
     elseif page == "gear" then renderGear()
     elseif page == "log" then renderLog()
-    elseif page == "options" then renderOptions()
     else renderGuide() end
   end
   if pages.near and pages.near.filterLabel then
@@ -1075,7 +1162,8 @@ local function buildOptions(parent)
   end, "0.7", "1.4")
   y = addSlider("AshenTrailAlphaSlider", "Opacity", y, 0.55, 1, 0.05, function(value)
     AT.DB().options.alpha = value
-    if frame then frame:SetAlpha(value) end
+    if frame then backdrop(frame) end
+    if optionsFrame then backdrop(optionsFrame) end
   end, "55%", "100%")
 
   local function sync()
@@ -1216,6 +1304,77 @@ function UI.ApplyMinimap()
   end
 end
 
+function UI.ShowRoutePicker()
+  local db = AT.DB()
+  db.racePicker = true
+  if not pages or not pages.gate then return end
+  pages.gate:Show()
+  pages.gate.title:SetText("Switch route")
+  pages.gate.body:SetText(db.pendingRace and "Click the same race again to reset progress." or "Pick a start. Switching clears tracked turn-ins.")
+  pages.gate.force:Hide()
+  for i = 1, #pages.gate.races do pages.gate.races[i]:Show() end
+end
+
+function UI.OpenOptions()
+  if not optionsFrame then return end
+  if optionsFrame:IsShown() then
+    optionsFrame:Hide()
+    return
+  end
+  optionsFrame:Show()
+  if optionsFrame.sync then optionsFrame.sync() end
+end
+
+function UI.ShowMenu(stepIndex)
+  if not menu then return end
+  local items = {}
+  if stepIndex then
+    items[#items + 1] = { "Go to step " .. tostring(stepIndex), function() AT.GoToStep(stepIndex) end }
+  end
+  items[#items + 1] = { "Chapters", function()
+    if frame.chapters:IsShown() then frame.chapters:Hide() else frame.chapters:Show() UI.FillChapters() end
+  end }
+  items[#items + 1] = { "Reload guide", function()
+    AT.PrimeCompleted()
+    AT.Sync(true)
+    AT.Say("Reloaded the guide from your quest log.")
+  end }
+  items[#items + 1] = { "Switch route", function() UI.ShowRoutePicker() end }
+  items[#items + 1] = { "Options", function() UI.OpenOptions() end }
+  items[#items + 1] = { "Close", function()
+    if not AT.DB().hidden then AT.Toggle() end
+  end }
+  local y = -6
+  for i = 1, #items do
+    local row = menuPool[i]
+    if not row then
+      row = button(menu, "", 168, 20)
+      menuPool[i] = row
+    end
+    row:SetParent(menu)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", 6, y)
+    row:SetText(items[i][1])
+    row:SetScript("OnClick", function()
+      menu:Hide()
+      if menu.catcher then menu.catcher:Hide() end
+      items[i][2]()
+    end)
+    row:Show()
+    y = y - 22
+  end
+  for i = #items + 1, #menuPool do menuPool[i]:Hide() end
+  menu:SetHeight(math.max(28, -y + 8))
+  menu:SetWidth(180)
+  local x, yPos = GetCursorPosition()
+  local scale = UIParent:GetEffectiveScale()
+  if not scale or scale == 0 then scale = 1 end
+  menu:ClearAllPoints()
+  menu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (x / scale) , (yPos / scale))
+  if menu.catcher then menu.catcher:Show() end
+  menu:Show()
+end
+
 function UI.Build()
   if frame then
     UI.Refresh()
@@ -1238,91 +1397,54 @@ function UI.Build()
     local point, _, rel, x, y = self:GetPoint()
     AT.DB().point = { point, rel, x, y }
   end)
+  frame:SetScript("OnMouseUp", function(_, button)
+    if button == "RightButton" then UI.ShowMenu(nil) end
+  end)
   backdrop(frame)
   local point = AT.DB().point
   frame:SetPoint(point[1] or "CENTER", UIParent, point[2] or "CENTER", point[3] or 0, point[4] or 0)
 
   local title = frame:CreateFontString(nil, "OVERLAY")
-  title:SetFont(fontPath(), 18, "")
-  title:SetPoint("TOPLEFT", 14, -12)
+  title:SetFont(fontPath(), 12, "")
+  title:SetPoint("TOPLEFT", 14, -8)
   title:SetTextColor(EMBER[1], EMBER[2], EMBER[3])
   title:SetText("Ashen Trail")
   frame.title = title
 
-  local close = button(frame, "Hide", 52, 20)
-  close:SetPoint("TOPRIGHT", -10, -10)
+  local close = button(frame, "Hide", 52, 18)
+  close:SetPoint("TOPRIGHT", -8, -6)
   close:SetScript("OnClick", function() AT.Toggle() end)
 
-  local race = button(frame, "Race", 52, 20)
-  race:SetPoint("RIGHT", close, "LEFT", -4, 0)
-  race:SetScript("OnClick", function()
-    local db = AT.DB()
-    db.racePicker = not db.racePicker
-    if db.racePicker then
-      pages.gate:Show()
-      pages.gate.title:SetText("Switch route")
-      pages.gate.body:SetText(db.pendingRace and "Click the same race again to reset progress." or "Pick a start. Switching clears tracked turn-ins.")
-      pages.gate.force:Hide()
-      for i = 1, #pages.gate.races do pages.gate.races[i]:Show() end
-    else
-      UI.Refresh()
-    end
-  end)
-
-  local sync = button(frame, "Catch up", 78, 20)
-  sync:SetPoint("RIGHT", race, "LEFT", -4, 0)
-  sync:SetScript("OnClick", function()
-    AT.PrimeCompleted()
-    AT.Sync(true)
-    AT.Say("Caught up to the first unfinished step.")
-  end)
-
   chapterLabel = frame:CreateFontString(nil, "OVERLAY")
-  chapterLabel:SetPoint("TOPLEFT", 14, -40)
-  chapterLabel:SetPoint("TOPRIGHT", -14, -40)
+  chapterLabel:SetPoint("TOPLEFT", 14, -26)
+  chapterLabel:SetPoint("TOPRIGHT", -70, -26)
   chapterLabel:SetJustifyH("LEFT")
-  chapterLabel:SetFont(fontPath(), 14, "")
+  chapterLabel:SetFont(fontPath(), 15, "")
   chapterLabel:SetTextColor(BONE[1], BONE[2], BONE[3])
-
-  local chapterButton = button(frame, "Chapters", 80, 18)
-  chapterButton:SetPoint("TOPRIGHT", -12, -58)
-  local skip = button(frame, "Skip", 52, 18)
-  skip:SetPoint("TOPRIGHT", chapterButton, "TOPLEFT", -6, 0)
-  skip:SetScript("OnClick", function() AT.Skip() end)
-  skip:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Skip this step")
-    GameTooltip:AddLine("Moves past a stuck step. Prev, then /at unskip, tries it again.", 1, 1, 1, true)
-    GameTooltip:Show()
-  end)
-  skip:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  chapterButton:SetScript("OnClick", function()
-    local list = frame.chapters
-    if list:IsShown() then list:Hide() else list:Show() UI.FillChapters() end
-  end)
-
-  stepLabel = frame:CreateFontString(nil, "OVERLAY")
-  stepLabel:SetPoint("TOPLEFT", 14, -62)
-  stepLabel:SetFont(fontPath(), 12, "")
-  stepLabel:SetTextColor(MUTED[1], MUTED[2], MUTED[3])
+  if chapterLabel.SetShadowColor then
+    chapterLabel:SetShadowColor(0, 0, 0, 1)
+    chapterLabel:SetShadowOffset(1, -1)
+  end
 
   progressBar = CreateFrame("Frame", nil, frame)
-  progressBar:SetPoint("TOPLEFT", 14, -82)
-  progressBar:SetPoint("TOPRIGHT", -12, -82)
-  progressBar:SetHeight(8)
+  progressBar:SetPoint("TOPLEFT", 14, -48)
+  progressBar:SetPoint("TOPRIGHT", -12, -48)
+  progressBar:SetHeight(4)
   progressBar.bg = progressBar:CreateTexture(nil, "BACKGROUND")
   progressBar.bg:SetAllPoints()
-  progressBar.bg:SetColorTexture(0.2, 0.16, 0.12, 1)
+  progressBar.bg:SetTexture("Interface\\Buttons\\WHITE8x8")
+  progressBar.bg:SetVertexColor(0.2, 0.16, 0.12, 1)
   progressBar.bar = progressBar:CreateTexture(nil, "ARTWORK")
   progressBar.bar:SetPoint("LEFT")
-  progressBar.bar:SetHeight(8)
+  progressBar.bar:SetHeight(4)
   progressBar.bar:SetWidth(1)
-  progressBar.bar:SetColorTexture(EMBER[1], EMBER[2], EMBER[3], 1)
+  progressBar.bar:SetTexture("Interface\\Buttons\\WHITE8x8")
+  progressBar.bar:SetVertexColor(EMBER[1], EMBER[2], EMBER[3], 1)
 
   local body = CreateFrame("Frame", nil, frame)
-  body:SetPoint("TOPLEFT", 10, -98)
-  body:SetPoint("BOTTOMRIGHT", -10, 118)
-  backdrop(body, 0.05, 0.04, 0.04, 0.6)
+  body:SetPoint("TOPLEFT", 8, -56)
+  body:SetPoint("BOTTOMRIGHT", -8, 168)
+  backdrop(body, 0.04, 0.04, 0.05, 1)
 
   pages = {}
   pages.guide = makeScroll(body)
@@ -1331,14 +1453,8 @@ function UI.Build()
   pages.route = makeScroll(body)
   pages.gear = makeScroll(body)
   pages.log = makeScroll(body)
-  pages.options = makeScroll(body)
   pages.gate = CreateFrame("Frame", nil, body)
   pages.gate:SetAllPoints()
-  buildOptions(pages.options.child)
-  pages.options.sync = pages.options.child.sync
-  pages.options:SetScript("OnShow", function()
-    if pages.options.sync then pages.options.sync() end
-  end)
   buildGate(pages.gate)
 
   pages.near.filterLabel = pages.near:CreateFontString(nil, "OVERLAY")
@@ -1369,10 +1485,26 @@ function UI.Build()
     for i = 1, #NEAR_FILTERS do pages.near["filter" .. i]:Hide() end
   end)
 
+  activeTitle = frame:CreateFontString(nil, "OVERLAY")
+  activeTitle:SetPoint("BOTTOMLEFT", 14, 146)
+  activeTitle:SetFont(fontPath(), 13, "")
+  activeTitle:SetTextColor(EMBER[1], EMBER[2], EMBER[3])
+  activeTitle:SetText("Step")
+
+  activeBody = frame:CreateFontString(nil, "OVERLAY")
+  activeBody:SetPoint("BOTTOMLEFT", 14, 108)
+  activeBody:SetPoint("BOTTOMRIGHT", -14, 108)
+  activeBody:SetHeight(36)
+  activeBody:SetJustifyH("LEFT")
+  activeBody:SetJustifyV("TOP")
+  activeBody:SetWordWrap(true)
+  activeBody:SetFont(fontPath(), 12, "")
+  activeBody:SetTextColor(BONE[1], BONE[2], BONE[3])
+
   hint = frame:CreateFontString(nil, "OVERLAY")
   hint:SetPoint("BOTTOMLEFT", 14, 78)
   hint:SetPoint("BOTTOMRIGHT", -14, 78)
-  hint:SetHeight(36)
+  hint:SetHeight(28)
   hint:SetJustifyH("LEFT")
   hint:SetJustifyV("TOP")
   hint:SetWordWrap(true)
@@ -1406,6 +1538,10 @@ function UI.Build()
     local tab = button(frame, spec.label, 60, 20)
     tab:SetPoint("BOTTOMLEFT", tabX, 14)
     tab:SetScript("OnClick", function()
+      if spec.id == "options" then
+        UI.OpenOptions()
+        return
+      end
       AT.DB().options.page = spec.id
       AT.DB().racePicker = false
       UI.Refresh()
@@ -1462,6 +1598,54 @@ function UI.Build()
   breath.label:SetPoint("CENTER")
   breath.label:SetFont(fontPath(), 14, "")
   breath:Hide()
+
+  optionsFrame = CreateFrame("Frame", "AshenTrailOptions", UIParent)
+  optionsFrame:SetSize(440, 540)
+  optionsFrame:SetPoint("TOPLEFT", frame, "TOPRIGHT", 10, 0)
+  optionsFrame:SetFrameStrata("HIGH")
+  optionsFrame:SetClampedToScreen(true)
+  optionsFrame:SetMovable(true)
+  optionsFrame:EnableMouse(true)
+  optionsFrame:RegisterForDrag("LeftButton")
+  optionsFrame:SetScript("OnDragStart", function(self)
+    if InCombatLockdown and InCombatLockdown() then return end
+    self:StartMoving()
+  end)
+  optionsFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+  backdrop(optionsFrame)
+  local optTitle = optionsFrame:CreateFontString(nil, "OVERLAY")
+  optTitle:SetPoint("TOPLEFT", 14, -12)
+  optTitle:SetFont(fontPath(), 16, "")
+  optTitle:SetText("Options")
+  optTitle:SetTextColor(EMBER[1], EMBER[2], EMBER[3])
+  local optClose = button(optionsFrame, "Close", 64, 20)
+  optClose:SetPoint("TOPRIGHT", -8, -8)
+  optClose:SetScript("OnClick", function() optionsFrame:Hide() end)
+  local optBody = CreateFrame("Frame", nil, optionsFrame)
+  optBody:SetPoint("TOPLEFT", 8, -40)
+  optBody:SetPoint("BOTTOMRIGHT", -8, 8)
+  local optScroll = makeScroll(optBody)
+  optScroll:ClearAllPoints()
+  optScroll:SetPoint("TOPLEFT", optBody, "TOPLEFT", 0, 0)
+  optScroll:SetPoint("BOTTOMRIGHT", optBody, "BOTTOMRIGHT", 0, 0)
+  buildOptions(optScroll.child)
+  optionsFrame.sync = optScroll.child.sync
+  optionsFrame:Hide()
+
+  menu = CreateFrame("Frame", "AshenTrailMenu", UIParent)
+  menu:SetFrameStrata("TOOLTIP")
+  menu:SetSize(180, 150)
+  menu:EnableMouse(true)
+  menu:Hide()
+  backdrop(menu, nil, nil, nil, 0.98)
+  menu.catcher = CreateFrame("Button", nil, UIParent)
+  menu.catcher:SetAllPoints(UIParent)
+  menu.catcher:SetFrameStrata("DIALOG")
+  menu.catcher:SetScript("OnClick", function()
+    menu:Hide()
+    menu.catcher:Hide()
+  end)
+  menu.catcher:Hide()
 
   buildMinimap()
   if WorldMapFrame and WorldMapFrame.HookScript then
