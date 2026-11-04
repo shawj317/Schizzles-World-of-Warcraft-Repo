@@ -4,7 +4,7 @@ Horde leveling tracker for **World of Warcraft: Forever**, by Jon Shaw (Schizzle
 
 ## Install the tracker
 
-The TOC interface is **160000**, so this copy loads on World of Warcraft: Forever.
+The TOC interface is **16001**, so this copy loads on World of Warcraft: Forever.
 
 1. Copy `AddOns/AshenTrail` into `Interface\AddOns\` on the Forever client.
 2. The folder name must stay `AshenTrail`.
@@ -26,7 +26,7 @@ The tracker follows quest pins, spawns, and givers, townsfolk, nameplate icons, 
 | File | Purpose |
 |------|--------|
 | [Leveling Guide.md](./Leveling%20Guide.md) | Human-readable route overview |
-| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. Interface 160000 for Forever. No RestedXP required |
+| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. Interface 16001 for Forever. No RestedXP required |
 | [AddOns/RXPGuides_CustomHordeForever](./AddOns/RXPGuides_CustomHordeForever/) | Optional RXP guide pack (`#forever`, `<< Horde`) |
 
 ## Route summary
