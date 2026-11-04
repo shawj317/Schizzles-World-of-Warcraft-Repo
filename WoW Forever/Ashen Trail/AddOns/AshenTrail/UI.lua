@@ -44,7 +44,8 @@ local NEAR_FILTERS = {
   { id = "zeppelin", label = "Zeppelin" },
 }
 
-local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath
+local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath, targetHolder, xpLabel
+local pendingLayout = false
 local linePool, rowPool, pinPool, stepPool, menuPool = {}, {}, {}, {}, {}
 local mapPins = {}
 local nearFilter = "all"
@@ -163,13 +164,27 @@ local function showPage(id)
 end
 
 local function layoutFrame()
+  if InCombatLockdown and InCombatLockdown() then
+    pendingLayout = true
+    return
+  end
+  pendingLayout = false
   local db = AT.DB()
   local compact = db.options.compact
+  local scale = db.options.scale or 1
   frame:SetSize(440, compact and 500 or 600)
-  frame:SetScale(db.options.scale or 1)
+  frame:SetScale(scale)
   frame:SetAlpha(1)
   frame:SetMovable(not db.options.locked)
   if db.hidden then frame:Hide() else frame:Show() end
+  if targetHolder then
+    targetHolder:SetScale(scale)
+    if db.hidden then targetHolder:Hide() else targetHolder:Show() end
+  end
+end
+
+function UI.ApplyPendingLayout()
+  if pendingLayout then layoutFrame() end
 end
 
 local function lineColor(state)
@@ -678,6 +693,25 @@ end
 
 function UI.PaintJunk()
   local show = AT.DB().options.showJunk
+  local bagsOpen = ContainerFrame1 and ContainerFrame1.IsShown and ContainerFrame1:IsShown()
+  if not show or not bagsOpen then
+    if UI.junkPainted then
+      local frames = NUM_CONTAINER_FRAMES or 13
+      for bag = 1, frames do
+        local bagFrame = _G["ContainerFrame" .. bag]
+        if bagFrame then
+          local slots = bagFrame.size or 36
+          for slot = 1, slots do
+            local buttonWidget = _G["ContainerFrame" .. bag .. "Item" .. slot]
+            if buttonWidget and buttonWidget.ashenJunk then buttonWidget.ashenJunk:Hide() end
+          end
+        end
+      end
+      UI.junkPainted = false
+    end
+    return
+  end
+  UI.junkPainted = true
   local frames = NUM_CONTAINER_FRAMES or 13
   for bag = 1, frames do
     local bagFrame = _G["ContainerFrame" .. bag]
@@ -722,6 +756,7 @@ function UI.Refresh()
   UI.ApplyMinimap()
   UI.SyncDiscard()
   UI.SyncBreath()
+  if xpLabel then xpLabel:SetText(AT.XpText or "") end
   local blocked = renderGate()
   local page = db.options.page or "guide"
   if page == "options" then
@@ -1415,6 +1450,13 @@ function UI.Build()
   close:SetPoint("TOPRIGHT", -8, -6)
   close:SetScript("OnClick", function() AT.Toggle() end)
 
+  xpLabel = frame:CreateFontString(nil, "OVERLAY")
+  xpLabel:SetPoint("RIGHT", close, "LEFT", -8, 0)
+  xpLabel:SetJustifyH("RIGHT")
+  xpLabel:SetFont(fontPath(), 11, "")
+  xpLabel:SetTextColor(MUTED[1], MUTED[2], MUTED[3])
+  xpLabel:SetText("")
+
   chapterLabel = frame:CreateFontString(nil, "OVERLAY")
   chapterLabel:SetPoint("TOPLEFT", 14, -26)
   chapterLabel:SetPoint("TOPRIGHT", -70, -26)
@@ -1515,9 +1557,12 @@ function UI.Build()
   prev:SetPoint("BOTTOMLEFT", 14, 46)
   prev:SetScript("OnClick", function() AT.Prev() end)
 
-  local target = CreateFrame("Button", "AshenTrailTargetButton", frame, "SecureActionButtonTemplate,UIPanelButtonTemplate")
-  target:SetSize(140, 24)
-  target:SetPoint("BOTTOM", 0, 46)
+  targetHolder = CreateFrame("Frame", "AshenTrailTargetHolder", UIParent)
+  targetHolder:SetSize(140, 24)
+  targetHolder:SetPoint("BOTTOM", frame, "BOTTOM", 0, 46)
+  targetHolder:SetFrameStrata("MEDIUM")
+  local target = CreateFrame("Button", "AshenTrailTargetButton", targetHolder, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+  target:SetAllPoints(targetHolder)
   target:SetText("Target")
   target:SetAttribute("type", "macro")
   target:SetAttribute("macrotext", "")
