@@ -298,6 +298,37 @@ function L.PrimaryPin(step)
   return giver or turnin or markPin or trainer or spawn or service or gotoPin
 end
 
+function L.ActivePin(step, ctx)
+  if not step then return nil end
+  local carried = nil
+  local first = nil
+  ctx = ctx or {}
+  for _, line in ipairs(step.lines or {}) do
+    local here = nil
+    if line.zone and line.x and line.y and (line.k == "goto" or line.k == "accept" or line.k == "turnin" or line.k == "trainer" or line.k == "dungeon") then
+      here = {
+        zone = line.zone,
+        x = line.x,
+        y = line.y,
+        name = line.npc or line.mark or line.name or line.place or line.zone,
+      }
+      if line.k == "goto" then here.name = line.zone end
+      carried = here
+    elseif carried and (line.k == "fp" or line.k == "home") then
+      here = { zone = carried.zone, x = carried.x, y = carried.y, name = line.place or carried.name }
+    elseif carried and (line.k == "complete" or line.k == "mob" or line.k == "unitscan" or line.k == "target") then
+      here = { zone = carried.zone, x = carried.x, y = carried.y, name = line.name or line.objective or carried.name }
+    end
+    if here and not first then first = here end
+    if here and L.LineState(line, ctx) == "open" then return here end
+  end
+  local primary = L.PrimaryPin(step)
+  if primary and primary.zone and primary.x then
+    return { zone = primary.zone, x = primary.x, y = primary.y, name = primary.name or primary.zone }
+  end
+  return first
+end
+
 function L.NamesMatch(unitName, wanted)
   if not unitName or not wanted or wanted == "" then return false end
   local a, b = string.lower(unitName), string.lower(wanted)
