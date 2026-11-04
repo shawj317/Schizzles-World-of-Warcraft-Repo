@@ -392,7 +392,7 @@ function AT.AdvanceDone(aggressive)
         over = L.Overleveled(ctx.level, L.ChapterEndLevel(chapter and chapter.levelRange), db.options.overlevelGap)
           and not L.StepHoldsQuest(step, ctx)
       end
-      if db.holdStep and (skipped or over) and status ~= "done" then
+      if db.holdStep then
         break
       end
       local move = (auto and status == "done") or skipped or over or (aggressive and stepIsBehind(index, steps))
@@ -448,9 +448,59 @@ function AT.Next()
       db.finished = true
     end
   end
+  db.holdStep = nil
   AT.focus = nil
   AT.planKey = nil
   AT.announced = {}
+  AT.UpdateTargetMacro()
+  AT.Refresh()
+end
+
+function AT.GoToStep(index)
+  local db = AT.DB()
+  local steps = AT.Steps()
+  index = tonumber(index)
+  if not index or not steps[index] then return end
+  db.finished = false
+  db.step = index
+  db.holdStep = true
+  AT.focus = nil
+  AT.planKey = nil
+  AT.announced = {}
+  AT.UpdateTargetMacro()
+  AT.Refresh()
+end
+
+function AT.ToggleStep(index)
+  local db = AT.DB()
+  local steps = AT.Steps()
+  index = tonumber(index)
+  local step = index and steps[index]
+  if not step then return end
+  db.finished = false
+  local _, chapterId = AT.Chapter()
+  db.skipped = db.skipped or {}
+  local key = L.StepKey(chapterId, step)
+  AT.focus = nil
+  AT.planKey = nil
+  if db.skipped[key] then
+    db.skipped[key] = nil
+    if (db.step or 1) >= index then
+      db.step = index
+      db.holdStep = true
+    end
+    AT.Say("Step " .. index .. " is not complete.")
+    AT.UpdateTargetMacro()
+    AT.Refresh()
+    return
+  end
+  db.skipped[key] = true
+  db.holdStep = nil
+  AT.Say("Skipped step " .. index .. ".")
+  if (db.step or 1) == index then
+    AT.Next()
+    return
+  end
   AT.UpdateTargetMacro()
   AT.Refresh()
 end
@@ -577,7 +627,7 @@ function AT.Destination()
     return { zone = AT.focus.zone, x = AT.focus.x, y = AT.focus.y, name = AT.focus.name or AT.focus.zone }
   end
   local step = AT.CurrentStep()
-  local pin = L.PrimaryPin(step)
+  local pin = L.ActivePin(step, AT.Context())
   if pin then
     return { zone = pin.zone, x = pin.x, y = pin.y, name = pin.name or pin.zone }
   end
