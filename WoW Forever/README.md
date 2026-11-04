@@ -7,6 +7,7 @@ Addon setups and guides for World of Warcraft: Forever by **Jon Shaw (Schizzle)*
 | Folder / file | What it is |
 |---|---|
 | [Manual](Manual/) | **Start here:** a printable launch-day manual (PDF) |
+| [Ashen Trail](Ashen%20Trail/) | Horde 1–60 **RestedXP** leveling guide (`#forever`) — importable addon under `AddOns/RXPGuides_CustomHordeForever` |
 | [Schizzle's Warrior](Schizzle's%20Warrior/) | the Warrior kit: the one-click helper addon with the XP & Rep Tray, the Musca Auras visual helper (proc alerts, priority lanes, rage colours), an Auctionator list and the [Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md) |
 | [Schizzle's TSM](Schizzle's%20TSM/) | TSM group tree, operations and price sources for a brand-new economy, ready for when TSM has a Forever build |
 | [Addon Compatibility.md](Addon%20Compatibility.md) | which addons are Forever-ready, which aren't, and the desktop apps |
