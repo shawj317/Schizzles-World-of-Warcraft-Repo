@@ -17,7 +17,7 @@ Each class folder has a README listing its addons, and each addon folder has its
 
 ## WoW Forever
 
-Launch-day setups for WoW Forever (Nov 4 2026): a printable [launch manual](WoW%20Forever/Manual/), the Warrior kit with its one-click helper addon and built-in XP & Rep Tray, a Warrior guide, the [Ashen Trail](WoW%20Forever/Ashen%20Trail/) Horde 1–60 RestedXP leveling guide, a TSM plan for the new economy and an addon compatibility list. See [WoW Forever](WoW%20Forever/).
+Launch-day setups for WoW Forever (Nov 4 2026): a printable [launch manual](WoW%20Forever/Manual/), the Warrior kit with its one-click helper addon and built-in XP & Rep Tray, a Warrior guide, the [Ashen Trail](WoW%20Forever/Ashen%20Trail/) Horde 1–60 leveling tracker, a TSM plan for the new economy and an addon compatibility list. See [WoW Forever](WoW%20Forever/).
 
 ## WoW Retail
 

@@ -1,0 +1,8 @@
+<Bindings>
+  <Binding name="ASHENTRAIL_TOGGLE" header="ASHENTRAIL" category="ADDONS">
+    if AshenTrail_Toggle then AshenTrail_Toggle() end
+  </Binding>
+  <Binding name="ASHENTRAIL_NEXT" category="ADDONS">
+    if AshenTrail_Next then AshenTrail_Next() end
+  </Binding>
+</Bindings>

@@ -1,0 +1,14 @@
+## Interface: 160000
+## Title: |cffff5522Ashen Trail|r
+## Notes: Standalone Horde 1-60 route for WoW Forever. Tracks steps, pins, travel, and gear without RestedXP.
+## Author: Jon Shaw (Schizzle)
+## Version: 1.0.0
+## SavedVariablesPerCharacter: AshenTrailChar
+## OptionalDeps: TomTom
+## DefaultState: Enabled
+
+Data.lua
+Services.lua
+Logic.lua
+Tracker.lua
+UI.lua
