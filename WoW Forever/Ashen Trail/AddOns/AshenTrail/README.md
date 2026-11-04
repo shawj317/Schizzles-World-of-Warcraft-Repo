@@ -4,7 +4,7 @@ Original Horde 1-60 tracker for World of Warcraft: Forever. Its Lua does not loa
 
 ## Install
 
-1. Copy the `AshenTrail` folder into `Interface\AddOns\` on World of Warcraft: Forever. The TOC interface is 160000.
+1. Copy the `AshenTrail` folder into `Interface\AddOns\` on World of Warcraft: Forever. The TOC interface is 16001.
 2. The folder name must stay `AshenTrail`.
 3. Reload (`/reload`). The window opens on your race's route, at the first step you have not finished.
 
