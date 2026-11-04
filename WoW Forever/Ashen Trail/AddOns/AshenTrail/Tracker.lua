@@ -642,10 +642,9 @@ function AT.PlanCurrent()
   local dest = AT.Destination()
   local origin = AT.PlayerPos()
   if not dest or not origin.zone then return nil end
+  local now = GetTime and GetTime() or 0
   local key = table.concat({
-    origin.zone or "",
-    string.format("%.1f", origin.x or -1),
-    string.format("%.1f", origin.y or -1),
+    tostring(origin.mapID or origin.zone or ""),
     dest.zone or "",
     string.format("%.1f", dest.x or -1),
     string.format("%.1f", dest.y or -1),
@@ -655,7 +654,12 @@ function AT.PlanCurrent()
     tostring(db.step or 1),
   }, "|")
   if AT.plan and AT.planKey == key then return AT.plan end
+  if AT.plan and AT.planAt and not AT.planForce and (now - AT.planAt) < 2 then
+    return AT.plan
+  end
+  AT.planForce = nil
   AT.planKey = key
+  AT.planAt = now
   AT.plan = L.Plan(
     AT.Nodes(),
     AshenTrailServices and AshenTrailServices.links,
@@ -673,7 +677,7 @@ function AT.LearnFlights()
   local count = NumTaxiNodes()
   for i = 1, count do
     local kind = TaxiNodeGetType(i)
-    if kind == 0 or kind == 1 then
+    if kind == "CURRENT" or kind == "REACHABLE" or kind == 0 or kind == 1 then
       local name = TaxiNodeName(i)
       if name and name ~= "" then db.flights[string.lower(name)] = true end
     end
@@ -842,6 +846,7 @@ end
 function AT.RefreshNameplates()
   local db = AT.DB()
   local seen = {}
+  if InCombatLockdown and InCombatLockdown() then return end
   if not db.options.showNameplates or db.hidden then
     for _, overlay in pairs(plateOverlays) do overlay:Hide() end
     return
@@ -849,7 +854,8 @@ function AT.RefreshNameplates()
   local watch = AT.Watch()
   local function consider(unit)
     if not UnitExists or not UnitExists(unit) then return end
-    local unitName = UnitName(unit)
+    local okName, unitName = pcall(UnitName, unit)
+    if not okName or not unitName or unitName == "" then return end
     local match = L.MatchPlate(unitName, watch)
     local plate = plateFrame(unit)
     if not plate then return end
@@ -879,9 +885,11 @@ function AT.RefreshNameplates()
       end
     end
   end
+  local usedPlates = false
   if C_NamePlate and C_NamePlate.GetNamePlates then
-    local plates = C_NamePlate.GetNamePlates()
-    if plates then
+    local okPlates, plates = pcall(C_NamePlate.GetNamePlates)
+    if okPlates and type(plates) == "table" then
+      usedPlates = true
       for i = 1, #plates do
         local plate = plates[i]
         local unit = plate.namePlateUnitToken or plate.unitToken
@@ -889,8 +897,10 @@ function AT.RefreshNameplates()
       end
     end
   end
-  for i = 1, 40 do
-    consider("nameplate" .. i)
+  if not usedPlates then
+    for i = 1, 40 do
+      consider("nameplate" .. i)
+    end
   end
   for plate, overlay in pairs(plateOverlays) do
     if not seen[plate] then overlay:Hide() end
@@ -1291,11 +1301,37 @@ function AT.TryRepair()
   end
 end
 
+local function itemTuple(link)
+  if C_Item and C_Item.GetItemInfo then
+    local ok, a, _, c, d, _, f, _, _, i, _, k = pcall(C_Item.GetItemInfo, link)
+    if ok and type(a) == "table" then
+      return a.itemName or a.name, a.itemQuality or a.quality, a.itemLevel or a.ilvl, a.itemEquipLoc or a.equipLoc, a.itemType or a.class, a.sellPrice or a.price
+    end
+    if ok and a then return a, c, d, i, f, k end
+  end
+  if GetItemInfo then
+    local a, _, c, d, _, f, _, _, i, _, k = GetItemInfo(link)
+    return a, c, d, i, f, k
+  end
+end
+
+local function itemStats(link)
+  if C_Item and C_Item.GetItemStats then
+    local ok, stats = pcall(C_Item.GetItemStats, link)
+    if ok and type(stats) == "table" then return stats end
+  end
+  if GetItemStats then
+    local stats = GetItemStats(link)
+    if type(stats) == "table" then return stats end
+  end
+  return {}
+end
+
 local function itemInfo(link)
-  if not link or not GetItemInfo then return nil end
-  local name, _, _, ilvl, _, _, _, _, equipLoc = GetItemInfo(link)
+  if not link then return nil end
+  local name, _, ilvl, equipLoc = itemTuple(link)
   if not name then return nil end
-  local raw = GetItemStats and GetItemStats(link) or {}
+  local raw = itemStats(link)
   local stats = L.NormalizeStats(raw, ilvl or 0)
   return {
     name = name,
@@ -1525,9 +1561,9 @@ function AT.ReadItem(link)
   local name, quality, itemType, price, id
   id = tonumber(string.match(link, "item:(%d+)"))
   name = string.match(link, "%[(.-)%]")
-  if GetItemInfo then
-    local infoName, _, infoQuality, _, _, infoType, _, _, _, _, infoPrice = GetItemInfo(link)
-    name = infoName or name
+  local infoName, infoQuality, _, _, infoType, infoPrice = itemTuple(link)
+  if infoName then
+    name = infoName
     quality = infoQuality
     itemType = infoType
     price = infoPrice or 0
@@ -1823,7 +1859,8 @@ function AT.UpdateBreath()
   local low = L.BreathLow(remain, db.options.drownSeconds or 10)
   if low and not AT.breathWarn then
     AT.Say("Breath is low (" .. L.FormatClock(remain or 0) .. ").")
-    if PlaySound then pcall(PlaySound, "RaidWarning") end
+    local sound = (SOUNDKIT and SOUNDKIT.RAID_WARNING) or "RaidWarning"
+    if PlaySound then pcall(PlaySound, sound) end
   end
   if low then AT.breathWarn = remain else AT.breathWarn = nil end
   if AshenTrailUI and AshenTrailUI.SyncBreath then AshenTrailUI.SyncBreath() end
@@ -1997,7 +2034,14 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.planKey = nil
     AT.Refresh()
   elseif event == "QUEST_LOG_UPDATE" then
-    AT.Sync(false)
+    local now = GetTime and GetTime() or 0
+    if AT.questSyncAt and (now - AT.questSyncAt) < 0.5 then
+      AT.questSyncPending = true
+    else
+      AT.questSyncAt = now
+      AT.questSyncPending = false
+      AT.Sync(false)
+    end
   elseif event == "QUEST_TURNED_IN" then
     AT.MarkTurnedIn(arg1)
     AT.Sync(false)
@@ -2027,11 +2071,14 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.RefreshNameplates()
   elseif event == "PLAYER_REGEN_ENABLED" then
     if AT.pendingMacro then AT.UpdateTargetMacro() end
+    if AshenTrailUI and AshenTrailUI.ApplyPendingLayout then AshenTrailUI.ApplyPendingLayout() end
+    AT.RefreshNameplates()
   elseif event == "TAXIMAP_OPENED" then
     AT.LearnFlights()
     AT.Refresh()
   elseif event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED" then
     AT.planKey = nil
+    AT.planForce = true
     AT.Refresh()
   elseif event == "BAG_UPDATE_DELAYED" then
     AT.bagsDirty = true
@@ -2059,6 +2106,49 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
   end
 end)
 
+function AT.SampleXp()
+  if InCombatLockdown and InCombatLockdown() then return end
+  if not UnitXP or not UnitXPMax or not GetTime or not UnitLevel then
+    AT.xpText = nil
+    return
+  end
+  local okX, xp = pcall(UnitXP, "player")
+  local okM, maxp = pcall(UnitXPMax, "player")
+  local okL, level = pcall(UnitLevel, "player")
+  if not okX or not okM or not okL or not xp or not maxp or maxp <= 0 then
+    AT.xpText = nil
+    return
+  end
+  local now = GetTime()
+  local mark = AT.xpMark
+  if not mark then
+    AT.xpMark = { t = now, xp = xp, max = maxp, level = level, bank = 0 }
+    AT.xpText = nil
+    return
+  end
+  if level ~= mark.level then
+    mark.bank = (mark.bank or 0) + math.max(0, (mark.max or 0) - (mark.xp or 0))
+    mark.xp = 0
+    mark.level = level
+  end
+  mark.max = maxp
+  local gained = (mark.bank or 0) + (xp - (mark.xp or 0))
+  local dt = now - (mark.t or now)
+  if dt < 20 or gained < 1 then
+    AT.xpText = nil
+    return
+  end
+  local perHour = gained / dt * 3600
+  local function compact(n)
+    if n >= 1000 then return string.format("%.1fk", n / 1000) end
+    return tostring(math.floor(n + 0.5))
+  end
+  local remain = math.max(0, maxp - xp)
+  local text = compact(perHour) .. " XP/hr"
+  if perHour > 1 then text = text .. "  " .. L.FormatClock(remain / perHour * 3600) end
+  AT.xpText = text
+end
+
 local ticker = CreateFrame("Frame")
 local nameElapsed = 0
 ticker:SetScript("OnUpdate", function(_, elapsed)
@@ -2069,6 +2159,15 @@ ticker:SetScript("OnUpdate", function(_, elapsed)
   nameElapsed = nameElapsed + (elapsed or 0)
   if nameElapsed < interval then return end
   nameElapsed = 0
+  if AT.questSyncPending then
+    local now = GetTime and GetTime() or 0
+    if not AT.questSyncAt or (now - AT.questSyncAt) >= 0.5 then
+      AT.questSyncAt = now
+      AT.questSyncPending = false
+      AT.Sync(false)
+    end
+  end
+  if AT.SampleXp then AT.SampleXp() end
   AT.RefreshNameplates()
   AT.UpdateFlight()
   AT.UpdateBreath()
