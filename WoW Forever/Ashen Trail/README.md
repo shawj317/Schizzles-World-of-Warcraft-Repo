@@ -2,21 +2,23 @@
 
 Horde leveling tracker for **World of Warcraft: Forever**, by Jon Shaw (Schizzle). The addon runs on its own. A RestedXP pack of the same route is included if you already use RestedXP.
 
-## Install the tracker in MoP Classic
+## Install the tracker
 
-The TOC interface is **50504**, so this copy loads in Mists of Pandaria Classic. The route is still the Forever Horde guide. The files stay in this Forever folder.
+The TOC interface is **160000**, so this copy loads on World of Warcraft: Forever.
 
-1. Copy `AddOns/AshenTrail` into `World of Warcraft\_classic_\Interface\AddOns\`.
+1. Copy `AddOns/AshenTrail` into `Interface\AddOns\` on the Forever client.
 2. The folder name must stay `AshenTrail`.
 3. Restart the client (or `/reload`). The window opens on your race, at the first step you have not finished.
 4. `/at` toggles the tracker. `/at help` lists commands.
+
+The guide lists the chapter's steps. The current step stays highlighted, and its coordinates go to the arrow on their own. Click a step to skip it. Click it again to mark it not complete. Right-click the window for chapters, reload, and options. Options open in their own window.
 
 The tracker follows quest pins, spawns, and givers, townsfolk, nameplate icons, step completion, quest history, chapter selection, a travel plan (hearth, flight, boat, zeppelin), a Target macro, and a gear check.
 
 ## Optional RestedXP pack
 
 1. Install [RestedXP Guides](https://www.restedxp.com/) for your Forever client.
-2. Copy `AddOns/RXPGuides_CustomHordeForever` into `_forever_/Interface/AddOns/` (alongside the RestedXP addon).
+2. Copy `AddOns/RXPGuides_CustomHordeForever` into `Interface/AddOns/` alongside RestedXP.
 3. Restart the client (or `/reload`), then open RestedXP and select group **Ashen Trail Forever (H)**.
 
 ## Contents
@@ -24,7 +26,7 @@ The tracker follows quest pins, spawns, and givers, townsfolk, nameplate icons, 
 | File | Purpose |
 |------|--------|
 | [Leveling Guide.md](./Leveling%20Guide.md) | Human-readable route overview |
-| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. Interface 50504 for MoP Classic. No RestedXP required |
+| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. Interface 160000 for Forever. No RestedXP required |
 | [AddOns/RXPGuides_CustomHordeForever](./AddOns/RXPGuides_CustomHordeForever/) | Optional RXP guide pack (`#forever`, `<< Horde`) |
 
 ## Route summary
