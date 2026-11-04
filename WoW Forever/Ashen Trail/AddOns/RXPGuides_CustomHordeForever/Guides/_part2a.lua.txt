@@ -1,0 +1,117 @@
+    >>Arrive Tarren Mill
+    .fp >>Get the Tarren Mill Flight Path
+    .home >>Set your Hearthstone to Tarren Mill
+    .accept 494 >>Accept Time To Strike
+    .accept 498 >>Accept The Rescue
+    .accept 549 >>Accept WANTED: Syndicate Personnel
+step
+    .goto Hillsbrad Foothills,62,20
+    >>Talk to Magus Wordeen Voidglare for City of Dalaran attunement leads
+    +Accept Key to the City and Prison Break-In - required before City of Dalaran (28-33)
+step
+    .goto Hillsbrad Foothills,58,28,40
+    >>Clear Syndicate / yeti / Hillsbrad field quests around Tarren Mill
+    .complete 549 >>Syndicate
+    .xp 25.5
+step
+    *Optional Shadowfang Keep clear if your group is 22-26.
+    >>Hearth / zeppelin back to Kalimdor for Stonetalon and southern Barrens leftovers
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 25-27 Stonetalon (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#next 27-28 Ashenvale (Ashen)
+
+step
+    .goto The Barrens,35.3,27.9
+    >>Enter Stonetalon via the Barrens northwest pass
+    .accept 1062 >>Accept Goblin Invaders
+step
+    .goto Stonetalon Mountains,47.2,61.1
+    >>Reach Sun Rock Retreat
+    .fp >>Get the Sun Rock Retreat Flight Path
+    .home >>Set your Hearthstone to Sun Rock Retreat
+step
+    .goto Stonetalon Mountains,60,52,45
+    >>Clear Windshear Crag goblins and deepmoss spiders for Sun Rock quests
+    .complete 1062 >>Venture Co. Loggers
+    .xp 26.5
+step
+    >>Turn in Stonetalon quests, then travel north toward Ashenvale / Zoram Strand for BFD
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 27-28 Ashenvale (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#next 28-30 Thousand Needles (Ashen)
+
+step
+    .goto Ashenvale,12.2,33.8
+    >>Zoram'gar Outpost - get FP and Naga quests
+    .fp >>Get the Zoram'gar Outpost Flight Path
+step
+    >>Collect Blackfathom Deeps quests and run the dungeon once
+    +One BFD clear with quests - then resume outdoor Ashenvale XP
+step
+    .goto Ashenvale,73.2,61.6
+    >>Splintertree Post hub
+    .fp >>Get the Splintertree Post Flight Path
+    .accept 6503 >>Accept Ashenvale Outrunners
+    .xp 28
+step
+    >>Finish Splintertree outdoors, then hearth / fly toward Thousand Needles via Camp Taurajo
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 28-30 Thousand Needles (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#next 30-40 Desolace & STV (Ashen)
+
+step
+    .goto The Barrens,44.5,91
+    >>Enter Thousand Needles from southern Barrens / Great Lift
+step
+    .goto Thousand Needles,45.1,49.1
+    >>Freewine Post
+    .fp >>Get the Freewine Post Flight Path
+    .home >>Set your Hearthstone to Freewine Post
+    .accept 1149 >>Accept Test of Faith
+step
+    >>Work Freewind / Whitereach quests to 30. Queue Razorfen Kraul with quests when 29+.
+    .xp 30
+step
+    *Legacy Point checkpoint at 25 should already be done - next major systems hit at 40 (mount / dual spec).
+    >>Continue to the 30-40 chapter: Desolace, Stranglethorn, Dustwallow, Arathi, Riverglades
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 30-40 Desolace & STV (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 30-60
+#next 40-50 Tanaris Loop (Ashen)
+
+step
+    .goto Desolace,55,55.8
+    >>Ghost Walker Post - open Desolace centaur / satyr quests
+    .fp >>Get the Shadowprey Village Flight Path
+    .xp 33
+step
+    .goto Stranglethorn Vale,32.5,29.4
+    >>Grom'gol Base Camp - STV pages, raptors, tigers
+    .fp >>G
