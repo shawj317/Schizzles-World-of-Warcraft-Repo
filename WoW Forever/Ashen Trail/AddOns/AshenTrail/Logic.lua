@@ -1291,3 +1291,54 @@ function L.ImportRoute(text)
     skips = skips,
   }
 end
+
+function L.CopyOptionTable(source)
+  local copy = {}
+  if type(source) ~= "table" then return copy end
+  for key, value in pairs(source) do
+    if type(value) == "table" then
+      local inner = {}
+      for innerKey, innerValue in pairs(value) do
+        if type(innerValue) ~= "function" then inner[innerKey] = innerValue end
+      end
+      copy[key] = inner
+    elseif type(value) ~= "function" then
+      copy[key] = value
+    end
+  end
+  return copy
+end
+
+-- Character options are the table the UI writes. The account copy is a separate
+-- table, so a reload cannot alias the two saved files into one object.
+function L.RememberSettings(character, account, defaults, useAccount)
+  if type(character) ~= "table" then return nil end
+  if type(character.options) ~= "table" then character.options = {} end
+  if useAccount and type(account) == "table" then
+    if type(account.options) ~= "table" then account.options = {} end
+    for key, value in pairs(account.options) do
+      if character.options[key] == nil then
+        if type(value) == "table" then
+          character.options[key] = L.CopyOptionTable(value)
+        elseif type(value) ~= "function" then
+          character.options[key] = value
+        end
+      end
+    end
+  end
+  if type(defaults) == "table" then
+    for key, value in pairs(defaults) do
+      if character.options[key] == nil then
+        if type(value) == "table" then
+          character.options[key] = L.CopyOptionTable(value)
+        else
+          character.options[key] = value
+        end
+      end
+    end
+  end
+  if useAccount and type(account) == "table" then
+    account.options = L.CopyOptionTable(character.options)
+  end
+  return character.options
+end

@@ -88,23 +88,34 @@ local function cloneOptions(source)
 end
 
 function AT.DB()
-  if not AshenTrailChar then AshenTrailChar = {} end
-  if not AshenTrailAccount then AshenTrailAccount = {} end
+  if not AT.addonLoaded then
+    AT.scratch = AT.scratch or {}
+    local scratch = AT.scratch
+    scratch.turnedIn = scratch.turnedIn or {}
+    scratch.flights = scratch.flights or {}
+    scratch.history = scratch.history or { order = {}, byId = {} }
+    scratch.history.order = scratch.history.order or {}
+    scratch.history.byId = scratch.history.byId or {}
+    scratch.options = copyDefaults(scratch.options or {})
+    scratch.skipped = scratch.skipped or {}
+    scratch.junkList = scratch.junkList or {}
+    scratch.junkKeep = scratch.junkKeep or {}
+    scratch.flightTimes = scratch.flightTimes or {}
+    scratch.point = scratch.point or { "CENTER", "CENTER", 0, 0 }
+    scratch.minimapAngle = scratch.minimapAngle or 220
+    scratch.levels = scratch.levels or {}
+    scratch.best = scratch.best or {}
+    return scratch
+  end
+  if type(AshenTrailChar) ~= "table" then AshenTrailChar = {} end
+  if type(AshenTrailAccount) ~= "table" then AshenTrailAccount = {} end
   local db = AshenTrailChar
   db.turnedIn = db.turnedIn or {}
   db.flights = db.flights or {}
   db.history = db.history or { order = {}, byId = {} }
   db.history.order = db.history.order or {}
   db.history.byId = db.history.byId or {}
-  if db.useAccount ~= false then
-    if not AshenTrailAccount.options then
-      AshenTrailAccount.options = cloneOptions(db.options)
-    end
-    db.options = copyDefaults(AshenTrailAccount.options)
-    AshenTrailAccount.options = db.options
-  else
-    db.options = copyDefaults(db.options or {})
-  end
+  L.RememberSettings(db, AshenTrailAccount, DEFAULTS, db.useAccount ~= false)
   db.skipped = db.skipped or {}
   db.junkList = db.junkList or {}
   db.junkKeep = db.junkKeep or {}
@@ -160,17 +171,18 @@ function AT.ImportText(text)
 end
 
 function AT.SetUseAccount(enabled)
-  if not AshenTrailChar then AshenTrailChar = {} end
-  if not AshenTrailAccount then AshenTrailAccount = {} end
+  if type(AshenTrailChar) ~= "table" then AshenTrailChar = {} end
+  if type(AshenTrailAccount) ~= "table" then AshenTrailAccount = {} end
   local db = AshenTrailChar
   if enabled then
     db.useAccount = true
-    if not AshenTrailAccount.options then
-      AshenTrailAccount.options = cloneOptions(db.options)
+    if type(db.options) ~= "table" then db.options = {} end
+    if type(AshenTrailAccount.options) ~= "table" then
+      AshenTrailAccount.options = L.CopyOptionTable(db.options)
     end
   else
     db.useAccount = false
-    db.options = cloneOptions(AshenTrailAccount.options or db.options)
+    db.options = L.CopyOptionTable(AshenTrailAccount.options or db.options)
   end
   AT.DB()
 end
@@ -371,15 +383,66 @@ local function scanRetail()
   return true
 end
 
+local function itemCooldown(itemID)
+  if C_Item and C_Item.GetItemCooldown then
+    local ok, start, duration = pcall(C_Item.GetItemCooldown, itemID)
+    if ok and type(start) == "table" then
+      return start.startTime or start.startTimeSeconds, start.duration or start.durationSeconds
+    end
+    if ok and start ~= nil then return start, duration end
+  end
+  if C_Container and C_Container.GetItemCooldown then
+    local ok, start, duration = pcall(C_Container.GetItemCooldown, itemID)
+    if ok then return start, duration end
+  end
+  if GetItemCooldown then
+    local ok, start, duration = pcall(GetItemCooldown, itemID)
+    if ok then return start, duration end
+  end
+end
+
+local function questLogCount()
+  if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
+    local ok, count = pcall(C_QuestLog.GetNumQuestLogEntries)
+    if ok and tonumber(count) then return tonumber(count), true end
+  end
+  if GetNumQuestLogEntries then
+    local ok, count = pcall(GetNumQuestLogEntries)
+    if ok and tonumber(count) then return tonumber(count), false end
+  end
+  return 0, false
+end
+
+local function questLogRow(index, modern)
+  if modern and C_QuestLog and C_QuestLog.GetInfo then
+    local ok, info = pcall(C_QuestLog.GetInfo, index)
+    if ok and type(info) == "table" then
+      local complete = info.isComplete and true or false
+      if info.questID and C_QuestLog.IsComplete then
+        local okDone, done = pcall(C_QuestLog.IsComplete, info.questID)
+        if okDone then complete = done and true or false end
+      end
+      return info.title, info.isHeader and true or false, complete, info.questID
+    end
+    return nil, false, false, nil
+  end
+  if GetQuestLogTitle then
+    local results = { pcall(GetQuestLogTitle, index) }
+    if results[1] then
+      local complete = results[7] == 1 or results[7] == true
+      return results[2], results[5] and true or false, complete, results[9]
+    end
+  end
+end
+
 local function scanClassic()
-  if not GetNumQuestLogEntries or not GetQuestLogTitle then return end
-  local selected = GetQuestLogSelection and GetQuestLogSelection() or nil
-  local num = GetNumQuestLogEntries()
-  for i = 1, num do
-    local title, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(i)
+  local count, modern = questLogCount()
+  if count <= 0 then return end
+  local selected = (not modern) and GetQuestLogSelection and GetQuestLogSelection() or nil
+  for i = 1, count do
+    local title, isHeader, isComplete, questID = questLogRow(i, modern)
     if not isHeader and questID and questID > 0 then
-      local state = (isComplete == 1 or isComplete == true) and "complete" or "active"
-      rememberQuest(questID, title, state)
+      rememberQuest(questID, title, isComplete and "complete" or "active")
     end
   end
   if selected and SelectQuestLogEntry then SelectQuestLogEntry(selected) end
@@ -687,12 +750,10 @@ function AT.PlayerPos()
     if px and px > 0 then x, y = px * 100, py * 100 end
   end
   local hearthBind = GetBindLocation and GetBindLocation() or nil
-  local hearthReady = false
-  if GetItemCooldown then
-    local start, duration = GetItemCooldown(6948)
-    hearthReady = start ~= nil and (start == 0 or duration == 0)
-  else
-    hearthReady = true
+  local start, duration = itemCooldown(6948)
+  local hearthReady = true
+  if start ~= nil then
+    hearthReady = start == 0 or duration == 0
   end
   return {
     zone = zone,
@@ -829,15 +890,21 @@ function AT.ActiveQuestItem()
   local function wantedId(id)
     return id and (wanted[id] or wanted[tostring(id)])
   end
-  if GetNumQuestLogEntries and GetQuestLogTitle and GetQuestLogSpecialItemInfo then
-    local count = GetNumQuestLogEntries() or 0
-    for i = 1, count do
-      local results = { pcall(GetQuestLogTitle, i) }
-      if results[1] and not results[5] and wantedId(results[9]) then
-        local ok, link, texture = pcall(GetQuestLogSpecialItemInfo, i)
-        local item = ok and itemFromLink(link, texture)
-        if item then return item end
+  local count, modern = questLogCount()
+  for i = 1, count do
+    local _, isHeader, _, questID = questLogRow(i, modern)
+    if not isHeader and wantedId(questID) then
+      local link, texture
+      if C_QuestLog and C_QuestLog.GetQuestLogSpecialItemInfo then
+        local ok, a, b = pcall(C_QuestLog.GetQuestLogSpecialItemInfo, i)
+        if ok then link, texture = a, b end
       end
+      if not link and GetQuestLogSpecialItemInfo then
+        local ok, a, b = pcall(GetQuestLogSpecialItemInfo, i)
+        if ok then link, texture = a, b end
+      end
+      local item = itemFromLink(link, texture)
+      if item then return item end
     end
   end
   if C_Container and C_Container.GetContainerNumSlots then
@@ -901,15 +968,39 @@ function AT.UpdateQuestItemButton()
   if holder then holder:Show() end
 end
 
+local function unspentTalentPoints()
+  if not (C_Traits and C_Traits.GetConfigInfo and C_Traits.GetTreeCurrencyInfo) then return nil end
+  if not (C_ClassTalents and C_ClassTalents.GetActiveConfigID) then return nil end
+  local okID, configID = pcall(C_ClassTalents.GetActiveConfigID)
+  if not okID or not configID then return nil end
+  local okInfo, info = pcall(C_Traits.GetConfigInfo, configID)
+  if not okInfo or type(info) ~= "table" or type(info.treeIDs) ~= "table" then return nil end
+  local unspent, saw = 0, false
+  for i = 1, #info.treeIDs do
+    local okRows, rows = pcall(C_Traits.GetTreeCurrencyInfo, configID, info.treeIDs[i])
+    if okRows and type(rows) == "table" then
+      for n = 1, #rows do
+        local quantity = type(rows[n]) == "table" and tonumber(rows[n].quantity) or nil
+        if quantity then
+          unspent = unspent + quantity
+          saw = true
+        end
+      end
+    end
+  end
+  if not saw then return nil end
+  return unspent
+end
+
 function AT.TalentLine()
   if InCombatLockdown and InCombatLockdown() then return AT.talentText end
-  if not UnitLevel or not UnitCharacterPoints then
+  if not UnitLevel then
     AT.talentText = nil
     return nil
   end
   local okL, level = pcall(UnitLevel, "player")
-  local okP, points = pcall(UnitCharacterPoints, "player")
-  if not okL or not okP then return AT.talentText end
+  local points = unspentTalentPoints()
+  if not okL or points == nil then return AT.talentText end
   local advice = L.NextTalent(AT.DB().class, level, points)
   if not advice then
     AT.talentText = nil
@@ -920,6 +1011,7 @@ function AT.TalentLine()
   else
     AT.talentText = "Next: " .. advice.name
   end
+  AT.talentText = AT.talentText .. "  (Talents Forever, questing.wiki)"
   return AT.talentText
 end
 
@@ -967,11 +1059,11 @@ function AT.ObjectiveWatch()
     end
     return objectives
   end
-  if not GetNumQuestLogEntries or not GetQuestLogTitle then return objectives end
-  local selected = GetQuestLogSelection and GetQuestLogSelection() or nil
-  local num = GetNumQuestLogEntries()
+  local num, modern = questLogCount()
+  if num <= 0 then return objectives end
+  local selected = (not modern) and GetQuestLogSelection and GetQuestLogSelection() or nil
   for i = 1, num do
-    local _, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(i)
+    local _, isHeader, _, questID = questLogRow(i, modern)
     if not isHeader and questID and wanted[questID] and SelectQuestLogEntry and GetNumQuestLeaderBoards then
       SelectQuestLogEntry(i)
       local boards = GetNumQuestLeaderBoards(i) or GetNumQuestLeaderBoards() or 0
@@ -2245,6 +2337,7 @@ function AT.Boot()
 end
 
 local events = CreateFrame("Frame")
+events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("QUEST_LOG_UPDATE")
@@ -2276,8 +2369,19 @@ events:RegisterEvent("PLAYER_CONTROL_GAINED")
 events:RegisterEvent("PLAYER_LOGOUT")
 events:RegisterEvent("TRAINER_SHOW")
 events:SetScript("OnEvent", function(_, event, arg1, arg2)
-  if event == "PLAYER_LOGIN" or (event == "PLAYER_ENTERING_WORLD" and not AT.booted) then
-    AT.Boot()
+  if event == "ADDON_LOADED" and arg1 == "AshenTrail" then
+    AT.addonLoaded = true
+    if AT.loginReady then AT.Boot() end
+    return
+  end
+  if event == "PLAYER_LOGIN" then
+    AT.loginReady = true
+    if AT.addonLoaded then AT.Boot() end
+    return
+  end
+  if event == "PLAYER_ENTERING_WORLD" and not AT.booted then
+    AT.loginReady = true
+    if AT.addonLoaded then AT.Boot() end
     return
   end
   if not AT.booted then return end
@@ -2335,10 +2439,11 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.Cue("level")
     if not (InCombatLockdown and InCombatLockdown()) then
       local line = AT.TalentLine()
-      if line then AT.Say(line .. ". Vanilla opener. Forever may differ.") end
+      if line then AT.Say(line .. ". Forever may differ.") end
     end
   elseif event == "PLAYER_LOGOUT" then
     if AT.PauseLevel then AT.PauseLevel() end
+    if AT.addonLoaded then AT.DB() end
   elseif event == "TRAINER_SHOW" then
     local level = UnitLevel and UnitLevel("player") or nil
     if level then AT.DB().trainNoted = level end
@@ -2392,8 +2497,8 @@ function AT.Cue(kind)
 end
 
 function AT.HearthRemain()
-  if not GetItemCooldown or not GetTime then return nil, true end
-  local start, duration = GetItemCooldown(6948)
+  if not GetTime then return nil, true end
+  local start, duration = itemCooldown(6948)
   if not duration or duration == 0 or not start or start == 0 then return 0, true end
   local remain = duration - (GetTime() - start)
   if remain < 0 then remain = 0 end
@@ -2421,12 +2526,12 @@ function AT.RouteQuestIds()
 end
 
 function AT.OffRouteQuests()
-  if not GetNumQuestLogEntries or not GetQuestLogTitle then return 0, {} end
+  local entries, modern = questLogCount()
+  if entries <= 0 then return 0, {} end
   local onRoute = AT.RouteQuestIds()
   local count, names = 0, {}
-  local entries = GetNumQuestLogEntries() or 0
   for i = 1, entries do
-    local title, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(i)
+    local title, isHeader, _, questID = questLogRow(i, modern)
     if not isHeader and questID and questID ~= 0 then
       count = count + 1
       if not onRoute[questID] then
