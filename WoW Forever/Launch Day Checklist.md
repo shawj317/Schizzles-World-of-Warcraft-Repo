@@ -13,12 +13,12 @@ The same steps are in the [launch-day manual (PDF)](Manual/).
 - [ ] Leave **TradeSkillMaster**, the original **WeakAuras** and **WagoAppCompanion** off on Forever; they have no Forever build.
 
 ## First login
-- [ ] At the character screen, click **AddOns** and check nothing important says "Out of date". Don't tick "Load out of date AddOns".
+- [ ] At the character screen, click **AddOns** and check nothing important says "Out of date". TradeSkillMaster, TSM AppHelper and WagoAppCompanion will say it (expected; untick them). Don't tick "Load out of date AddOns".
 - [ ] Log in. Click **Yes** on "Set up Schizzle's Warrior on this character?", then **Reload**.
 - [ ] Check the chat lines: every piece should say "done", or "skipped" if that addon isn't installed.
 - [ ] Look at the bottom-right corner: the XP bar should be there under the Details! meters.
 - [ ] Type `/schizzle auras`, click **Import** in the Musca Auras window, then `/reload`. Type `/schizzle cdm` to turn off the Cooldown Manager, which would sit in the same spot ([Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
-- [ ] Import the click-guide and import-string setups that work on Forever: BetterBlizzFrames, Baganator and BigWigs strings and the MoveAny, Leatrix Plus, GTFO, RareScanner and BetterFishing guides from the [MoP Warrior kit](../WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/#non-elvui-interface-kit). Skip the MoP Pawn scales: they weigh MoP stats like haste and mastery.
+- [ ] Optional, after the first session: the MoP kit's BetterBlizzFrames, Baganator and BigWigs strings and the MoveAny, Leatrix Plus, GTFO, RareScanner and BetterFishing guides ([MoP Warrior kit](../WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/#non-elvui-interface-kit)) were made for MoP and aren't tested on Forever; the kit works without them. Skip the MoP Pawn scales (MoP stats).
 - [ ] Import the [Auctionator leveling list](Schizzle's%20Warrior/AddOns/Auctionator/).
 - [ ] Type `/sal auto` once (Speedy AutoLoot).
 

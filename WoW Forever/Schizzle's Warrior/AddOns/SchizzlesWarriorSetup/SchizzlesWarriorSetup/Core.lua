@@ -289,6 +289,10 @@ ns.importAuras = importAuras
 local function toggleCooldownManager()
 	local get = C_CVar and C_CVar.GetCVar or GetCVar
 	local set = C_CVar and C_CVar.SetCVar or SetCVar
+	if InCombatLockdown() then
+		say("leave combat first.")
+		return
+	end
 	local current = get("cooldownViewerEnabled")
 	if current == nil then
 		say("this client has no Cooldown Manager.")
