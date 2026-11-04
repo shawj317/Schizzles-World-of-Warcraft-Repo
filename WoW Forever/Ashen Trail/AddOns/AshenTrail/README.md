@@ -4,7 +4,7 @@ Original Horde 1-60 tracker for World of Warcraft: Forever. Its Lua does not loa
 
 ## Install
 
-1. Copy the `AshenTrail` folder into `Interface\AddOns\`. The TOC interface is 50504, so it loads in MoP Classic. The route itself is the Forever guide.
+1. Copy the `AshenTrail` folder into `Interface\AddOns\` on World of Warcraft: Forever. The TOC interface is 160000.
 2. The folder name must stay `AshenTrail`.
 3. Reload (`/reload`). The window opens on your race's route, at the first step you have not finished.
 
@@ -17,8 +17,8 @@ Original Horde 1-60 tracker for World of Warcraft: Forever. Its Lua does not loa
 - Step completion from the quest log. Accept, complete, turn-in, and level steps advance on their own. Pure travel steps wait for Next.
 - On login it reads quests you already turned in and loads the matching chapter.
 - A travel plan from where you stand to the step: run, hearth, flight, boat, or zeppelin. The arrow points at the next hop in your current zone.
-- Step lines name the action: Talk to Lar Prowltusk. Accept: Thwarting Kolkar Aggression. Set Hearth to Razor Hill. Coordinates stay on the arrow.
-- Each dungeon quest giver is a separate step so the arrow points at that NPC. Mark on the line aims the arrow again. A giver with no published spot is described and not pinned.
+- Step lines name the action: Talk to Lar Prowltusk. Accept: Thwarting Kolkar Aggression. Set Hearth to Razor Hill. The active step sends its coordinates to the arrow. Click a step to skip it, and click it again to mark it not complete. Right-click the window for chapters, reload, and options. Options open in their own window.
+- Each dungeon quest giver is a separate step so the arrow points at that NPC. A giver with no published spot is described and not pinned.
 - A Target button that runs `/targetexact` for the step's NPC, with an icon on their nameplate.
 - A gear check that scores quest rewards and bag gear against what you have equipped.
 - A per-character turn-in history.
