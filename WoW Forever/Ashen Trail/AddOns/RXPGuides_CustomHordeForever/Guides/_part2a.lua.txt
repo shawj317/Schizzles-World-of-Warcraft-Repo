@@ -85,9 +85,9 @@ step
     >>Enter Thousand Needles from southern Barrens / Great Lift
 step
     .goto Thousand Needles,45.1,49.1
-    >>Freewine Post
-    .fp >>Get the Freewine Post Flight Path
-    .home >>Set your Hearthstone to Freewine Post
+    >>Freewind Post
+    .fp >>Get the Freewind Post Flight Path
+    .home >>Set your Hearthstone to Freewind Post
     .accept 1149 >>Accept Test of Faith
 step
     >>Work Freewind / Whitereach quests to 30. Queue Razorfen Kraul with quests when 29+.
