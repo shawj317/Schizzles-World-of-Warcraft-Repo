@@ -1,6 +1,6 @@
 # Ashen Trail Leveling Guide (Horde - Forever)
 
-Quick reference for the custom RestedXP route. For step-by-step arrow guidance, install the addon pack in AddOns/RXPGuides_CustomHordeForever.
+Quick reference for the Ashen Trail Horde route. For step-by-step arrow guidance, install AddOns/AshenTrail. The RestedXP folder is only a saved fallback.
 
 ## Starting roads (merge ~16-17 in The Barrens)
 
@@ -29,7 +29,8 @@ Quick reference for the custom RestedXP route. For step-by-step arrow guidance, 
 | Wailing Caverns | 15-24 | Barrens staple |
 | Shadowfang Keep | 20-30 | With Hillsbrad / Silverpine |
 | Blackfathom Deeps | 24-32 | Ashenvale coast |
-| City of Dalaran | 28-33 | NEW - attune in Tarren Mill |
+| Excavation Site | 26-31 | Wetlands |
+| City of Dalaran | 28-33 | Attune with Melisara in Tarren Mill and Doctor Martin Felben in Undercity |
 | Razorfen Kraul | 29-38 | End of 1-30 road |
 | The Drowned City | 35-40 | NEW - west of Grom'gol |
 | Krol'dok Stronghold | 40-45 | NEW - Riverglades |
@@ -40,6 +41,6 @@ Quick reference for the custom RestedXP route. For step-by-step arrow guidance, 
 
 ## Tips
 
-- Grab City of Dalaran attunement from Magus Wordeen Voidglare in Tarren Mill in your mid-20s.
+- Grab City of Dalaran attunement from Melisara in Tarren Mill and Doctor Martin Felben in Undercity in your mid-20s.
 - Treat Riverglades as primary outdoor XP in the mid-30s to ~42.
 - One dungeon clear with all quests beats farming the same instance.
