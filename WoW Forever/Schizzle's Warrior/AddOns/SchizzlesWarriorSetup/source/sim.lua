@@ -106,7 +106,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F1", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F1.1", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -152,6 +152,42 @@ check(not b[1].shown and b[2].points[1][5] == 0, "XP bar hidden at the cap, repu
 
 _G.SlashCmdList.SCHIZZLE("tray")
 check(_G.SchizzlesWarriorSetupDB.tray == false, "/schizzle tray toggles it off")
+
+-- /schizzle auras: imports the Musca pack, only into Musca Auras, never in combat, never from "all".
+local function said(text)
+	for _, m in ipairs(chat) do if m:find(text, 1, true) then return true end end
+	return false
+end
+local f = assert(io.open("../../Musca Auras/Schizzle's Warrior Essentials.txt", "rb"))
+local pack = f:read("*a"):gsub("%s+$", "")
+f:close()
+local importedAuras
+_G.SlashCmdList.SCHIZZLE("auras")
+check(said("Musca Auras isn't loaded"), "/schizzle auras without Musca Auras: says so")
+_G.WeakAuras = { Import = function(s) importedAuras = s; return true end }
+_G.C_AddOns.GetAddOnMetadata = function(name, field) if name == "WeakAuras" and field == "Title" then return "WeakAuras" end end
+_G.SlashCmdList.SCHIZZLE("auras")
+check(importedAuras == nil, "/schizzle auras ignores a WeakAuras that isn't Musca Auras")
+_G.C_AddOns.GetAddOnMetadata = function(name, field) if name == "WeakAuras" and field == "Title" then return "Musca Auras" end end
+_G.InCombatLockdown = function() return true end
+_G.SlashCmdList.SCHIZZLE("auras")
+check(importedAuras == nil, "/schizzle auras waits for the end of combat")
+_G.InCombatLockdown = function() return false end
+_G.SlashCmdList.SCHIZZLE("auras")
+check(importedAuras == pack and pack:sub(1, 6) == "!WA:2!", "/schizzle auras hands Musca the pack's import string, unchanged")
+importedAuras = nil
+_G.SlashCmdList.SCHIZZLE("all")
+check(importedAuras == nil, "/schizzle all leaves the pack out")
+
+-- /schizzle cdm: Blizzard's Cooldown Manager on and off.
+chat = {}
+_G.SlashCmdList.SCHIZZLE("cdm")
+check(said("no Cooldown Manager") and cvars.cooldownViewerEnabled == nil, "/schizzle cdm on a client without it: says so, creates nothing")
+cvars.cooldownViewerEnabled = "1"
+_G.SlashCmdList.SCHIZZLE("cdm")
+check(cvars.cooldownViewerEnabled == "0" and said("Cooldown Manager off"), "/schizzle cdm turns it off")
+_G.SlashCmdList.SCHIZZLE("cdm")
+check(cvars.cooldownViewerEnabled == "1" and said("Cooldown Manager on"), "/schizzle cdm turns it back on")
 
 -- A local config naming another character keeps the prompt away.
 popups, _G.SchizzlesWarriorSetupCharDB = {}, nil

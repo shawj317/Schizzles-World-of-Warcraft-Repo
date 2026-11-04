@@ -5,7 +5,7 @@
 local _, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "F1"
+local VERSION = "F1.1"
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -261,7 +261,46 @@ f:SetScript("OnEvent", function()
 	end
 end)
 
+-- Schizzle's Warrior Essentials, the Musca Auras pack (../Musca Auras). It's kept out of "/schizzle all": Musca's
+-- import window and the reload prompt would open on top of each other.
+local function importAuras()
+	local meta = (C_AddOns and C_AddOns.GetAddOnMetadata) or _G.GetAddOnMetadata
+	local title = meta and meta("WeakAuras", "Title")
+	local WA = _G.WeakAuras
+	if not (WA and WA.Import and type(title) == "string" and title:find("Musca")) then
+		say("Musca Auras isn't loaded. Install Musca Auras 1.14.0 (its folder is called WeakAuras), then try again.")
+		return
+	end
+	if InCombatLockdown() then
+		say("leave combat first.")
+		return
+	end
+	local ok, err = WA.Import(D.MuscaWarrior)
+	if ok == nil and err then
+		say("the import didn't open (" .. tostring(err) .. ").")
+		return
+	end
+	say("check the Musca Auras import window and click Import, then /reload. To keep it clear of Blizzard's Cooldown "
+		.. "Manager, type /schizzle cdm.")
+end
+ns.importAuras = importAuras
+
+-- Blizzard's Cooldown Manager on or off. The pack shows the same cooldowns in the same spot.
+local function toggleCooldownManager()
+	local get = C_CVar and C_CVar.GetCVar or GetCVar
+	local set = C_CVar and C_CVar.SetCVar or SetCVar
+	local current = get("cooldownViewerEnabled")
+	if current == nil then
+		say("this client has no Cooldown Manager.")
+		return
+	end
+	local on = current ~= "1"
+	set("cooldownViewerEnabled", on and "1" or "0")
+	say("Cooldown Manager " .. (on and "on" or "off") .. ".")
+end
+
 local aliases = { all = "all", cvars = "cvars", cvar = "cvars", details = "details", tray = "tray",
+	auras = "auras", musca = "auras", wa = "auras", cdm = "cdm", cooldowns = "cdm",
 	binds = "binds", keys = "binds", bars = "bars", bt4 = "bars", chat = "chat", prat = "chat",
 	map = "map", minimap = "map", quests = "quests", questie = "quests", gather = "gather", gathermate = "gather", tomtom = "tomtom" }
 
@@ -273,6 +312,10 @@ SlashCmdList.SCHIZZLE = function(msg)
 		SchizzlesWarriorSetupDB.tray = not SchizzlesWarriorSetupDB.tray
 		if ns.trayEnable then ns.trayEnable(SchizzlesWarriorSetupDB.tray) end
 		say("XP & Rep Tray " .. (SchizzlesWarriorSetupDB.tray and "on" or "off") .. ".")
+	elseif cmd == "auras" then
+		importAuras()
+	elseif cmd == "cdm" then
+		toggleCooldownManager()
 	elseif cmd == "all" then
 		apply(order)
 	elseif cmd then
@@ -286,5 +329,7 @@ SlashCmdList.SCHIZZLE = function(msg)
 			say("/schizzle " .. id .. " - " .. p.label .. state)
 		end
 		say("/schizzle tray - show or hide the XP & Rep Tray")
+		say("/schizzle auras - import Schizzle's Warrior Essentials into Musca Auras")
+		say("/schizzle cdm - turn Blizzard's Cooldown Manager on or off")
 	end
 end

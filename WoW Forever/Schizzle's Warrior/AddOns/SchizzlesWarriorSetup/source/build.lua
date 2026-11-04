@@ -13,9 +13,12 @@ local SOURCES = {
 	{ key = "TomTom", file = MOP .. "TomTom/Profile.lua" },
 	{ key = "CVars", file = "CVars.lua" },
 }
--- Plain strings, stored as they are: the Details! import string (the Arms profile; Forever's spec is the whole class).
+-- Plain strings, stored as they are: the Details! import string (the Arms profile; Forever's spec is the whole class)
+-- and the Musca Auras pack.
 local STRINGS = {
 	{ key = "Details", file = MOP .. "Details!/Arms Profile.txt" },
+	-- Schizzle's Warrior Essentials for Musca Auras (/schizzle auras); built in ../Musca Auras/source.
+	{ key = "MuscaWarrior", file = "../../Musca Auras/Schizzle's Warrior Essentials.txt" },
 }
 
 local function read(path)

@@ -7,7 +7,8 @@ Forever is build 1.60.1.70755 and installs to `World of Warcraft\_forever_\`, so
 ## Forever-ready
 | Addon | Version | How it supports Forever | Kit job |
 |---|---|---|---|
-| Schizzle's Warrior Setup | F1 | Interface 16001 | one-click setup, XP & Rep Tray |
+| Schizzle's Warrior Setup | F1.1 | Interface 16001 | one-click setup, XP & Rep Tray |
+| Musca Auras | 1.14.0 | Interface 16001 (a WeakAuras fork; the folder is called `WeakAuras`) | [Schizzle's Warrior Essentials](Schizzle's%20Warrior/AddOns/Musca%20Auras/): proc alerts, priority lanes, rage colours |
 | Bartender4 | 4.18.4 | 16001 in its main TOC | action bars, stance bar |
 | BetterBlizzFrames | v2.2.0e | `_Camelot.toc` | unit frames, cast bar |
 | BetterBlizzMarkers | v1.1.4 | 16001 | raid markers |
@@ -41,13 +42,13 @@ Forever is build 1.60.1.70755 and installs to `World of Warcraft\_forever_\`, so
 | Addon | What it lists | What to do |
 |---|---|---|
 | **TradeSkillMaster** + TSM AppHelper | 120105, 50504, 20506, 11509 (no 16001) | Use Auctionator. [Schizzle's TSM for Forever](Schizzle's%20TSM/) is ready to build when TSM updates. |
-| **WeakAuras** | no Forever download | No rotation aura or XP tray from WeakAuras. The tray is built into Schizzle's Warrior Setup; use Blizzard's Cooldown Manager for cooldowns ([Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md)). Community forks (ForeverAuras, Musca Auras) exist but are untested with Schizzle's auras. |
+| **WeakAuras** | no Forever download | Use Musca Auras instead (above): it's a WeakAuras fork for Forever and runs [Schizzle's Warrior Essentials](Schizzle's%20Warrior/AddOns/Musca%20Auras/). The MoP WeakAuras imports don't carry over, and the XP tray is built into Schizzle's Warrior Setup. ForeverAuras is another fork; it can't import the Musca pack, so install only one of them. |
 | **WagoAppCompanion** | Retail, Cata and TBC only | Leave it off on Forever. |
 | **LittleWigs** | no Forever download | BigWigs works; dungeon timers wait for LittleWigs. |
 
 ## Desktop apps
 - **TSM Desktop App:** has no Forever region data yet, so TSM's `DBMarket`-style prices won't exist even after TSM updates. Schizzle's TSM price sources don't rely on them.
-- **Wago App:** its companion addon doesn't support Forever, and there's no WeakAuras to sync. Nothing to do for Forever yet.
+- **Wago App:** its companion addon doesn't support Forever and doesn't sync Musca Auras. Nothing to do for Forever yet.
 - **CurseForge app:** CurseForge lists Forever files under game version 1.60.1. If the app shows Forever as a separate install, point it at the `_forever_` folder to keep these updated; otherwise update by hand from each project's Files tab.
 
 ## Not part of this check

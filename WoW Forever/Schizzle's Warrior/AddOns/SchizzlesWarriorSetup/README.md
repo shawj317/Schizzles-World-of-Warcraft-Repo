@@ -1,8 +1,9 @@
 # Schizzle's Warrior Setup for WoW Forever (helper addon)
 
-A small addon by Jon Shaw (Schizzle) that sets up the Schizzle's Warrior interface on **WoW Forever** (Interface 16001) in one click. It's the Forever edition of the [MoP Classic helper](../../../../WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/AddOns/SchizzlesWarriorSetup/) with three additions:
+A small addon by Jon Shaw (Schizzle) that sets up the Schizzle's Warrior interface on **WoW Forever** (Interface 16001) in one click. It's the Forever edition of the [MoP Classic helper](../../../../WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/AddOns/SchizzlesWarriorSetup/) with four additions:
 
-- **Console variables** (the game's own settings, see below), including Blizzard's **Cooldown Manager**, which stands in for the rotation WeakAura until WeakAuras works on Forever.
+- **Console variables** (the game's own settings, see below), including Blizzard's **Cooldown Manager**.
+- **Schizzle's Warrior Essentials**, the [Musca Auras pack](../Musca%20Auras/) (proc alerts, priority lanes, rage colours), imported with `/schizzle auras`, so there's no string to paste.
 - **Details!** gets the Schizzle's Warrior meter profile imported for you, so there's no import string to paste.
 - **XP & Rep Tray** built in: the MoP kit's WeakAuras tray (XP, watched reputation and guild reputation bars in the bottom-right corner), redrawn as plain addon code because WeakAuras has no Forever build.
 
@@ -35,6 +36,8 @@ Each character asks once. Clicked **No**? Type `/schizzle all` any time. In comb
 | `/schizzle tomtom` | TomTom |
 | `/schizzle details` | imports the Schizzle's Warrior Details! profile and switches to it |
 | `/schizzle tray` | shows or hides the XP & Rep Tray |
+| `/schizzle auras` | opens Musca Auras' import window with [Schizzle's Warrior Essentials](../Musca%20Auras/) in it: click **Import**, then `/reload`. Needs Musca Auras 1.14.0; not part of `all` |
+| `/schizzle cdm` | turns Blizzard's Cooldown Manager off or back on |
 
 Run any of them again to put that addon back to the Schizzle's Warrior settings.
 
@@ -51,7 +54,7 @@ Each one is set only if Forever has it; any it doesn't know are listed in chat a
 | `UberTooltips` | 1 | full spell tooltips |
 | `cooldownViewerEnabled` | 1 | Blizzard's Cooldown Manager on |
 
-The Cooldown Manager is found under **Options > Gameplay > Advanced Options**. The [Warrior Guide](../../Warrior%20Guide.md#what-to-use-instead-blizzards-cooldown-manager) explains which spells to put in it and where to place it.
+The Cooldown Manager is found under **Options > Gameplay > Advanced Options**. With the Musca pack it shows the same cooldowns in the same spot: `/schizzle cdm` turns it off, or the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack) explains how to keep it for buffs only, out of the pack's way.
 
 ## XP & Rep Tray
 Three thin bars in the bottom-right corner, under the Details! meters, the same as the MoP WeakAuras tray:
@@ -94,8 +97,8 @@ Other characters can still type `/schizzle all`.
 
 ## Checks
 Run from `source/` with Lua 5.1 (the game's Lua):
-- `lua build.lua --check` makes sure `Data.lua` matches the per-addon source files in the MoP kit and `source/CVars.lua`. `lua build.lua` rebuilds it.
-- `lua sim.lua` runs the helper, the first-login prompt, every piece and the tray against a stand-in for the Forever API: the console variables (including one Forever doesn't have), the Details! import (no auto-run code), a missing addon, the tray's three bars at level 20 and at the cap, completed-quest and rested XP, a hidden (secret) value, guild reputation on, off and already watched, the tray toggle, and the local settings for another character. 24 checks.
+- `lua build.lua --check` makes sure `Data.lua` matches the per-addon source files in the MoP kit, `source/CVars.lua` and the Musca pack's import file. `lua build.lua` rebuilds it.
+- `lua sim.lua` runs the helper, the first-login prompt, every piece and the tray against a stand-in for the Forever API: the console variables (including one Forever doesn't have), the Details! import (no auto-run code), a missing addon, the tray's three bars at level 20 and at the cap, completed-quest and rested XP, a hidden (secret) value, guild reputation on, off and already watched, the tray toggle, `/schizzle auras` (no Musca Auras, plain WeakAuras, in combat, the exact pack string, left out of `all`), `/schizzle cdm` on and off and on a client without it, and the local settings for another character. 32 checks.
 - `lua verify.lua <folder with the WoW Forever addon downloads>` is the MoP check, run on the Forever downloads: keybinds against the stock binds, Bartender4, Prat, SexyMap, Questie, GatherMate2 and TomTom profiles through each addon's own AceDB-3.0, and every setting key found in that addon's own code. It passed on Bartender4 4.18.4, Prat 3.9.115, SexyMap v12.1.4, Questie 12.5.0, GatherMate2 1.52.4 and TomTom v4.4.0 (Nov 3 2026).
 
 Every Blizzard function and event the addon calls is in the `forever` branch of Gethe's wow-ui-source (build 70755).
@@ -104,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F1.1** (Nov 3 2026): `/schizzle auras` imports Schizzle's Warrior Essentials into Musca Auras; `/schizzle cdm` toggles the Cooldown Manager.
 - **F1** (Nov 3 2026): first Forever edition. Console variables, Cooldown Manager on, Details! import, the built-in XP & Rep Tray, local settings file.
 
 ## License

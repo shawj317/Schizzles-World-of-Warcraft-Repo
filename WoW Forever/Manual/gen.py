@@ -34,9 +34,14 @@ pre{background:#1a1a1a;border:1px solid #333;padding:6px 10px;margin:4px 0 10px;
 .cover{border:2px solid #B87333;padding:26px 28px;margin-bottom:18px;background:linear-gradient(135deg,#1c120a,#111 60%)}
 .tag{display:inline-block;background:#2a1500;border:1px solid #B87333;color:#FFD100;padding:2px 10px;margin:4px 6px 0 0;font-family:Fira}
 .pb{break-before:page}
-.screen{position:relative;width:100%;height:330px;background:#0b0b0b;border:2px solid #B87333;margin:8px 0 14px;font-family:Fira;font-size:12px}
+.screen{position:relative;width:100%;height:330px;background:#0b0b0b;border:2px solid #B87333;margin:8px 0 14px;font-family:Fira;font-size:12px;break-inside:avoid}
 .box{position:absolute;border:1px dashed #B87333;color:#e8e2da;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(184,115,51,.12)}
 .foot{color:#888;font-size:11.5px;margin-top:18px}
+.hudwrap{display:flex;gap:16px;align-items:flex-start;break-inside:avoid}
+.hud{position:relative;flex:0 0 340px;height:340px;background:#0b0b0b;border:2px solid #FF7800;font-family:Fira;font-size:11px}
+.hud .box{font-size:10.5px;line-height:1.15}
+.hud .ctr{position:absolute;left:50%;top:0;bottom:0;border-left:1px dotted #555}
+.hudkey{flex:1;font-size:12.5px}
 """
 # screen sketch: 1920x1080 scaled to the box via percentages
 def box(x, y, w, h, label, style=""):
@@ -45,20 +50,35 @@ screen = "<div class='screen'>" + "".join([
     box(1, 2, 14, 12, "Player + target<br>(BetterBlizzFrames, Blizzard spots)"),
     box(84, 2, 15, 26, "SexyMap minimap<br>1.5x, square"),
     box(41, 4, 18, 6, "TomTom arrow"),
-    box(41.1, 28, 17.7, 31, "HUD box<br>Cooldown Manager<br>x 0, y -40<br>(keep clear)", "border-color:#FF7800;color:#FFD100"),
+    box(41.1, 28, 17.7, 31, "HUD box<br>Warrior Essentials<br>(Musca Auras)<br>centre x 0, y -40", "border-color:#FF7800;color:#FFD100"),
     box(1, 62, 26, 26, "Prat chat"),
     box(31, 78, 38, 18, "Bartender4 bars 1-3<br>(bars 4-5 on mouseover)"),
     box(73.8, 78.4, 26, 13, "Details! x2<br>250 x 141 each"),
     box(73.8, 91.8, 26, 3.4, "XP / Rep / Guild tray", "border-color:#FF7800;font-size:10px"),
 ]) + "</div>"
+# The HUD box at 1:1: 340 x 340 px, x from -170 to 170, y from 120 down to -220 (screen centre at 0,0).
+# Rows are the pack's places as printed by Musca Auras/source/verify.lua (a lane of two rows).
+def hud(x0, x1, y0, y1, label, style=""):
+    return box((x0 + 170) / 3.4, (120 - y1) / 3.4, (x1 - x0) / 3.4, (y1 - y0) / 3.4, label, style)
+hudsketch = "<div class='hud'><div class='ctr'></div>" + "".join([
+    hud(-90, 90, 90, 110, "Not in melee range (combat)", "color:#ff6b6b"),
+    hud(-126, 126, 72, 89, "Missing Battle Shout (out of combat)", "color:#FFD100;border-style:dotted"),
+    hud(-97, 97, 41, 63, "Procs: Overpower, Revenge, Execute, Victory Rush, HS/Cleave queued", "border-color:#FF7800"),
+    hud(-163, 163, 15, 37, "Your buffs (time left, red blink at 3 s)"),
+    hud(-97, 97, -11, 11, "Target debuffs + stance"),
+    hud(-167, 167, -28, -14, "Rage: grey / red / bronze 30 / ember 60", "background:linear-gradient(90deg,#737373 0 15%,#c74040 15% 30%,#b87333 30% 60%,#ff7800 60%);color:#111"),
+    hud(-167, 167, -100, -38, "Priority lane 1 2 3 4 5 6 7 8<br>(lit = ready, dim = not yet, glow = debuff missing)", "border-color:#FFD100"),
+    hud(-161, 161, -158, -104, "Cooldowns for this stance, trinkets, racial"),
+    hud(-167, 167, -187, -164, "Swing timers (main, off hand)"),
+]) + "</div>"
 parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Cooldown Manager</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
-<div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the rotation aura and TSM imports can't be used on day one. The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
+<span class='tag'>Schizzle's Warrior Setup F1.1</span><span class='tag'>Warrior Essentials v1.0 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
-parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
+parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
 parts.append(table(["Job", "Forever-ready addons"], [
     ["Bars, frames, chat, map", "Bartender4 4.18.4 &middot; BetterBlizzFrames v2.2.0e &middot; Prat 3.9.115 &middot; SexyMap v12.1.4 &middot; MinimapButtonButton &middot; MoveAny (Forever)"],
     ["Questing", "Questie 12.5.0 &middot; RXPGuides v4.11.30 &middot; TomTom v4.4.0 &middot; GatherMate2 &middot; HandyNotes &middot; RareScanner (Forever)"],
@@ -78,14 +98,34 @@ parts.append(table(["Piece", "What it sets", "Command"], [
     ["Questie / GatherMate2 / TomTom", "smaller icons, darker tracker, arrow at the top", "<code>/schizzle quests</code> &middot; <code>gather</code> &middot; <code>tomtom</code>"],
     ["Details!", "the Schizzle's Warrior meter profile, imported and switched to", "<code>/schizzle details</code>"],
     ["XP &amp; Rep Tray", "XP, watched rep and guild rep bars under the meters", "<code>/schizzle tray</code> (on/off)"],
+    ["Visual helper", "opens Musca Auras' import window with Schizzle's Warrior Essentials: click <b>Import</b>, then <code>/reload</code> (not part of <i>all</i>)", "<code>/schizzle auras</code>"],
+    ["Cooldown Manager", "Blizzard's cooldown bars off or on; off keeps the HUD box for the pack", "<code>/schizzle cdm</code>"],
 ]))
 parts.append("<div class='note'>Every addon gets a new <b>Schizzle's Warrior</b> profile; old profiles are kept. Run any command again to put that addon back. In combat the helper waits.</div>")
 parts.append("<h2>3. Where everything sits</h2>")
 parts.append(screen)
-parts.append("<p>The orange box in the middle is kept clear for cooldowns. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
-parts.append("<h2>4. Cooldown Manager (instead of the rotation aura)</h2>")
-parts.append("<ol><li><b>Options &gt; Gameplay &gt; Advanced Options</b> &gt; <b>Cooldown Manager</b>: check <i>Enable Cooldown Manager</i> is ticked.</li><li>Open its settings button. <b>Essential</b>: Overpower, Execute, Revenge, Mortal Strike / Bloodthirst / Shield Slam, Whirlwind, Victory Rush. <b>Utility</b>: Charge, Intercept, Pummel / Shield Bash, Bloodrage, Berserker Rage, Shield Wall, Retaliation, Recklessness.</li><li>Track <b>Rend</b>, <b>Battle Shout</b>, <b>Sunder Armor</b> and <b>Demoralizing Shout</b> on the buff/debuff bars.</li><li><b>Edit Mode</b>: drag Essential to the centre, slightly low (x 0, y -40); Utility just under it, buffs just above.</li></ol>")
-parts.append("<div class='note'>It shows a spell once whatever its rank, and it doesn't pick the next spell for you. The priorities below do that job.</div>")
+parts.append("<p>The orange box in the middle belongs to the visual helper (page 4); nothing else goes there. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
+parts.append("<h2>4. The visual helper: Schizzle's Warrior Essentials</h2>")
+parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
+parts.append("<div class='hudwrap'>" + hudsketch + "<div class='hudkey'>" + table(["Lane", "Order (press the lowest lit number)"], [
+    ["Starter (below 10)", "Rend, Heroic Strike, Thunder Clap"],
+    ["Arms", "Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind"],
+    ["Fury", "Bloodthirst, Whirlwind, Execute, Victory Rush, Slam, Rend"],
+    ["Protection", "Shield Slam, Revenge, Sunder Armor, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush"],
+]) + "<p class='sub'>The box at 1:1 scale: 340 px wide, from 120 px above the screen's centre to 220 px below; the group's centre is at x 0, y -40. The lane follows the talent tree with the most points (both lanes on a tie). Spells only show in the stance that can use them.</p></div></div>")
+parts.append(table(["You see", "Sound", "It means", "Do"], [
+    ["Overpower lights up", "water drop", "the target dodged", "Overpower now (Battle Stance)"],
+    ["Revenge lights up", "water drop", "you blocked, dodged or parried", "Revenge now (Defensive Stance)"],
+    ["Execute lights up", "robot blip", "target under 20%", "Execute beats everything in the lane"],
+    ["Victory Rush lights up", "water drop", "you got a killing blow", "free heal and damage"],
+    ["Heroic Strike / Cleave shows", "&mdash;", "queued on your next swing", "press again to cancel if you need the rage"],
+    ["Lane icon glows", "&mdash;", "Rend, Sunder, Thunder Clap or Demo Shout missing (Rend: due a refresh)", "put it back up"],
+    ["Lane icon dim / red / blue", "&mdash;", "not usable yet / out of range / short of rage", "press the next lit number"],
+    ["Rage grey / red / bronze / ember", "&mdash;", "under 15 / 15-29 / 30-59 / 60+", "bronze: room for HS or Cleave; ember: spend it"],
+    ["Buff blinks red", "&mdash;", "runs out in 3 seconds", "refresh it if it's yours to refresh"],
+    ["Missing Battle Shout / Not in melee range", "&mdash;", "out of combat / in combat, too far", "shout before the pull / close in (Charge, Intercept)"],
+]))
+parts.append("<div class='note'>Forever hides combat data from addons, so the pack reacts to what the game shows: no combat log, no proc prediction, no Deep Wounds tracking. A few spell IDs (Enrage, Flurry, Blood Craze, Last Stand, Sweeping Strikes) are still to be checked in game: if one of those buffs never shows, note it. No Musca Auras? Use the Cooldown Manager instead (Warrior Guide).</div>")
 parts.append("<h2>5. Warrior quick reference</h2>")
 parts.append(table(["Spec", "Priority"], [
     ["1-10", "Battle Shout &rarr; Charge &rarr; Rend &rarr; Heroic Strike with spare rage; Thunder Clap on 2+; Hamstring runners"],
@@ -125,7 +165,7 @@ parts.append("<h2>7. Not ready on day one</h2>")
 parts.append(table(["Addon / app", "Status", "Do"], [
     ["TradeSkillMaster + AppHelper", "no 16001 build", "Use Auctionator; TSM plan is ready"],
     ["TSM Desktop App", "no Forever data", "Nothing yet"],
-    ["WeakAuras", "no Forever build", "Cooldown Manager + the tray built into the helper"],
+    ["WeakAuras", "no Forever build", "Musca Auras + the pack; the tray is built into the helper"],
     ["Wago App / WagoAppCompanion", "no Forever support", "Leave off"],
     ["LittleWigs", "no Forever file", "BigWigs covers bosses"],
 ]))
@@ -139,6 +179,8 @@ parts.append(table(["Problem", "Fix"], [
     ["Bar 1 empty after a stance swap", "Normal: drag abilities onto bar 1 once in each stance."],
     ["Tray missing", "<code>/schizzle tray</code>. The XP bar hides at 60; the rep bar needs <i>Show as Experience Bar</i>."],
     ["Red errors", "Click the BugSack minimap icon; note the first error and the addon named in it."],
+    ["<code>/schizzle auras</code> says Musca isn't loaded", "Install Musca Auras 1.14.0 (folder <code>WeakAuras</code>) and turn off any other WeakAuras copy."],
+    ["Pack icons missing after an update", "Run <code>/schizzle auras</code> again and import; it updates the same auras."],
     ["An addon \"Out of date\"", "Don't tick <i>Load out of date AddOns</i>; update it from its Forever file."],
 ]))
 parts.append("<h2>9. In-game test list</h2>")
@@ -153,7 +195,11 @@ parts.append(checks([
     "Q E R F T G Y + mouse buttons fire Bar 3; Shift versions Bar 2; A/D strafe",
     "Bar 1 swaps with stances from level 10",
     "BugSack stays quiet through a fight, a quest turn-in and a level-up",
-    "Cooldown Manager shows tracked spells in combat",
+    "Visual helper: <i>Missing Battle Shout</i> out of combat; Starter lane below 10, your tree's lane from 10",
+    "Rage bar: grey under 15, red, bronze at 30, ember at 60; lane icons dim and light up",
+    "Overpower (dodge), Execute (&lt;20%) and Victory Rush (kill) light up with their sounds; HS/Cleave shows while queued",
+    "Rend timer on the target; the lane's Rend glows when it drops. Sunder stacks, Thunder Clap and Demo Shout show",
+    "Cooldown row changes with each stance; <i>Not in melee range</i> when you back off; swing bars fill",
     "Auctionator list imports and searches",
 ]))
 parts.append("<p class='foot'>Sources (Nov 3 2026): Blizzard news (launch Nov 4, raid overview), Blizzard forums Beta Development Notes updated Nov 2, wowforever.be Warrior leveling guide, foreverguide.app, endgametools.com talents and spellbook, patchmymain.com and 0hp.com Warrior changes, CurseForge file lists, Gethe/wow-ui-source <i>forever</i> branch. Repo: github.com/shawj317/Schizzles-World-of-Warcraft-Repo &middot; MIT with attribution &middot; Jon Shaw (Schizzle).</p>")

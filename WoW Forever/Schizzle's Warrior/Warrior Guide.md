@@ -2,30 +2,39 @@
 
 A Warrior reference for WoW Forever by Jon Shaw (Schizzle), written the day before launch (Nov 3 2026) from the sources at the bottom. Forever is a new game with its own talents, so treat everything here as a starting point and check it in game.
 
-## Why there's no rotation WeakAura yet
+## The visual helper: Schizzle's Warrior Essentials (Musca Auras)
 
-The MoP kit's All-in-One Rotation aura can't be carried over yet, for two reasons:
+The MoP kit's All-in-One Rotation WeakAura can't run on Forever. Normal WeakAuras has no Interface 16001 build, and Forever hides auras, cooldowns, rage and target health from addons in combat ("secret values"); the combat log never reaches addons at all. The MoP aura's logic needs exactly that data.
 
-1. **WeakAuras has no WoW Forever download.** Its CurseForge files list no Interface 16001 build. Two community forks exist, ForeverAuras and Musca Auras, but they're new, they don't read normal WeakAuras import strings reliably, and Schizzle's rotation has not been tested on them.
-2. **Forever hides combat data from addons.** Like Midnight, Forever turns auras, cooldowns and target health into "secret values" in combat, and the combat log never reaches addons. A rotation helper needs exactly that data (Rend on the target, Overpower ready, rage, target below 20%), so even a working WeakAuras build couldn't run the MoP logic.
+**Musca Auras** is a WeakAuras fork built for Forever that reads secret values through the game's own aura and cooldown displays. [Schizzle's Warrior Essentials](AddOns/Musca%20Auras/) is a pack for it. It's a visual helper, not a rotation bot: it shows what's ready, what's missing and what to press next, and you press every key yourself.
 
-When the rotation aura comes back, it will keep the repo's standing layout: the group's centre at x 0, y -40, the version in its name ("Schizzle's Warrior Rotation vX.Y"), Fira Sans Condensed Medium text, and the ready-only cooldown tray.
+1. Install Musca Auras 1.14.0 (its folder is called `WeakAuras`).
+2. Type `/schizzle auras` and click **Import** in the window that opens, then `/reload`. (Or paste [the import file](AddOns/Musca%20Auras/Schizzle's%20Warrior%20Essentials.txt) into `/wa` > **Import**.)
+3. Type `/schizzle cdm` to turn Blizzard's Cooldown Manager off, or set it up as below.
 
-### What to use instead: Blizzard's Cooldown Manager
+What you get, all in the HUD box around x 0, y -40, in Fira Sans Condensed Medium:
 
-Forever ships Blizzard's own Cooldown Manager (the `Blizzard_CooldownViewer` addon loads on Forever), and it can see secret values because it's Blizzard code. Schizzle's Warrior Setup turns it on (`cooldownViewerEnabled 1`).
+- **Proc alerts** with a glow and a sound: Overpower, Revenge, Execute and Victory Rush the moment they can be used. Heroic Strike or Cleave shows while it's queued on your next swing.
+- **A priority lane** for your talent tree (Starter below level 10), numbered left to right. A lit icon is ready; a dim one isn't. When two are lit, press the lower number. An alert always beats the lane: when Execute lights up, Execute.
+- **The rage bar**: grey under 15, red to 29, bronze from 30 (room for Heroic Strike), ember from 60 (spend it).
+- **Your buffs** and **your debuffs on the target** with time left; Rend, Sunder Armor, Thunder Clap and Demoralizing Shout glow in the lane while they're missing.
+- **Cooldowns** for your current stance only, plus trinkets and your racial; **swing timers**; **Missing Battle Shout** out of combat and **Not in melee range** in combat.
 
-1. Log in and type `/schizzle cvars` if you didn't click **Yes** on the setup prompt.
-2. Open **Options > Gameplay > Advanced Options**. Under **Cooldown Manager**, check **Enable Cooldown Manager** is ticked, then click the settings button below it to choose spells (the search box finds it if you type "cooldown").
-3. Put the Warrior spells you want to track into **Essential** (big icons) and **Utility** (small icons). A good start: Overpower, Execute, Revenge, Shield Slam or Mortal Strike or Bloodthirst, Whirlwind, Victory Rush in Essential; Charge, Intercept, Pummel/Shield Bash, Bloodrage, Berserker Rage, Shield Wall, Retaliation, Recklessness in Utility.
-4. Put **Rend**, **Battle Shout**, **Sunder Armor** and **Demoralizing Shout** on the tracked buffs/debuffs bars so you see when they drop.
-5. Open **Edit Mode** (the Edit Mode button in the same section, or Esc > Edit Mode) and drag the Essential bar to the spot the rotation aura uses: centred, a little below the middle of the screen (x 0, y -40). Keep the Utility bar just under it and the buff bar just above it, inside the HUD box (170 px either side of centre, 220 px below to 120 px above).
+The [pack's README](AddOns/Musca%20Auras/) has every row's position, the full lane per spec, what each alert means, and the spell IDs still to be checked in game.
 
-Known limits: from beta build 70009 the Cooldown Manager has Warrior data, but it doesn't track spell ranks, so a spell shows once whatever its rank. It doesn't suggest the next spell; that part is on you (see the priorities below).
+### The Cooldown Manager alongside the pack
+
+Forever also ships Blizzard's own Cooldown Manager (the `Blizzard_CooldownViewer` addon), which can see secret values because it's Blizzard code. Schizzle's Warrior Setup turns it on (`cooldownViewerEnabled 1`). With the pack it shows the same cooldowns in the same spot, so pick one:
+
+- **Pack only (recommended):** `/schizzle cdm` turns the Cooldown Manager off. Type it again to turn it back on.
+- **Both:** keep the Cooldown Manager for things the pack doesn't track (procs from gear, other buffs). Open **Options > Gameplay > Advanced Options > Cooldown Manager**, empty the **Essential** and **Utility** bars, keep only the **tracked buffs** bar, then in **Edit Mode** drag it out of the HUD box (outside 170 px either side of centre, 220 px below to 120 px above), and clear of the Details! windows, the XP & Rep Tray and the unit frames.
+- **No Musca Auras:** if the pack doesn't work for you, the Cooldown Manager is the fallback. Put Overpower, Execute, Revenge, your main strike, Whirlwind and Victory Rush in **Essential**, cooldowns in **Utility**, Rend, Battle Shout, Sunder Armor and Demoralizing Shout on the tracked bars, and drag **Essential** to x 0, y -40 in Edit Mode.
+
+Known limits: the Cooldown Manager doesn't track spell ranks, so a spell shows once whatever its rank. Neither it nor the pack can see the combat log, so nothing predicts procs or tracks Deep Wounds.
 
 ## Priorities while leveling
 
-These are the plain-text versions of the MoP aura's logic, adapted to Forever's spell list.
+These are the plain-text versions of the MoP aura's logic, adapted to Forever's spell list. The pack's lanes follow the same order.
 
 ### Levels 1-10
 1. Keep **Battle Shout** up.

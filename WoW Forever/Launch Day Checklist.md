@@ -9,14 +9,15 @@ The same steps are in the [launch-day manual (PDF)](Manual/).
 - [ ] Copy the Forever-ready addons into `World of Warcraft\_forever_\Interface\AddOns\` (see [Addon Compatibility](Addon%20Compatibility.md)). Keep a copy of the folder first.
 - [ ] Copy `Schizzle's Warrior/AddOns/SchizzlesWarriorSetup/SchizzlesWarriorSetup` into the same folder.
 - [ ] Optional: make the private `SchizzlesWarriorSetup_Local` addon with your Warrior's name ([how](Schizzle's%20Warrior/AddOns/SchizzlesWarriorSetup/#your-own-copy-local-settings)).
-- [ ] Leave **TradeSkillMaster**, **WeakAuras** and **WagoAppCompanion** off on Forever; they have no Forever build.
+- [ ] Install **Musca Auras 1.14.0** for the [visual helper](Schizzle's%20Warrior/AddOns/Musca%20Auras/). Its folder is called `WeakAuras`, so it replaces any WeakAuras folder there.
+- [ ] Leave **TradeSkillMaster**, the original **WeakAuras** and **WagoAppCompanion** off on Forever; they have no Forever build.
 
 ## First login
 - [ ] At the character screen, click **AddOns** and check nothing important says "Out of date". Don't tick "Load out of date AddOns".
 - [ ] Log in. Click **Yes** on "Set up Schizzle's Warrior on this character?", then **Reload**.
 - [ ] Check the chat lines: every piece should say "done", or "skipped" if that addon isn't installed.
 - [ ] Look at the bottom-right corner: the XP bar should be there under the Details! meters.
-- [ ] Open **Options > Gameplay > Advanced Options** and set up the **Cooldown Manager** ([Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md#what-to-use-instead-blizzards-cooldown-manager)).
+- [ ] Type `/schizzle auras`, click **Import** in the Musca Auras window, then `/reload`. Type `/schizzle cdm` to turn off the Cooldown Manager, which would sit in the same spot ([Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
 - [ ] Import the click-guide and import-string setups that work on Forever: BetterBlizzFrames, Baganator and BigWigs strings and the MoveAny, Leatrix Plus, GTFO, RareScanner and BetterFishing guides from the [MoP Warrior kit](../WoW%20Classic%20-%20Mists%20of%20Pandaria/Schizzle's%20Warrior/#non-elvui-interface-kit). Skip the MoP Pawn scales: they weigh MoP stats like haste and mastery.
 - [ ] Import the [Auctionator leveling list](Schizzle's%20Warrior/AddOns/Auctionator/).
 - [ ] Type `/sal auto` once (Speedy AutoLoot).
@@ -32,7 +33,15 @@ Write down anything that fails, with the BugSack message, so it can be fixed:
 - [ ] Keybinds: Q, E, R, F, T, G, Y and the mouse buttons fire Bar 3; Shift versions fire Bar 2; A and D strafe.
 - [ ] Bar 1 swaps pages with stances once you have Defensive Stance at level 10 (drag abilities onto each page).
 - [ ] BugSack's minimap icon stays green during a fight, a quest turn-in and a level-up.
-- [ ] The Cooldown Manager shows your tracked spells in combat.
+- [ ] Visual helper (Musca Auras), out of combat: **Missing Battle Shout** shows above the middle until you shout. The rage bar is grey at 0 rage.
+- [ ] Below level 10 the Starter lane shows Rend, Heroic Strike and Thunder Clap. From 10, with talent points spent, your tree's lane shows instead.
+- [ ] In combat: the rage bar turns red at 15, bronze at 30 and ember at 60. A lane icon dims while it can't be used and lights when it can.
+- [ ] Get dodged in Battle Stance: Overpower lights up with a glow and a water-drop sound. Bring a target under 20%: Execute lights up with a blip. Kill something: Victory Rush lights up.
+- [ ] Press Heroic Strike: its icon shows until the swing lands. Cleave too.
+- [ ] Rend the target: its icon shows the time left and stops glowing; let it drop and the lane's Rend glows again. Check Sunder Armor (stacks), Thunder Clap and Demoralizing Shout show on the target too.
+- [ ] Swap stances: the cooldown row changes (Pummel and Recklessness only in Berserker, Shield Wall and Taunt only in Defensive, Charge and Retaliation only in Battle).
+- [ ] Step out of melee range of a target in combat: **Not in melee range** shows. The swing bars fill with each swing.
+- [ ] Note any buff that never shows when it should (Enrage, Flurry, Blood Craze, Last Stand, Sweeping Strikes); their IDs are the ones still to be checked.
 
 ## Leveling plan
 - **1-10:** Battle Shout, Charge, Rend, Heroic Strike. Train every even level.
