@@ -1,0 +1,128 @@
+ept 754 >>Accept Winterhoof Cleansing
+step
+    .goto Thunder Bluff,47,50
+    >>Visit Thunder Bluff - get Flight Path and train
+    .fp >>Get the Thunder Bluff Flight Path
+    .trainer >>Train spells / weapons
+step
+    >>Finish remaining Bloodhoof quests to ~12, then take the zeppelin from Thunder Bluff toward Orgrimmar / Undercity connection and head to Silverpine.
+    .xp 12
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 1-6 Tirisfal (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#defaultfor Undead
+#next 6-12 Tirisfal (Ashen)
+
+step << !Undead
+    #sticky
+    #completewith next
+    >>This chapter is for Undead starting in Deathknell.
+step
+    .goto Tirisfal Glades,30.2,71.6
+    .accept 363 >>Accept Rude Awakening
+    .target Undertaker Mordo
+step
+    .goto Tirisfal Glades,30.8,66.2
+    .turnin 363 >>Turn in Rude Awakening
+    .accept 364 >>Accept The Mindless Ones
+    .target Shadow Priest Sarvis
+step
+    .goto Tirisfal Glades,32,63,30
+    >>Kill Mindless Zombies and Wretched Zombies outside the chapel
+    .complete 364 >>Mindless / Wretched Zombie
+    .mob Mindless Zombie
+step
+    .goto Tirisfal Glades,30.8,66.2
+    .turnin 364 >>Turn in The Mindless Ones
+    .accept 376 >>Accept The Damned
+    .accept 380 >>Accept Night Web's Hollow
+    .xp 6
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 6-12 Tirisfal (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#defaultfor Undead
+#next 12-16 Silverpine (Ashen)
+
+step
+    .goto Tirisfal Glades,60.7,51.9
+    >>Arrive Brill
+    .home >>Set your Hearthstone to Brill
+    .fp >>Get the Undercity Flight Path
+    .accept 367 >>Accept A New Plague
+    .accept 370 >>Accept At War With The Scarlet Crusade
+step
+    .goto Tirisfal Glades,32,48,40
+    >>Work Scarlet and plague dog quests west of Brill
+    .complete 367 >>Darkhound Blood
+    .complete 370 >>Scarlet
+step
+    .goto Undercity,63,48
+    >>Train in Undercity and collect Ruins of Lordaeron dungeon quests
+    .trainer >>Train class skills
+    .xp 12
+step
+    .goto Silverpine Forest,45.6,42.6
+    >>Continue south into Silverpine Forest
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 1-9 Zephras Isle (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#defaultfor Skyborne
+#next 9-14 Zephras Isle (Ashen)
+
+step << !Skyborne
+    #sticky
+    #completewith next
+    >>This chapter is for Windshaper Skyborne on Zephras Isle.
+step
+    .goto Zephras Isle,42.8,23.4
+    >>Talk to Ailee Farheart and begin Coming of Age / Harmony in Balance
+    +Accept every starter yellow in Thendal Grove before leaving the ridge
+step
+    .goto Zephras Isle,45,27,40
+    >>Clear Juvenile Vuldren / infestation objectives around the grove
+    .xp 5
+step
+    .goto Zephras Isle,50,40
+    >>Move into Shen'dar and Falaath Village hubs - turn in, train, and take the next chapter leads
+    .trainer >>Train as skills unlock
+    .xp 9
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 9-14 Zephras Isle (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 1-30
+#defaultfor Skyborne
+#next 12-16 Silverpine (Ashen)
+
+step
+    .goto Zephras Isle,55,55
+    >>Complete Valanaar chapter quests until the skycutter becomes available
+    .xp 13
+step
+    >>Take the skycutter to Skywatcher Plateau in Mulgore
+    .goto Mulgore,36,30
+    .fp >>Get the Thunder Bluff (run / fly once unlocked) Flight Path
+step << Hunter
+    >>Hunters: after Mulgore arrival, you may skip Silverpine a
