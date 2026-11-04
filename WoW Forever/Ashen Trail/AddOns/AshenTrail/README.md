@@ -20,7 +20,13 @@ Original Horde 1-60 tracker for World of Warcraft: Forever. Its Lua does not loa
 - Step lines name the action: Talk to Lar Prowltusk. Accept: Thwarting Kolkar Aggression. Set Hearth to Razor Hill. The active step sends its coordinates to the arrow. Click a step to skip it, and click it again to mark it not complete. Right-click the window for chapters, reload, and options. Options open in their own window.
 - Each dungeon quest giver is a separate step so the arrow points at that NPC. A giver with no published spot is described and not pinned.
 - A Target button that runs `/targetexact` for the step's NPC, with an icon on their nameplate.
-- A gear check that scores quest rewards and bag gear against what you have equipped.
+- A gear check that scores quest rewards and bag gear against what you have equipped. Empty slots score as zero.
+- A quest-item button for the active step, on its own frame, updated out of combat.
+- Minimap and world-map pins for the giver and turn-in on the current step and the next one.
+- A route page with saved flight times and an estimated fastest-route time. The addon still cannot take the flight.
+- A dungeon panel for the nine Forever instances: level, entrance, quests, and prep. Right-click the window and choose Dungeons.
+- A talent line for the next point of a vanilla opener, shown out of combat. Forever trees can differ.
+- The window uses Fira Sans Condensed Medium when that file loads, and the game font when it does not.
 - A per-character turn-in history.
 - Options grouped into theme, guide, quests, bags, arrow, and window. Themes: Blizzard, Dark, Vibrant, class color, and Ashen.
 - Chapters advance automatically. Set them to Manual to stay on the chapter you picked.

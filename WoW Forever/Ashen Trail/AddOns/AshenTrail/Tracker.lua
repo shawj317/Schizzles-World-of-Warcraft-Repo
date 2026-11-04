@@ -429,6 +429,7 @@ function AT.Sync(aggressive)
   end
   AT.ScanQuests()
   AT.AdvanceDone(aggressive and true or false)
+  AT.questItemDirty = true
   AT.UpdateTargetMacro()
   AT.Refresh()
 end
@@ -452,6 +453,7 @@ function AT.Next()
   AT.focus = nil
   AT.planKey = nil
   AT.announced = {}
+  AT.questItemDirty = true
   AT.UpdateTargetMacro()
   AT.Refresh()
 end
@@ -467,6 +469,7 @@ function AT.GoToStep(index)
   AT.focus = nil
   AT.planKey = nil
   AT.announced = {}
+  AT.questItemDirty = true
   AT.UpdateTargetMacro()
   AT.Refresh()
 end
@@ -490,6 +493,7 @@ function AT.ToggleStep(index)
       db.holdStep = true
     end
     AT.Say("Step " .. index .. " is not complete.")
+    AT.questItemDirty = true
     AT.UpdateTargetMacro()
     AT.Refresh()
     return
@@ -519,6 +523,7 @@ function AT.Prev()
   AT.focus = nil
   AT.planKey = nil
   db.holdStep = true
+  AT.questItemDirty = true
   AT.UpdateTargetMacro()
   AT.Refresh()
 end
@@ -686,14 +691,130 @@ function AT.LearnFlights()
 end
 
 local function macroText(name)
-  local db = AT.DB()
-  local quoted = name
-  if string.find(name, " ", 1, true) and not string.find(name, '"', 1, true) then
-    quoted = '"' .. name .. '"'
+  return L.TargetMacro(name, AT.DB().options.skullMark)
+end
+
+function AT.GuidePins()
+  local _, steps = AT.CurrentStep()
+  return L.GuidePins(steps, AT.DB().step or 1)
+end
+
+local function itemFromLink(link, texture)
+  if type(link) ~= "string" or link == "" then return nil end
+  local name = string.match(link, "%[(.-)%]")
+  if not name or name == "" then return nil end
+  return { name = name, link = link, texture = texture }
+end
+
+function AT.ActiveQuestItem()
+  local step = AT.CurrentStep()
+  if not step then return nil end
+  local wanted = {}
+  local any = false
+  for i = 1, #(step.lines or {}) do
+    local id = step.lines[i].id
+    if id then
+      wanted[id] = true
+      wanted[tostring(id)] = true
+      any = true
+    end
   end
-  local body = "/targetexact " .. quoted .. "\n/targetexact " .. quoted
-  if db.options.skullMark then body = body .. "\n/tm 8" end
-  return body
+  if not any then return nil end
+  local function wantedId(id)
+    return id and (wanted[id] or wanted[tostring(id)])
+  end
+  if GetNumQuestLogEntries and GetQuestLogTitle and GetQuestLogSpecialItemInfo then
+    local count = GetNumQuestLogEntries() or 0
+    for i = 1, count do
+      local results = { pcall(GetQuestLogTitle, i) }
+      if results[1] and not results[5] and wantedId(results[9]) then
+        local ok, link, texture = pcall(GetQuestLogSpecialItemInfo, i)
+        local item = ok and itemFromLink(link, texture)
+        if item then return item end
+      end
+    end
+  end
+  if C_Container and C_Container.GetContainerNumSlots then
+    for bag = 0, 4 do
+      local slots = C_Container.GetContainerNumSlots(bag) or 0
+      for slot = 1, slots do
+        local link = C_Container.GetContainerItemLink(bag, slot)
+        local questId
+        if C_Container.GetContainerItemQuestInfo then
+          local ok, info = pcall(C_Container.GetContainerItemQuestInfo, bag, slot)
+          if ok and type(info) == "table" then questId = info.questID or info.questId end
+        end
+        if wantedId(questId) then
+          local item = itemFromLink(link)
+          if item then return item end
+        end
+      end
+    end
+  elseif GetContainerItemQuestInfo and GetContainerNumSlots and GetContainerItemLink then
+    local maxBag = NUM_BAG_SLOTS or 4
+    for bag = 0, maxBag do
+      local slots = GetContainerNumSlots(bag) or 0
+      for slot = 1, slots do
+        local link = GetContainerItemLink(bag, slot)
+        local ok, _, questId = pcall(GetContainerItemQuestInfo, bag, slot)
+        if ok and wantedId(questId) then
+          local item = itemFromLink(link)
+          if item then return item end
+        end
+      end
+    end
+  end
+end
+
+function AT.UpdateQuestItemButton()
+  local button = _G.AshenTrailQuestItemButton
+  if not button or not button.SetAttribute then return end
+  if InCombatLockdown and InCombatLockdown() then
+    AT.pendingItem = true
+    return
+  end
+  local now = GetTime and GetTime() or 0
+  if not AT.questItemDirty and AT.questItemAt and (now - AT.questItemAt) < 2 then
+    return
+  end
+  AT.questItemDirty = false
+  AT.questItemAt = now
+  AT.pendingItem = false
+  local item = AT.ActiveQuestItem()
+  local holder = button.holder or button:GetParent()
+  if not item or AT.DB().hidden then
+    button:SetAttribute("item", nil)
+    if holder then holder:Hide() end
+    AT.questItem = nil
+    return
+  end
+  AT.questItem = item
+  button:SetAttribute("type", "item")
+  button:SetAttribute("item", item.name)
+  button:SetText(item.name)
+  if holder then holder:Show() end
+end
+
+function AT.TalentLine()
+  if InCombatLockdown and InCombatLockdown() then return AT.talentText end
+  if not UnitLevel or not UnitCharacterPoints then
+    AT.talentText = nil
+    return nil
+  end
+  local okL, level = pcall(UnitLevel, "player")
+  local okP, points = pcall(UnitCharacterPoints, "player")
+  if not okL or not okP then return AT.talentText end
+  local advice = L.NextTalent(AT.DB().class, level, points)
+  if not advice then
+    AT.talentText = nil
+    return nil
+  end
+  if advice.done then
+    AT.talentText = tostring(advice.unspent) .. " points unspent"
+  else
+    AT.talentText = "Next: " .. advice.name
+  end
+  return AT.talentText
 end
 
 function AT.UpdateTargetMacro()
@@ -2011,6 +2132,7 @@ events:RegisterEvent("MERCHANT_CLOSED")
 events:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 events:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
+events:RegisterEvent("PLAYER_LEVEL_UP")
 events:RegisterEvent("TAXIMAP_OPENED")
 events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 events:RegisterEvent("ZONE_CHANGED")
@@ -2071,8 +2193,15 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.RefreshNameplates()
   elseif event == "PLAYER_REGEN_ENABLED" then
     if AT.pendingMacro then AT.UpdateTargetMacro() end
+    if AT.pendingItem then AT.questItemDirty = true end
+    if AT.UpdateQuestItemButton then AT.UpdateQuestItemButton() end
     if AshenTrailUI and AshenTrailUI.ApplyPendingLayout then AshenTrailUI.ApplyPendingLayout() end
     AT.RefreshNameplates()
+  elseif event == "PLAYER_LEVEL_UP" then
+    if not (InCombatLockdown and InCombatLockdown()) then
+      local line = AT.TalentLine()
+      if line then AT.Say(line .. ". Vanilla opener. Forever may differ.") end
+    end
   elseif event == "TAXIMAP_OPENED" then
     AT.LearnFlights()
     AT.Refresh()
@@ -2082,6 +2211,7 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     AT.Refresh()
   elseif event == "BAG_UPDATE_DELAYED" then
     AT.bagsDirty = true
+    AT.questItemDirty = true
     if MerchantFrame and MerchantFrame.IsShown and MerchantFrame:IsShown() then AT.SellJunk() end
     if AshenTrailUI and AshenTrailUI.PaintJunk then AshenTrailUI.PaintJunk() end
     if AT.DB().options.page == "gear" and AshenTrailUI and AshenTrailUI.Refresh then

@@ -154,7 +154,7 @@ step
     .goto Orgrimmar,45.1,63.9
     >>Enter Orgrimmar and get the flight path.
     .fp >>Get the Orgrimmar flight path
-    .trainer >>Train your class skills, visit the bank, and cook a campfire buff if one is offered.
+    .trainer >>Train your class skills. Class quests at 10, 20, and 30 come from this trainer when offered. Only published givers are pinned.
 step
     .goto Orgrimmar,49.5,50.6
     >>Talk to Neeru Fireblade. Accept: Slaying the Beast.
@@ -298,7 +298,7 @@ step
     .goto Thunder Bluff,47,50
     >>Go to Thunder Bluff, get the flight path, and train your class skills.
     .fp >>Get the Thunder Bluff flight path
-    .trainer >>Train spells / weapons
+    .trainer >>Train spells and weapons. Class quests at 10, 20, and 30 come from this trainer when offered. Only published givers are pinned.
 step
     .goto Orgrimmar,50.8,13.8
     >>Finish the remaining Bloodhoof quests, then go to the Orgrimmar zeppelin tower and ride to Tirisfal for Silverpine.
@@ -369,7 +369,7 @@ step
     .complete 370,1 >>Scarlet
 step
     >>Train your class skills in Undercity.
-    .trainer >>Train your class skills.
+    .trainer >>Train your class skills. Class quests at 10, 20, and 30 come from this trainer when offered. Undead paladin and warlock chains are pinned only when the giver is published.
     .xp 12
 step
     .goto Tirisfal Glades,65.2,60.2

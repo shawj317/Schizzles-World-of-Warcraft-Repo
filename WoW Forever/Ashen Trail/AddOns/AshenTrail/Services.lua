@@ -6,6 +6,7 @@ AshenTrailServices = {
     { id = "inn-senjin", kind = "inn", name = "Sen'jin Village", zone = "Durotar", x = 52.0, y = 68.3, repair = true, bind = { "Sen'jin Village" } },
     { id = "fp-razorhill", kind = "fp", name = "Razor Hill", zone = "Durotar", x = 51.9, y = 43.5 },
     { id = "inn-razorhill", kind = "inn", name = "Razor Hill", zone = "Durotar", x = 51.9, y = 43.5, repair = true, bind = { "Razor Hill" } },
+    { id = "tr-jenshan", kind = "trainer", name = "Jen'shan", zone = "Durotar", x = 42.84, y = 69.33, class = "Hunter", note = "Valley of Trials" },
 
     { id = "fp-org", kind = "fp", name = "Orgrimmar", zone = "Orgrimmar", x = 45.1, y = 63.9 },
     { id = "inn-org", kind = "inn", name = "Orgrimmar", zone = "Orgrimmar", x = 54.1, y = 68.4, repair = true, bind = { "Orgrimmar", "Valley of Strength" } },
@@ -30,7 +31,16 @@ AshenTrailServices = {
     { id = "inn-bloodhoof", kind = "inn", name = "Bloodhoof Village", zone = "Mulgore", x = 46.8, y = 60.4, repair = true, bind = { "Bloodhoof Village" } },
     { id = "fp-tb", kind = "fp", name = "Thunder Bluff", zone = "Thunder Bluff", x = 47.0, y = 50.0 },
     { id = "inn-tb", kind = "inn", name = "Thunder Bluff", zone = "Thunder Bluff", x = 45.8, y = 64.2, repair = true, bind = { "Thunder Bluff" } },
-    { id = "tr-tb", kind = "trainer", name = "Thunder Bluff class trainers", zone = "Thunder Bluff", x = 47.0, y = 50.0, note = "Hunter Rise, Spirit Rise, Elder Rise" },
+    { id = "tr-harutt", kind = "trainer", name = "Harutt Thunderhorn", zone = "Mulgore", x = 44.01, y = 76.13, class = "Warrior", note = "Camp Narache" },
+    { id = "tr-lanka", kind = "trainer", name = "Lanka Farshot", zone = "Mulgore", x = 44.26, y = 75.69, class = "Hunter", note = "Camp Narache" },
+    { id = "tr-gart", kind = "trainer", name = "Gart Mistrunner", zone = "Mulgore", x = 45.09, y = 75.93, class = "Druid", note = "Camp Narache" },
+    { id = "tr-meela", kind = "trainer", name = "Meela Dawnstrider", zone = "Mulgore", x = 45.02, y = 75.94, class = "Shaman", note = "Camp Narache" },
+    { id = "tr-torm", kind = "trainer", name = "Torm Ragetotem", zone = "Thunder Bluff", x = 57.3, y = 87.4, class = "Warrior", note = "Hunter Rise" },
+    { id = "tr-urek", kind = "trainer", name = "Urek Thunderhorn", zone = "Thunder Bluff", x = 59.1, y = 86.8, class = "Hunter", note = "Hunter Rise" },
+    { id = "tr-turak", kind = "trainer", name = "Turak Runetotem", zone = "Thunder Bluff", x = 76.5, y = 27.2, class = "Druid", note = "Elder Rise" },
+    { id = "tr-siln", kind = "trainer", name = "Siln Skychaser", zone = "Thunder Bluff", x = 22.8, y = 21.1, class = "Shaman", note = "Spirit Rise" },
+    { id = "tr-shymm", kind = "trainer", name = "Archmage Shymm", zone = "Thunder Bluff", x = 22.8, y = 14.5, class = "Mage", note = "Pools of Vision" },
+    { id = "tr-malakai", kind = "trainer", name = "Malakai Cross", zone = "Thunder Bluff", x = 24.5, y = 22.6, class = "Priest", note = "Pools of Vision" },
 
     { id = "skycutter", kind = "boat", name = "Zephras skycutter", zone = "Zephras Isle", x = 42.8, y = 23.4 },
 

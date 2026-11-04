@@ -44,15 +44,30 @@ local NEAR_FILTERS = {
   { id = "zeppelin", label = "Zeppelin" },
 }
 
-local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath, targetHolder, xpLabel
+local frame, arrow, pages, hint, progressBar, stepLabel, chapterLabel, activeTitle, activeBody, menu, optionsFrame, minimapButton, discardButton, breath, targetHolder, questItemHolder, xpLabel, dungeonFrame
 local pendingLayout = false
 local linePool, rowPool, pinPool, stepPool, menuPool = {}, {}, {}, {}, {}
 local mapPins = {}
 local nearFilter = "all"
 
+local ADDON_FONT = "Interface\\AddOns\\AshenTrail\\Fonts\\FiraSansCondensed-Medium.ttf"
+local fontChoice
+
 local function fontPath()
-  local path = GameFontNormal and GameFontNormal:GetFont()
-  return path or "Fonts\\FRIZQT__.TTF"
+  if fontChoice then return fontChoice end
+  local game = (GameFontNormal and GameFontNormal:GetFont()) or "Fonts\\FRIZQT__.TTF"
+  if UIParent and UIParent.CreateFontString then
+    local probe = UIParent:CreateFontString(nil, "OVERLAY")
+    local ok = probe:SetFont(ADDON_FONT, 12, "")
+    local face = probe:GetFont()
+    probe:Hide()
+    if ok and face then
+      fontChoice = ADDON_FONT
+      return fontChoice
+    end
+  end
+  fontChoice = game
+  return fontChoice
 end
 
 local function fontSize()
@@ -180,6 +195,10 @@ local function layoutFrame()
   if targetHolder then
     targetHolder:SetScale(scale)
     if db.hidden then targetHolder:Hide() else targetHolder:Show() end
+  end
+  if questItemHolder then
+    questItemHolder:SetScale(scale)
+    if db.hidden then questItemHolder:Hide() end
   end
 end
 
@@ -532,6 +551,15 @@ local function renderRoute()
         local hop = plan.hops[i]
         if hop.to ~= "@dest" then
           local text = hop.label or hop.kind
+          if hop.kind == "fly" and hop.name and db.flightTimes then
+            local tail = "|" .. string.lower(hop.name)
+            for key, value in pairs(db.flightTimes) do
+              if type(key) == "string" and string.sub(string.lower(key), -#tail) == tail and tonumber(value) then
+                text = text .. " (" .. L.FormatClock(value) .. " last time)"
+                break
+              end
+            end
+          end
           if hop.unconfirmed then text = text .. " (flight not confirmed)" end
           local color = BONE
           if hop.kind == "hearth" or hop.kind == "fly" or hop.kind == "boat" or hop.kind == "zep" then
@@ -544,6 +572,12 @@ local function renderRoute()
         rows[1] = { text = "Run to the step.", color = BONE }
       end
     end
+    local eta = plan and L.RouteEta(plan, db.flightTimes)
+    if eta and ((eta.seconds and eta.seconds >= 1) or eta.missingFlight) then
+      local label = "Fastest route, about " .. L.FormatClock(eta.seconds)
+      if eta.missingFlight then label = label .. ", plus an untimed flight" end
+      table.insert(rows, 1, { text = label, color = EMBER })
+    end
   end
   fillWrapped(child, rows)
   hint:SetText("Hearth, flight, boat, and zeppelin hops are suggestions. The addon cannot take them for you.")
@@ -554,6 +588,7 @@ local function renderGear()
   local db = AT.DB()
   local rows = {}
   local role = ROLE[db.class or ""] or "your class stats"
+  rows[#rows + 1] = { text = "Upgrade finder. Rewards and bag items are scored against the weaker equipped slot.", color = MUTED }
   rows[#rows + 1] = { text = (db.class or "Class") .. " weights favor " .. role .. ".", color = BONE }
   local best, choices = nil, nil
   if AT.pendingReward or (QuestFrame and QuestFrame:IsShown()) then
@@ -756,7 +791,16 @@ function UI.Refresh()
   UI.ApplyMinimap()
   UI.SyncDiscard()
   UI.SyncBreath()
-  if xpLabel then xpLabel:SetText(AT.XpText or "") end
+  if xpLabel then
+    local xp = AT.XpText or ""
+    local talent = AT.TalentLine and AT.TalentLine() or nil
+    if talent and talent ~= "" then
+      if xp ~= "" then xp = xp .. "   " .. talent else xp = talent end
+    end
+    xpLabel:SetText(xp)
+  end
+  if AT.UpdateQuestItemButton then AT.UpdateQuestItemButton() end
+  if UI.UpdateMinimapPins then UI.UpdateMinimapPins() end
   local blocked = renderGate()
   local page = db.options.page or "guide"
   if page == "options" then
@@ -879,11 +923,10 @@ function UI.UpdateMapPins()
   end
   local zoneName, mapID = mapZoneName()
   local pins = {}
-  local step = AT.CurrentStep()
-  local pois = step and step.pois or {}
-  for i = 1, #pois do
-    if not zoneName or pois[i].zone == zoneName then
-      pins[#pins + 1] = pois[i]
+  local guide = AT.GuidePins and AT.GuidePins() or {}
+  for i = 1, #guide do
+    if not zoneName or guide[i].zone == zoneName then
+      pins[#pins + 1] = guide[i]
     end
   end
   if C_QuestLog and C_QuestLog.GetNextWaypoint and step then
@@ -914,6 +957,69 @@ function UI.UpdateMapPins()
     if placed then pin:Show() else pin:Hide() end
   end
   for i = #pins + 1, #mapPins do mapPins[i]:Hide() end
+end
+
+local miniPins = {}
+
+local function takeMini(index)
+  local pin = miniPins[index]
+  if pin then return pin end
+  if not Minimap then return nil end
+  pin = CreateFrame("Frame", nil, Minimap)
+  pin:SetSize(12, 12)
+  pin:SetFrameStrata("MEDIUM")
+  pin.icon = pin:CreateTexture(nil, "OVERLAY")
+  pin.icon:SetAllPoints()
+  pin.icon:SetTexture("Interface\\Buttons\\WHITE8X8")
+  pin:SetScript("OnEnter", function(self)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:SetText(self.tip or "Step")
+    GameTooltip:Show()
+  end)
+  pin:SetScript("OnLeave", function()
+    if GameTooltip then GameTooltip:Hide() end
+  end)
+  miniPins[index] = pin
+  return pin
+end
+
+function UI.UpdateMinimapPins()
+  if not Minimap or not AT.GuidePins then
+    for i = 1, #miniPins do miniPins[i]:Hide() end
+    return
+  end
+  local pins = AT.GuidePins()
+  local origin = AT.PlayerPos()
+  local shown = 0
+  for i = 1, #pins do
+    local poi = pins[i]
+    if origin.zone and poi.zone == origin.zone and origin.x and poi.x then
+      shown = shown + 1
+      local pin = takeMini(shown)
+      if pin then
+        local dx = poi.x - origin.x
+        local dy = origin.y - poi.y
+        local dist = math.sqrt(dx * dx + dy * dy)
+        local edge = (Minimap:GetWidth() or 140) / 2 - 12
+        if edge < 20 then edge = 50 end
+        local scale = 1
+        if dist < 12 then scale = dist / 12 end
+        if dist < 0.05 then scale = 0 end
+        local angle = math.atan2(dy, dx)
+        pin:ClearAllPoints()
+        pin:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * edge * scale, math.sin(angle) * edge * scale)
+        if poi.k == "turnin" then
+          pin.icon:SetVertexColor(0.45, 0.75, 0.45)
+        else
+          pin.icon:SetVertexColor(0.95, 0.78, 0.25)
+        end
+        pin.tip = (poi.k == "turnin" and "Turn in " or "Talk to ") .. (poi.name or "NPC")
+        pin:Show()
+      end
+    end
+  end
+  for i = shown + 1, #miniPins do miniPins[i]:Hide() end
 end
 
 local function makeScroll(parent)
@@ -1360,6 +1466,58 @@ function UI.OpenOptions()
   if optionsFrame.sync then optionsFrame.sync() end
 end
 
+function UI.OpenDungeons()
+  if not dungeonFrame then
+    dungeonFrame = CreateFrame("Frame", "AshenTrailDungeons", UIParent)
+    dungeonFrame:SetSize(440, 480)
+    dungeonFrame:SetPoint("CENTER", 240, 20)
+    dungeonFrame:SetFrameStrata("DIALOG")
+    dungeonFrame:SetMovable(true)
+    dungeonFrame:EnableMouse(true)
+    dungeonFrame:RegisterForDrag("LeftButton")
+    dungeonFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    dungeonFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    backdrop(dungeonFrame)
+    local title = dungeonFrame:CreateFontString(nil, "OVERLAY")
+    title:SetPoint("TOPLEFT", 14, -12)
+    title:SetFont(fontPath(), 14, "")
+    title:SetText("Forever dungeons")
+    local close = button(dungeonFrame, "Close", 70, 22)
+    close:SetPoint("TOPRIGHT", -10, -8)
+    close:SetScript("OnClick", function() dungeonFrame:Hide() end)
+    dungeonFrame.scroll = makeScroll(dungeonFrame)
+    dungeonFrame.scroll:ClearAllPoints()
+    dungeonFrame.scroll:SetPoint("TOPLEFT", 8, -40)
+    dungeonFrame.scroll:SetPoint("BOTTOMRIGHT", -8, 8)
+  end
+  local child = dungeonFrame.scroll.child
+  local rows = {}
+  local list = AshenTrailData and AshenTrailData.dungeons or {}
+  if #list == 0 then
+    rows[1] = { text = "No dungeon list is loaded.", color = MUTED }
+  else
+    for i = 1, #list do
+      local dungeon = list[i]
+      rows[#rows + 1] = { text = (dungeon.name or "Dungeon") .. "   " .. (dungeon.levels or ""), color = EMBER }
+      if dungeon.where and dungeon.where ~= "" then
+        rows[#rows + 1] = { text = "Entrance: " .. dungeon.where, color = BONE }
+      end
+      local quests = dungeon.quests or {}
+      if #quests == 0 then
+        rows[#rows + 1] = { text = "No published world quest.", color = MUTED }
+      else
+        rows[#rows + 1] = { text = "Quests: " .. table.concat(quests, ", "), color = BONE }
+      end
+      if dungeon.prep and dungeon.prep ~= "" then
+        rows[#rows + 1] = { text = dungeon.prep, color = MUTED }
+      end
+      rows[#rows + 1] = { text = " ", color = MUTED }
+    end
+  end
+  fillWrapped(child, rows)
+  dungeonFrame:Show()
+end
+
 function UI.ShowMenu(stepIndex)
   if not menu then return end
   local items = {}
@@ -1375,6 +1533,7 @@ function UI.ShowMenu(stepIndex)
     AT.Say("Reloaded the guide from your quest log.")
   end }
   items[#items + 1] = { "Switch route", function() UI.ShowRoutePicker() end }
+  items[#items + 1] = { "Dungeons", function() UI.OpenDungeons() end }
   items[#items + 1] = { "Options", function() UI.OpenOptions() end }
   items[#items + 1] = { "Close", function()
     if not AT.DB().hidden then AT.Toggle() end
@@ -1572,6 +1731,23 @@ function UI.Build()
     GameTooltip:Show()
   end)
   target:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+  questItemHolder = CreateFrame("Frame", "AshenTrailQuestItemHolder", UIParent)
+  questItemHolder:SetSize(140, 24)
+  questItemHolder:SetPoint("BOTTOM", targetHolder, "TOP", 0, 4)
+  questItemHolder:SetFrameStrata("MEDIUM")
+  questItemHolder:Hide()
+  local questItem = CreateFrame("Button", "AshenTrailQuestItemButton", questItemHolder, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+  questItem:SetAllPoints(questItemHolder)
+  questItem:SetText("Use")
+  questItem:SetAttribute("type", "item")
+  questItem.holder = questItemHolder
+  questItem:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(AT.questItem and ("Use " .. AT.questItem.name) or "No quest item on this step")
+    GameTooltip:Show()
+  end)
+  questItem:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   local nextButton = button(frame, "Next", 90, 24)
   nextButton:SetPoint("BOTTOMRIGHT", -14, 46)

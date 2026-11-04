@@ -1025,3 +1025,88 @@ function L.BreathLow(remaining, threshold)
   threshold = tonumber(threshold) or 10
   return remaining <= threshold
 end
+
+-- Vanilla leveling openers. Forever talent trees can differ, so the UI says so.
+local TALENT = {
+  Warrior = { "Cruelty", "Cruelty", "Cruelty", "Cruelty", "Cruelty" },
+  Hunter = { "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk", "Improved Aspect of the Hawk" },
+  Rogue = { "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike", "Improved Sinister Strike" },
+  Priest = { "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap" },
+  Mage = { "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt" },
+  Warlock = { "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption" },
+  Shaman = { "Concussion", "Concussion", "Concussion", "Concussion", "Concussion" },
+  Druid = { "Ferocity", "Ferocity", "Ferocity", "Ferocity", "Ferocity" },
+  Paladin = { "Benediction", "Benediction", "Benediction", "Benediction", "Benediction" },
+}
+
+function L.NextTalent(class, level, unspent)
+  local list = TALENT[class or ""]
+  if not list then return nil end
+  unspent = tonumber(unspent) or 0
+  if unspent <= 0 then return nil end
+  local earned = math.max(0, (tonumber(level) or 1) - 9)
+  local spent = earned - unspent
+  if spent < 0 then spent = 0 end
+  local name = list[spent + 1]
+  if not name then return { done = true, unspent = unspent } end
+  return { name = name, unspent = unspent, index = spent + 1, total = #list }
+end
+
+function L.GuidePins(steps, index)
+  local out = {}
+  local function take(step)
+    if not step or not step.pois then return end
+    for i = 1, #step.pois do
+      local poi = step.pois[i]
+      if (poi.k == "giver" or poi.k == "turnin") and poi.x and poi.zone then
+        out[#out + 1] = poi
+      end
+    end
+  end
+  index = tonumber(index) or 1
+  take(steps and steps[index])
+  take(steps and steps[index + 1])
+  return out
+end
+
+function L.TargetMacro(name, skull)
+  if not name or name == "" then return "" end
+  local quoted = name
+  if string.find(name, " ", 1, true) and not string.find(name, '"', 1, true) then
+    quoted = '"' .. name .. '"'
+  end
+  local body = "/targetexact " .. quoted .. "\n/targetexact " .. quoted
+  if skull then body = body .. "\n/tm 8" end
+  return body
+end
+
+function L.RouteEta(plan, saved)
+  if not plan or not plan.hops then return nil end
+  local seconds = 0
+  local missingFlight = false
+  for i = 1, #plan.hops do
+    local hop = plan.hops[i]
+    if hop.kind == "fly" then
+      local found = false
+      local destName = hop.name and string.lower(hop.name) or nil
+      if saved and destName and destName ~= "" then
+        local tail = "|" .. destName
+        for key, value in pairs(saved) do
+          if type(key) == "string" and string.sub(string.lower(key), -#tail) == tail and tonumber(value) then
+            seconds = seconds + tonumber(value)
+            found = true
+            break
+          end
+        end
+      end
+      if not found then missingFlight = true end
+    elseif hop.kind == "boat" or hop.kind == "zep" then
+      seconds = seconds + (tonumber(hop.cost) or 15) * 60
+    elseif hop.kind == "hearth" then
+      seconds = seconds + 10
+    elseif hop.kind == "run" then
+      seconds = seconds + (tonumber(hop.cost) or 0) * 6
+    end
+  end
+  return { seconds = seconds, missingFlight = missingFlight }
+end
