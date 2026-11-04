@@ -314,8 +314,10 @@ local function hintText()
   if db.options.routeMode == "discover" then
     local chapter = AT.Chapter()
     local notes = chapter and chapter.notes
-    if notes and notes[1] and notes[1] ~= "" then
-      parts[#parts + 1] = notes[1]
+    if notes then
+      for i = 1, #notes do
+        if notes[i] and notes[i] ~= "" then parts[#parts + 1] = notes[i] end
+      end
     end
   end
   if db.options.hearthHints ~= false and AT.HearthRemain then
@@ -332,8 +334,9 @@ local function hintText()
     end
   end
   if db.options.logHints ~= false and AT.OffRouteQuests then
-    local count, names = AT.OffRouteQuests()
-    local logHint = L.AbandonHint(count, 40, names)
+    local count, names, lowValue = AT.OffRouteQuests()
+    local cap = AT.QuestCap and AT.QuestCap() or 40
+    local logHint = L.AbandonHint(count, cap, names, lowValue)
     if logHint then parts[#parts + 1] = logHint end
   end
   if db.options.supplyHints ~= false then
@@ -349,8 +352,13 @@ local function hintText()
     if nearest and nearest.node then
       local where = nearest.node.name or "Trainer"
       if nearest.same and nearest.dist then
-        local eta = nearest.dist * 6
-        where = where .. ", about " .. L.FormatClock(eta)
+        local yards
+        local origin = AT.PlayerPos and AT.PlayerPos() or nil
+        if origin and origin.mapID and origin.x and AT.WorldDistance and nearest.node.x then
+          yards = AT.WorldDistance(origin.mapID, origin.x, origin.y, nearest.node.x, nearest.node.y)
+        end
+        local eta = L.TravelSeconds(yards, nearest.dist)
+        if eta then where = where .. ", about " .. L.FormatClock(eta) end
       elseif nearest.node.zone then
         where = where .. " in " .. nearest.node.zone
       end
@@ -531,8 +539,6 @@ local function renderPins()
   local child = pages.pins.child
   local rows = poiRows()
   local y = -4
-  local width = child:GetWidth()
-  if width < 40 then width = 400 end
   for i = 1, #rows do
     local row = ensureRow(child, i)
     row:SetParent(child)
@@ -1065,6 +1071,12 @@ function UI.UpdateMinimapPins()
   local radius = L.MinimapRadius(zoom, indoors)
   local edge = (Minimap:GetWidth() or 140) / 2 - 12
   if edge < 20 then edge = 50 end
+  local facing = GetPlayerFacing and GetPlayerFacing() or 0
+  local rotating = false
+  if GetCVar then
+    local okRot, value = pcall(GetCVar, "rotateMinimap")
+    rotating = okRot and (value == "1" or value == 1) or false
+  end
   for i = 1, #pins do
     local poi = pins[i]
     if origin.zone and poi.zone == origin.zone and origin.x and poi.x then
@@ -1077,17 +1089,22 @@ function UI.UpdateMinimapPins()
           dx, dy = AT.WorldDelta(origin.mapID, origin.x, origin.y, poi.x, poi.y)
         end
         if dx then
-          px, py = L.MinimapOffset(dx, dy, radius, edge)
+          local east, north = L.MinimapScreenDelta(dx, dy, facing, rotating)
+          px, py = L.MinimapOffset(east, north, radius, edge)
         else
-          local mdx = poi.x - origin.x
-          local mdy = origin.y - poi.y
-          local dist = math.sqrt(mdx * mdx + mdy * mdy)
+          local east = poi.x - origin.x
+          local north = origin.y - poi.y
+          local rx, ry = L.MinimapScreenDelta(north, -east, facing, rotating)
+          local dist = math.sqrt(east * east + north * north)
           local scale = 1
           if dist < 12 then scale = dist / 12 end
           if dist < 0.05 then scale = 0 end
-          local angle = math.atan2(mdy, mdx)
-          px = math.cos(angle) * edge * scale
-          py = math.sin(angle) * edge * scale
+          if dist > 0 then
+            px = rx / dist * edge * scale
+            py = ry / dist * edge * scale
+          else
+            px, py = 0, 0
+          end
         end
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", Minimap, "CENTER", px, py)
@@ -1150,6 +1167,7 @@ local function buildOptions(parent)
     box.optionKey = spec.key
     box:SetScript("OnClick", function(self)
       AT.DB().options[spec.key] = self:GetChecked() and true or false
+      if AT.PublishSettings then AT.PublishSettings() end
       UI.Refresh()
     end)
     parent.toggles[#parent.toggles + 1] = box
@@ -1174,6 +1192,7 @@ local function buildOptions(parent)
     slider:SetScript("OnValueChanged", function(_, value)
       if parent.syncing then return end
       apply(value)
+      if AT.PublishSettings then AT.PublishSettings() end
     end)
     _G[globalName .. "Low"]:SetText(low)
     _G[globalName .. "High"]:SetText(high)
@@ -1186,6 +1205,7 @@ local function buildOptions(parent)
     local current = optColor(key, fallback)
     local function apply(r, g, b)
       AT.DB().options[key] = { r, g, b }
+      if AT.PublishSettings then AT.PublishSettings() end
       UI.Refresh()
     end
     if not ColorPickerFrame then return end
@@ -1274,6 +1294,7 @@ local function buildOptions(parent)
   chapterButton:SetScript("OnClick", function()
     local db = AT.DB()
     db.options.chapterMode = db.options.chapterMode == "manual" and "auto" or "manual"
+    if AT.PublishSettings then AT.PublishSettings() end
     AT.toldChapterEnd = nil
     UI.Refresh()
   end)
@@ -1281,8 +1302,19 @@ local function buildOptions(parent)
   local routeButton = button(parent, "Route: Speedrun", 160, 20)
   routeButton:SetPoint("LEFT", chapterButton, "RIGHT", 8, 0)
   routeButton:SetScript("OnClick", function()
+    local _, chapterId = AT.Chapter()
+    local step = AT.CurrentStep()
     local options = AT.DB().options
     if options.routeMode == "discover" then options.routeMode = "speed" else options.routeMode = "discover" end
+    if AT.PublishSettings then AT.PublishSettings() end
+    local db = AT.DB()
+    local index = L.StepIndex(AT.Steps(), chapterId, step)
+    if index then
+      db.step = index
+    else
+      local steps = AT.Steps()
+      if (db.step or 1) > #steps then db.step = math.max(1, #steps) end
+    end
     UI.Refresh()
   end)
   parent.routeButton = routeButton
@@ -1366,6 +1398,7 @@ local function buildOptions(parent)
         AT.Say("TomTom is not installed. The built-in arrow stays on.")
       end
     end
+    if AT.PublishSettings then AT.PublishSettings() end
     UI.Refresh()
   end)
   parent.arrowButton = arrowButton

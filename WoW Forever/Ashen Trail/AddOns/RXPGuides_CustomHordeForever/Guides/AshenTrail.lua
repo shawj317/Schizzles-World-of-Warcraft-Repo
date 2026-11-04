@@ -80,6 +80,8 @@ step
     .turnin 4402 >>Talk to Galgar. Turn in: Galgar's Cactus Apple Surprise
     .trainer >>Train level 4–6 skills before leaving
     .xp 6
+step
+    >>Discovery: clear extra Forever quests still yellow in the Valley of Trials before you leave. This route has no published ids for those extras.
 ]])
 
 RXPGuides.RegisterGuide([[
@@ -340,6 +342,8 @@ step
     .goto Tirisfal Glades,32.15,66.01
     .accept 380 >>Talk to Executor Arren. Accept: Night Web's Hollow
     .xp 6
+step
+    >>Discovery: pick up extra Forever quests in Deathknell, including Undead Paladin lines if that is your class. This route has no published ids for those lines.
 ]])
 
 RXPGuides.RegisterGuide([[
@@ -415,6 +419,8 @@ step
     >>Move into Shen'dar and Falaath Village hubs — turn in, train, and take the next chapter leads
     .trainer >>Train as skills unlock
     .xp 9
+step
+    >>Discovery: clear every yellow quest on Zephras before the skycutter. This route has no published Skyborne quest ids.
 ]])
 
 RXPGuides.RegisterGuide([[
@@ -700,8 +706,12 @@ step
     .goto Orgrimmar,57.4,53.4
     .accept 95697 >>Talk to Borstan. Accept: Changing Tastes
 step
+    >>Run Excavation Site in the Wetlands. Collect four Thicket Raptor Meat for Changing Tastes, then return to Borstan. If a Titan Relic starts Elder Knowledge, keep the relic.
+step
     .goto Orgrimmar,57.4,53.4
     .turnin 95697 >>Talk to Borstan. Turn in: Changing Tastes
+step
+    >>Elder Knowledge (95664) turns in on Elder Rise in Thunder Bluff. questing.wiki does not name the recipient, and the Titan Relic pickup is unconfirmed, so this step is not pinned. Press Next if no relic started it. Earthen Echo is the next step.
 step
     .goto Thunder Bluff,70.8,33.8
     .accept 98823 >>Talk to Bashana Runetotem. Accept: Earthen Echo

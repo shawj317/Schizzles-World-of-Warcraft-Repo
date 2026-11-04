@@ -2,7 +2,7 @@
 ## Title: |cffff5522Ashen Trail|r
 ## Notes: Original Horde 1-60 tracker for World of Warcraft: Forever. Does not load RestedXP.
 ## Author: Jon Shaw (Schizzle)
-## Version: 1.3.1
+## Version: 1.3.2
 ## SavedVariables: AshenTrailAccount
 ## SavedVariablesPerCharacter: AshenTrailChar
 ## OptionalDeps: TomTom

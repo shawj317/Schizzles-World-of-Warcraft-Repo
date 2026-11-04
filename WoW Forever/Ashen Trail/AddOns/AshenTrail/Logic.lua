@@ -91,8 +91,11 @@ local function tagMatches(tag, raceId, classTag, raceToken)
   return ok
 end
 
-function L.StepVisible(step, raceId, classTag, raceToken)
-  local only = step.only
+function L.StepVisible(step, raceId, classTag, raceToken, routeMode)
+  local pace = step and step.pace
+  if pace == "discover" and routeMode ~= "discover" then return false end
+  if pace == "speed" and routeMode == "discover" then return false end
+  local only = step and step.only
   if not only or #only == 0 then return true end
   local hasNeg = false
   for i = 1, #only do
@@ -110,11 +113,11 @@ function L.StepVisible(step, raceId, classTag, raceToken)
   return false
 end
 
-function L.VisibleSteps(chapter, raceId, classTag, raceToken)
+function L.VisibleSteps(chapter, raceId, classTag, raceToken, routeMode)
   local out = {}
   if not chapter or not chapter.steps then return out end
   for i = 1, #chapter.steps do
-    if L.StepVisible(chapter.steps[i], raceId, classTag, raceToken) then
+    if L.StepVisible(chapter.steps[i], raceId, classTag, raceToken, routeMode) then
       out[#out + 1] = chapter.steps[i]
     end
   end
@@ -182,11 +185,11 @@ function L.ChapterEndLevel(levelRange)
   return tonumber(string.match(levelRange, "(%d+)")) or 0
 end
 
-function L.LaterHardDone(route, chapters, chapterIndex, stepIndex, raceId, classTag, ctx, raceToken)
+function L.LaterHardDone(route, chapters, chapterIndex, stepIndex, raceId, classTag, ctx, raceToken, routeMode)
   for ci = chapterIndex, #route do
     local chapter = chapters[route[ci]]
     if chapter then
-      local steps = L.VisibleSteps(chapter, raceId, classTag, raceToken)
+      local steps = L.VisibleSteps(chapter, raceId, classTag, raceToken, routeMode)
       local startAt = (ci == chapterIndex) and (stepIndex + 1) or 1
       for si = startAt, #steps do
         if L.StepStatus(steps[si], ctx) == "done" then return true end
@@ -784,6 +787,15 @@ function L.FirstWaypoint(plan)
   return plan.hops[1]
 end
 
+function L.StepIndex(steps, chapterId, step)
+  if not step then return nil end
+  local key = L.StepKey(chapterId, step)
+  for i = 1, #(steps or {}) do
+    if L.StepKey(chapterId, steps[i]) == key then return i end
+  end
+  return nil
+end
+
 function L.StepKey(chapterId, step)
   local parts = { tostring(chapterId or "") }
   local lines = step and step.lines or {}
@@ -795,12 +807,12 @@ function L.StepKey(chapterId, step)
   return table.concat(parts, "|")
 end
 
-function L.QuestOnRoute(chapters, routeIds, raceId, classTag, kind, questId, questName, raceToken)
+function L.QuestOnRoute(chapters, routeIds, raceId, classTag, kind, questId, questName, raceToken, routeMode)
   if not chapters or not routeIds or not kind then return false end
   for i = 1, #routeIds do
     local chapter = chapters[routeIds[i]]
     if chapter then
-      local steps = L.VisibleSteps(chapter, raceId, classTag, raceToken)
+      local steps = L.VisibleSteps(chapter, raceId, classTag, raceToken, routeMode)
       for s = 1, #steps do
         local lines = steps[s].lines or {}
         for n = 1, #lines do
@@ -1144,21 +1156,52 @@ function L.MinimapOffset(dx, dy, radiusYards, edgePixels)
   return px, py, dist
 end
 
+-- GetWorldPosFromMapPos x is north and y is west. Screen x is east and screen y is north.
+-- Facing 0 is north and increases counterclockwise. A rotating minimap keeps facing at the top.
+function L.MinimapScreenDelta(dxWorld, dyWorld, facing, rotating)
+  local east = -(tonumber(dyWorld) or 0)
+  local north = tonumber(dxWorld) or 0
+  if not rotating then return east, north end
+  facing = tonumber(facing) or 0
+  local cosF = math.cos(facing)
+  local sinF = math.sin(facing)
+  local right = east * cosF + north * sinF
+  local forward = -east * sinF + north * cosF
+  return right, forward
+end
+
 function L.RouteModeLabel(mode)
   if mode == "discover" then return "Discovery" end
   return "Speedrun"
 end
 
-function L.AbandonHint(count, cap, names)
+local function nameList(names, limit)
+  local shown = {}
+  local count = math.min(limit or 3, #names)
+  for i = 1, count do shown[i] = names[i] end
+  local list = table.concat(shown, ", ")
+  if #names > count then list = list .. " +" .. tostring(#names - count) end
+  return list
+end
+
+function L.AbandonHint(count, cap, names, lowValue)
   count = tonumber(count) or 0
   cap = tonumber(cap) or 40
   if count < cap - 8 or type(names) ~= "table" or #names == 0 then return nil end
-  local shown = {}
-  local limit = math.min(3, #names)
-  for i = 1, limit do shown[i] = names[i] end
-  local list = table.concat(shown, ", ")
-  if #names > limit then list = list .. " +" .. tostring(#names - limit) end
-  return "Quest log " .. count .. "/" .. cap .. ". Off the route: " .. list .. "."
+  local hint = "Quest log " .. count .. "/" .. cap .. ". Off the route: " .. nameList(names, 3) .. "."
+  if type(lowValue) == "table" and #lowValue > 0 then
+    hint = hint .. " Not worth it: " .. nameList(lowValue, 3) .. "."
+  end
+  return hint
+end
+
+function L.QuestKeep(onRoute, questLevel, playerLevel, elite)
+  if onRoute then return true end
+  if elite then return false end
+  questLevel = tonumber(questLevel)
+  playerLevel = tonumber(playerLevel)
+  if questLevel and playerLevel and (playerLevel - questLevel) >= 8 then return false end
+  return true
 end
 
 function L.GroupWarning(elite, suggested)
@@ -1199,6 +1242,56 @@ function L.TrainReminder(level, notedLevel)
   notedLevel = tonumber(notedLevel) or 0
   if level < 4 then return false end
   return (level - notedLevel) >= 2
+end
+
+-- Yards use the unmounted run speed. Map distance is the old percent-of-zone guess.
+function L.TravelSeconds(yards, mapDist)
+  yards = tonumber(yards)
+  if yards and yards >= 0 then return yards / 7 end
+  mapDist = tonumber(mapDist)
+  if mapDist and mapDist >= 0 then return mapDist * 6 end
+  return nil
+end
+
+function L.GatherProfessionName(rows)
+  if type(rows) ~= "table" then return nil end
+  for i = 1, #rows do
+    local row = rows[i]
+    if type(row) == "table" then
+      local skill = tonumber(row.skillLine)
+      if skill == 186 or row.name == "Mining" then return "Mining" end
+      if skill == 182 or row.name == "Herbalism" then return "Herbalism" end
+    end
+  end
+  return nil
+end
+
+local LEGACY = {
+  { level = 25, text = "Legacy Point checkpoint. The guide has no published spend target for this point." },
+  { level = 45, text = "Legacy Point checkpoint. The guide has no published spend target for this point." },
+  { level = 60, text = "Legacy Point at 60. Bank heirlooms and lock Dual Spec. A spend target is not published." },
+}
+
+function L.LegacyDue(level, seen)
+  level = tonumber(level) or 0
+  seen = seen or {}
+  local due
+  for i = 1, #LEGACY do
+    local row = LEGACY[i]
+    if level >= row.level and not seen[row.level] and not seen[tostring(row.level)] then
+      due = row
+    end
+  end
+  return due
+end
+
+function L.LegacyMark(level, seen)
+  seen = seen or {}
+  level = tonumber(level) or 0
+  for i = 1, #LEGACY do
+    if level >= LEGACY[i].level then seen[LEGACY[i].level] = true end
+  end
+  return seen
 end
 
 function L.HearthLabel(ready, remain)
@@ -1256,10 +1349,14 @@ function L.BestOther(timesByChar, selfName, level)
   return best, who
 end
 
-function L.ExportRoute(race, chapter, step, skips)
-  local parts = {
-    string.format("AT1\t%s\t%d\t%d", race or "", tonumber(chapter) or 1, tonumber(step) or 1),
-  }
+function L.ExportRoute(race, chapter, step, skips, mode)
+  local header
+  if mode == "discover" or mode == "speed" then
+    header = string.format("AT2\t%s\t%d\t%d\t%s", race or "", tonumber(chapter) or 1, tonumber(step) or 1, mode)
+  else
+    header = string.format("AT1\t%s\t%d\t%d", race or "", tonumber(chapter) or 1, tonumber(step) or 1)
+  end
+  local parts = { header }
   for i = 1, #(skips or {}) do
     local key = tostring(skips[i])
     parts[#parts + 1] = string.format("%d:%s", #key, key)
@@ -1269,7 +1366,15 @@ end
 
 function L.ImportRoute(text)
   if type(text) ~= "string" then return nil end
-  local race, chapter, step, rest = string.match(text, "^AT1\t([^\t]*)\t(%d+)\t(%d+)\t?(.*)$")
+  local ver, body = string.match(text, "^(AT[12])\t(.*)$")
+  if not ver then return nil end
+  local race, chapter, step, rest, mode
+  if ver == "AT2" then
+    race, chapter, step, mode, rest = string.match(body, "^([^\t]*)\t(%d+)\t(%d+)\t([^\t]*)\t?(.*)$")
+    if mode ~= "discover" and mode ~= "speed" then return nil end
+  else
+    race, chapter, step, rest = string.match(body, "^([^\t]*)\t(%d+)\t(%d+)\t?(.*)$")
+  end
   if not chapter then return nil end
   local skips = {}
   local cursor = rest or ""
@@ -1289,6 +1394,7 @@ function L.ImportRoute(text)
     chapter = tonumber(chapter),
     step = tonumber(step),
     skips = skips,
+    mode = mode,
   }
 end
 
@@ -1307,6 +1413,14 @@ function L.CopyOptionTable(source)
     end
   end
   return copy
+end
+
+function L.PublishSettings(character, account, useAccount)
+  if not useAccount then return false end
+  if type(character) ~= "table" or type(character.options) ~= "table" then return false end
+  if type(account) ~= "table" then return false end
+  account.options = L.CopyOptionTable(character.options)
+  return true
 end
 
 -- Character options are the table the UI writes. The account copy is a separate
@@ -1338,7 +1452,7 @@ function L.RememberSettings(character, account, defaults, useAccount)
     end
   end
   if useAccount and type(account) == "table" then
-    account.options = L.CopyOptionTable(character.options)
+    L.PublishSettings(character, account, true)
   end
   return character.options
 end

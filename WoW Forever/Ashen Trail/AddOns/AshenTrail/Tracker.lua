@@ -73,20 +73,6 @@ local function copyDefaults(target)
   return target
 end
 
-local function cloneOptions(source)
-  local copy = {}
-  for key, value in pairs(source or {}) do
-    if type(value) == "table" then
-      local inner = {}
-      for innerKey, innerValue in pairs(value) do inner[innerKey] = innerValue end
-      copy[key] = inner
-    else
-      copy[key] = value
-    end
-  end
-  return copy
-end
-
 function AT.DB()
   if not AT.addonLoaded then
     AT.scratch = AT.scratch or {}
@@ -115,7 +101,12 @@ function AT.DB()
   db.history = db.history or { order = {}, byId = {} }
   db.history.order = db.history.order or {}
   db.history.byId = db.history.byId or {}
-  L.RememberSettings(db, AshenTrailAccount, DEFAULTS, db.useAccount ~= false)
+  if not AT.settingsReady then
+    L.RememberSettings(db, AshenTrailAccount, DEFAULTS, db.useAccount ~= false)
+    AT.settingsReady = true
+  elseif type(db.options) ~= "table" then
+    db.options = {}
+  end
   db.skipped = db.skipped or {}
   db.junkList = db.junkList or {}
   db.junkKeep = db.junkKeep or {}
@@ -124,7 +115,14 @@ function AT.DB()
   db.minimapAngle = db.minimapAngle or 220
   db.levels = db.levels or {}
   db.best = db.best or {}
+  db.legacySeen = db.legacySeen or {}
   return db
+end
+
+function AT.PublishSettings()
+  if not AT.addonLoaded then return end
+  if type(AshenTrailChar) ~= "table" or type(AshenTrailAccount) ~= "table" then return end
+  L.PublishSettings(AshenTrailChar, AshenTrailAccount, AshenTrailChar.useAccount ~= false)
 end
 
 function AT.ExportText()
@@ -134,7 +132,8 @@ function AT.ExportText()
     if value then skips[#skips + 1] = key end
   end
   table.sort(skips)
-  return L.ExportRoute(db.race, db.chapterIndex or 1, db.step or 1, skips)
+  local mode = db.options and db.options.routeMode
+  return L.ExportRoute(db.race, db.chapterIndex or 1, db.step or 1, skips, mode)
 end
 
 function AT.ImportText(text)
@@ -149,6 +148,7 @@ function AT.ImportText(text)
   end
   local db = AT.DB()
   if parsed.race then db.race = parsed.race end
+  if parsed.mode and type(db.options) == "table" then db.options.routeMode = parsed.mode end
   db.chapterIndex = parsed.chapter or 1
   db.step = parsed.step or 1
   local ids = AT.RouteIds()
@@ -156,7 +156,8 @@ function AT.ImportText(text)
     if db.chapterIndex < 1 then db.chapterIndex = 1 end
     if db.chapterIndex > #ids then db.chapterIndex = #ids end
     local chapter = AshenTrailData.chapters[ids[db.chapterIndex]]
-    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken()) or {}
+    local mode = db.options and db.options.routeMode
+    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken(), mode) or {}
     if db.step < 1 then db.step = 1 end
     if #steps > 0 and db.step > #steps then db.step = #steps end
   end
@@ -166,24 +167,26 @@ function AT.ImportText(text)
   db.finished = false
   AT.focus = nil
   AT.planKey = nil
+  AT.PublishSettings()
   AT.Say("Imported the route position.")
   if AshenTrailUI and AshenTrailUI.Refresh then AshenTrailUI.Refresh() end
 end
 
 function AT.SetUseAccount(enabled)
+  if not AT.addonLoaded then return end
   if type(AshenTrailChar) ~= "table" then AshenTrailChar = {} end
   if type(AshenTrailAccount) ~= "table" then AshenTrailAccount = {} end
   local db = AshenTrailChar
   if enabled then
     db.useAccount = true
     if type(db.options) ~= "table" then db.options = {} end
-    if type(AshenTrailAccount.options) ~= "table" then
-      AshenTrailAccount.options = L.CopyOptionTable(db.options)
-    end
+    L.RememberSettings(db, AshenTrailAccount, DEFAULTS, true)
   else
+    L.PublishSettings(db, AshenTrailAccount, true)
     db.useAccount = false
     db.options = L.CopyOptionTable(AshenTrailAccount.options or db.options)
   end
+  AT.settingsReady = true
   AT.DB()
 end
 
@@ -216,7 +219,8 @@ function AT.Steps()
   local chapter = AT.Chapter()
   local db = AT.DB()
   if not chapter then return {} end
-  return L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken())
+  local mode = db.options and db.options.routeMode
+  return L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken(), mode)
 end
 
 function AT.CurrentStep()
@@ -422,7 +426,7 @@ local function questLogRow(index, modern)
         local okDone, done = pcall(C_QuestLog.IsComplete, info.questID)
         if okDone then complete = done and true or false end
       end
-      return info.title, info.isHeader and true or false, complete, info.questID
+      return info.title, info.isHeader and true or false, complete, info.questID, info.level or info.difficultyLevel
     end
     return nil, false, false, nil
   end
@@ -430,7 +434,7 @@ local function questLogRow(index, modern)
     local results = { pcall(GetQuestLogTitle, index) }
     if results[1] then
       local complete = results[7] == 1 or results[7] == true
-      return results[2], results[5] and true or false, complete, results[9]
+      return results[2], results[5] and true or false, complete, results[9], results[3]
     end
   end
 end
@@ -502,7 +506,7 @@ local function stepIsBehind(index, steps)
   if status ~= "manual" then return false end
   local db = AT.DB()
   local chapter = AT.Chapter()
-  local later = L.LaterHardDone(AT.RouteIds(), AshenTrailData.chapters, db.chapterIndex or 1, index, db.race, db.class, ctx, AT.RaceToken())
+  local later = L.LaterHardDone(AT.RouteIds(), AshenTrailData.chapters, db.chapterIndex or 1, index, db.race, db.class, ctx, AT.RaceToken(), db.options and db.options.routeMode)
   local level = UnitLevel and UnitLevel("player") or 1
   return L.ManualIsBehind(level, L.ChapterEndLevel(chapter and chapter.levelRange), later)
 end
@@ -779,7 +783,7 @@ function AT.KnownFlights()
     if ci > dbIndex then break end
     local chapter = chapters[route[ci]]
     if chapter then
-      local steps = L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken())
+      local steps = L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken(), db.options and db.options.routeMode)
       local last = (ci == dbIndex) and (dbStep - 1) or #steps
       for si = 1, last do
         local lines = steps[si] and steps[si].lines or {}
@@ -1175,6 +1179,7 @@ function AT.RefreshNameplates()
     if not UnitExists or not UnitExists(unit) then return end
     local okName, unitName = pcall(UnitName, unit)
     if not okName or not unitName or unitName == "" then return end
+    if issecretvalue and issecretvalue(unitName) then return end
     local match = L.MatchPlate(unitName, watch)
     local plate = plateFrame(unit)
     if not plate then return end
@@ -1343,7 +1348,7 @@ function AT.OnRoute(kind, questId, title)
   local db = AT.DB()
   if db.options.guideQuestsOnly == false then return true end
   if not AshenTrailData then return false end
-  return L.QuestOnRoute(AshenTrailData.chapters, AT.RouteIds(), db.race, db.class, kind, questId, title, AT.RaceToken())
+  return L.QuestOnRoute(AshenTrailData.chapters, AT.RouteIds(), db.race, db.class, kind, questId, title, AT.RaceToken(), db.options and db.options.routeMode)
 end
 
 function AT.WantsQuest(kind, questId, title)
@@ -1808,6 +1813,7 @@ function AT.ApplyTheme(themeId)
   options.arrowColor = copy(colors.arrow)
   options.edgeColor = copy(colors.edge)
   options.bgColor = copy(colors.bg)
+  AT.PublishSettings()
 end
 
 function AT.EnsureTheme()
@@ -2242,6 +2248,7 @@ local function slash(msg)
     if AT.targetName then AT.Say("Target macro is set for " .. AT.targetName .. ". Click Target on the tracker.") end
   elseif cmd == "route" or cmd == "near" or cmd == "gear" or cmd == "options" or cmd == "log" or cmd == "pins" or cmd == "guide" then
     AT.DB().options.page = cmd == "log" and "log" or cmd
+    AT.PublishSettings()
     AT.Show()
   elseif cmd == "reset" then
     local db = AT.DB()
@@ -2259,6 +2266,7 @@ local function slash(msg)
   elseif cmd == "lock" then
     local db = AT.DB()
     db.options.locked = not db.options.locked
+    AT.PublishSettings()
     AT.Refresh()
     AT.Say(db.options.locked and "Frame locked." or "Frame unlocked.")
   elseif cmd == "junk" then
@@ -2278,6 +2286,7 @@ local function slash(msg)
       mode = AT.DB().options.chapterMode == "manual" and "auto" or "manual"
     end
     AT.DB().options.chapterMode = mode
+    AT.PublishSettings()
     AT.toldChapterEnd = nil
     AT.Say(mode == "manual" and "Chapters stay where you put them." or "Chapters advance on their own.")
     AT.Refresh()
@@ -2285,11 +2294,23 @@ local function slash(msg)
     local value = tonumber(rest)
     if value then
       AT.DB().options.scale = math.max(0.7, math.min(1.4, value))
+      AT.PublishSettings()
       AT.Refresh()
     end
   else
     AT.Say("Commands: toggle, next, prev, skip, unskip, sync, chapters auto|manual, theme blizzard|dark|vibrant|class|ashen, junk, keep, unjunk, race, chapter N, lock, scale, options.")
   end
+end
+
+function AT.AnnounceLegacy()
+  if InCombatLockdown and InCombatLockdown() then return end
+  local level = UnitLevel and UnitLevel("player") or 0
+  local db = AT.DB()
+  db.legacySeen = db.legacySeen or {}
+  local due = L.LegacyDue(level, db.legacySeen)
+  if not due then return end
+  L.LegacyMark(level, db.legacySeen)
+  AT.Say(due.text)
 end
 
 function AT.Boot()
@@ -2333,6 +2354,7 @@ function AT.Boot()
   db.levelOpen = level
   AT.FlushLevel()
   AT.booted = true
+  AT.AnnounceLegacy()
   AT.UpdateTargetMacro()
 end
 
@@ -2440,10 +2462,14 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2)
     if not (InCombatLockdown and InCombatLockdown()) then
       local line = AT.TalentLine()
       if line then AT.Say(line .. ". Forever may differ.") end
+      AT.AnnounceLegacy()
     end
   elseif event == "PLAYER_LOGOUT" then
     if AT.PauseLevel then AT.PauseLevel() end
-    if AT.addonLoaded then AT.DB() end
+    if AT.addonLoaded then
+      AT.DB()
+      AT.PublishSettings()
+    end
   elseif event == "TRAINER_SHOW" then
     local level = UnitLevel and UnitLevel("player") or nil
     if level then AT.DB().trainNoted = level end
@@ -2513,7 +2539,7 @@ function AT.RouteQuestIds()
   local route = AT.RouteIds()
   for ci = 1, #route do
     local chapter = chapters[route[ci]]
-    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken()) or {}
+    local steps = chapter and L.VisibleSteps(chapter, db.race, db.class, AT.RaceToken(), db.options and db.options.routeMode) or {}
     for si = 1, #steps do
       local lines = steps[si].lines or {}
       for li = 1, #lines do
@@ -2525,21 +2551,40 @@ function AT.RouteQuestIds()
   return ids
 end
 
+function AT.QuestCap()
+  if C_QuestLog and C_QuestLog.GetMaxNumQuestsCanAccept then
+    local ok, cap = pcall(C_QuestLog.GetMaxNumQuestsCanAccept)
+    if ok and tonumber(cap) and tonumber(cap) > 0 then return tonumber(cap) end
+  end
+  return 40
+end
+
+local function questIsElite(questID)
+  if not questID or not C_QuestLog or not C_QuestLog.GetQuestTagInfo then return false end
+  local ok, info = pcall(C_QuestLog.GetQuestTagInfo, questID)
+  return ok and type(info) == "table" and info.isElite and true or false
+end
+
 function AT.OffRouteQuests()
   local entries, modern = questLogCount()
-  if entries <= 0 then return 0, {} end
+  if entries <= 0 then return 0, {}, {} end
   local onRoute = AT.RouteQuestIds()
-  local count, names = 0, {}
+  local count, names, low = 0, {}, {}
+  local level = UnitLevel and UnitLevel("player") or nil
   for i = 1, entries do
-    local title, isHeader, _, questID = questLogRow(i, modern)
+    local title, isHeader, _, questID, questLevel = questLogRow(i, modern)
     if not isHeader and questID and questID ~= 0 then
       count = count + 1
       if not onRoute[questID] then
-        names[#names + 1] = title or ("Quest " .. tostring(questID))
+        local name = title or ("Quest " .. tostring(questID))
+        names[#names + 1] = name
+        if not L.QuestKeep(false, questLevel, level, questIsElite(questID)) then
+          low[#low + 1] = name
+        end
       end
     end
   end
-  return count, names
+  return count, names, low
 end
 
 function AT.StepThreat(step)
@@ -2578,21 +2623,38 @@ function AT.RareLine()
   return "RareScanner has a rare nearby."
 end
 
+local function professionRows()
+  local rows = {}
+  if GetProfessions and GetProfessionInfo then
+    local ok, first, second = pcall(GetProfessions)
+    if ok then
+      local indexes = { first, second }
+      for i = 1, #indexes do
+        local index = indexes[i]
+        if index then
+          local info = { pcall(GetProfessionInfo, index) }
+          if info[1] then
+            rows[#rows + 1] = { name = info[2], skillLine = info[8] }
+          end
+        end
+      end
+    end
+  end
+  if #rows == 0 and GetNumSkillLines and GetSkillLineInfo then
+    local lines = GetNumSkillLines() or 0
+    for i = 1, lines do
+      local name = GetSkillLineInfo(i)
+      if name then rows[#rows + 1] = { name = name } end
+    end
+  end
+  return rows
+end
+
 function AT.GatherLine()
   if AT.DB().options.gatherHints == false then return nil end
   local GM = _G.GatherMate2
   if not GM or not GM.GetNodesForZone then return nil end
-  local prof
-  if GetNumSkillLines and GetSkillLineInfo then
-    local lines = GetNumSkillLines() or 0
-    for i = 1, lines do
-      local name = GetSkillLineInfo(i)
-      if name == "Mining" or name == "Herbalism" then
-        prof = name
-        break
-      end
-    end
-  end
+  local prof = L.GatherProfessionName(professionRows())
   if not prof then return nil end
   local mapID = AT.PlayerPos().mapID
   if not mapID then return nil end
