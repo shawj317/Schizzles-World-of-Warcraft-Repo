@@ -1,9 +1,9 @@
-## Interface: 160000
+## Interface: 16001
 ## Title: RXP|cRXP_FRIENDLY_|rGuides |cFFFF5522Ashen Trail Forever Horde|r
-## Notes: Custom Horde 1-60 leveling route for World of Warcraft: Forever. Requires RXPGuides.
+## Notes: Fallback copy of the Ashen Trail Horde route. Requires RXPGuides. The standalone AshenTrail addon does not load this pack.
 ## Author: Ashen Trail
 ## Version: 1.0.0
 ## Dependencies: RXPGuides
 ## DefaultState: Enabled
 
-Guides/AshenTrail.lua
+Guides\AshenTrail.lua
