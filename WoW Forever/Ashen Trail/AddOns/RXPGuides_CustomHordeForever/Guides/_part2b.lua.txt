@@ -1,0 +1,95 @@
+et the Grom'gol Base Camp Flight Path
+    .home >>Set your Hearthstone to Grom'gol or Booty Bay
+    *While at Grom'gol, dive west for The Drowned City entrance around 35-38.
+step
+    >>Travel to Riverglades when you hit the mid-30s - treat it as your primary outdoor XP until ~42
+    +Riverglades: clear hub boards, finish Brotheriood / ogre storylines, run Krol'dok Stronghold near 40
+    .xp 38
+step
+    .goto Dustwallow Marsh,35.2,30.7
+    >>Brackenwall Village - Dustwallow fillers between STV / Riverglades
+    .fp >>Get the Brackenwall Village Flight Path
+step
+    .goto Arathi Highlands,73.1,32.8
+    >>Hammerfall - Arathi circuit when Kalimdor slows
+    .fp >>Get the Hammerfall Flight Path
+    .xp 40
+step
+    >>At 40: train Apprentice Riding in Orgrimmar / Thunder Bluff / Undercity, unlock Dual Spec, then continue Tanaris
+    *New boat: Steamwheedle Port (Tanaris) <-> Riverglades shortens mid-game travel.
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 40-50 Tanaris Loop (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 30-60
+#next 50-60 Plaguelands & Hyjal (Ashen)
+
+step
+    .goto Tanaris,52.5,27.9
+    >>Gadgetzan - set hearth and vacuum pirate / wastewander quests
+    .fp >>Get the Gadgetzan Flight Path
+    .home >>Set your Hearthstone to Gadgetzan
+step
+    >>Run Zul'Farrak once with all Gadgetzan / ZF quests around 44-48
+    .xp 45
+step
+    .goto Feralas,75.4,44.3
+    >>Camp Mojache - Feralas yeti / ruins / sprite quests
+    .fp >>Get the Camp Mojache Flight Path
+step
+    .goto The Hinterlands,78.1,81.4
+    >>Revantusk Village - Hinterlands circuit
+    .fp >>Get the Revantusk Village Flight Path
+    .xp 48
+step
+    >>Return to Dustwallow for Alcaz Prison (48-53), then push Un'Goro and Felwood leads
+    .goto Un'Goro Crater,45.2,5.8
+    .fp >>Get the Marshal's Refuge (neutral) Flight Path
+    *Loot Un'Goro power crystals now - required inside Shaper's Terrace later.
+]])
+
+RXPGuides.RegisterGuide([[
+#forever
+<< Horde
+#name 50-60 Plaguelands & Hyjal (Ashen)
+#version 1
+#group Ashen Trail Forever (H)
+#subgroup Ashen Trail 30-60
+
+step
+    .goto Felwood,34.8,52.8
+    >>Bloodvenom Post / Felwood chain openers
+    .fp >>Get the Bloodvenom Post Flight Path
+    .xp 52
+step
+    .goto Winterspring,60.5,36.3
+    >>Everlook - Winterspring fillers and Timbermary reputation stops,n    .fp >>Get the Everlook Flight Path
+step
+    .goto Azshara,22,49.7
+p   >>Valormok - Azshara quests + Blackmaw Hold around 55+
+    .fp >>Get the Valormok Flight Path
+    +Run Blackmaw Hold once with quests between 55-60
+step
+    .goto Western Plaguelands,39.5,69
+    >>The Bulwark -> Western Plaguelands -> Eastern Plaguelands (Light's Hope)
+    .fp >>Get the Light's Hope Chapel Flight Path
+    .xp 56
+step
+    >>Enter Mount Hyjal for Forever's endgame leveling chapters - clear hubs until 58+
+    *Hyjal quest IDs are launch-live; follow yellows and keep Ashen Trail notes updated as you map them.
+    .xp 58
+step
+    .goto Un'Goro Crater,50,20
+    >>Shaper's Terrace (northern Un'Goro) - bring power crystals to the consoles
+    +Final dungeon spike: Shaper's Terrace 58-60 with crystals in bags
+step
+    .goto Silithus,50.8,34.6
+    >>Optional Silithus / remaining Plaguelands until 60 if Hyjal is congested
+    .fp >>Get the Cenarion Hold Flight Path
+    .xp 60
+    >>Congratulations - Ashen Trail complete. Bank heirlooms, lock Dual Spec for raids, claim Legacy Point.
+]])
