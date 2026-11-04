@@ -351,8 +351,17 @@ function L.ParseObjective(text)
   return { name = name, cur = tonumber(cur), max = tonumber(max) }
 end
 
+-- A secret name has to be rejected before "" is compared. Comparing a secret
+-- value can error, so the caller passes that flag from issecretvalue first.
+function L.UsablePlateName(ok, name, secret)
+  if not ok or secret then return nil end
+  if not name or name == "" then return nil end
+  return name
+end
+
 function L.MatchPlate(unitName, watch)
-  if not unitName or unitName == "" or not watch then return nil end
+  unitName = L.UsablePlateName(true, unitName, false)
+  if not unitName or not watch then return nil end
   local exact = watch.exact and watch.exact[string.lower(unitName)]
   if exact then return exact end
   if watch.objectives then
@@ -1042,11 +1051,12 @@ end
 -- (export 2026-10-16, beta build 1.60.1.70425). The UI still says Forever may differ.
 -- Cruelty is Fury row 1 slot 3, so it is legal at level 10. Improved Heroic Strike is also row 1, and only 3 ranks.
 -- Deadly Aspects is the Beast Mastery row-1 talent that affects Aspect of the Hawk.
--- Improved Sinister Strike is 2 ranks. The next three points are Malice, also row 1.
+-- The 2026-11-04 Rogue export renames Improved Sinister Strike to Efficient Strikes
+-- (Combat row 1, 2 ranks). The next three points stay Malice, Assassination row 1.
 local TALENT = {
   Warrior = { "Cruelty", "Cruelty", "Cruelty", "Cruelty", "Cruelty" },
   Hunter = { "Deadly Aspects", "Deadly Aspects", "Deadly Aspects", "Deadly Aspects", "Deadly Aspects" },
-  Rogue = { "Improved Sinister Strike", "Improved Sinister Strike", "Malice", "Malice", "Malice" },
+  Rogue = { "Efficient Strikes", "Efficient Strikes", "Malice", "Malice", "Malice" },
   Priest = { "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap", "Spirit Tap" },
   Mage = { "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt", "Improved Frostbolt" },
   Warlock = { "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption", "Improved Corruption" },

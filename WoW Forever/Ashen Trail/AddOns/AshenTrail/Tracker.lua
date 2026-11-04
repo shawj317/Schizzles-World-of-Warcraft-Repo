@@ -1178,8 +1178,13 @@ function AT.RefreshNameplates()
   local function consider(unit)
     if not UnitExists or not UnitExists(unit) then return end
     local okName, unitName = pcall(UnitName, unit)
-    if not okName or not unitName or unitName == "" then return end
-    if issecretvalue and issecretvalue(unitName) then return end
+    local secret = false
+    if okName and issecretvalue then
+      local okSecret, isSecret = pcall(issecretvalue, unitName)
+      if not okSecret or isSecret then secret = true end
+    end
+    unitName = L.UsablePlateName(okName, unitName, secret)
+    if not unitName then return end
     local match = L.MatchPlate(unitName, watch)
     local plate = plateFrame(unit)
     if not plate then return end

@@ -25,7 +25,7 @@ Original Horde 1-60 tracker for World of Warcraft: Forever. Its Lua does not loa
 - Minimap and world-map pins for the giver and turn-in on the current step and the next one.
 - A route page with saved flight times and an estimated fastest-route time. The addon still cannot take the flight.
 - A dungeon panel for the nine Forever instances: level, entrance, quests, and prep. Right-click the window and choose Dungeons.
-- A talent line for the next point of the Talents Forever opener, shown out of combat. The line credits questing.wiki.
+- A talent line for the next point of the Talents Forever opener, shown out of combat. The line credits Talents Forever and questing.wiki. Rogue starts with Efficient Strikes, then Malice.
 - The window uses Fira Sans Condensed Medium when that file loads, and the game font when it does not.
 - A per-character turn-in history.
 - Options grouped into theme, guide, quests, bags, arrow, and window. Themes: Blizzard, Dark, Vibrant, class color, and Ashen.
