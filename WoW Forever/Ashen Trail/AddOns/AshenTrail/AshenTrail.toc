@@ -1,6 +1,7 @@
-## Interface: 160000
+## Interface: 50504
+## Interface-Mists: 50504
 ## Title: |cffff5522Ashen Trail|r
-## Notes: Standalone Horde 1-60 route for WoW Forever. Tracks steps, pins, travel, and gear without RestedXP.
+## Notes: Original Horde 1-60 tracker. Interface 50504 loads this in MoP Classic. The route is the Forever guide. Does not load RestedXP.
 ## Author: Jon Shaw (Schizzle)
 ## Version: 1.0.0
 ## SavedVariablesPerCharacter: AshenTrailChar

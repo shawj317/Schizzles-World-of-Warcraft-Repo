@@ -1,10 +1,12 @@
-# Ashen Trail — Horde 1–60
+# Ashen Trail — Horde 1-60
 
 Horde leveling tracker for **World of Warcraft: Forever**, by Jon Shaw (Schizzle). The addon runs on its own. A RestedXP pack of the same route is included if you already use RestedXP.
 
-## Install the tracker
+## Install the tracker in MoP Classic
 
-1. Copy `AddOns/AshenTrail` into `_forever_/Interface/AddOns/`.
+The TOC interface is **50504**, so this copy loads in Mists of Pandaria Classic. The route is still the Forever Horde guide. The files stay in this Forever folder.
+
+1. Copy `AddOns/AshenTrail` into `World of Warcraft\_classic_\Interface\AddOns\`.
 2. The folder name must stay `AshenTrail`.
 3. Restart the client (or `/reload`). The window opens on your race, at the first step you have not finished.
 4. `/at` toggles the tracker. `/at help` lists commands.
@@ -22,7 +24,7 @@ The tracker follows quest pins, spawns, and givers, townsfolk, nameplate icons, 
 | File | Purpose |
 |------|--------|
 | [Leveling Guide.md](./Leveling%20Guide.md) | Human-readable route overview |
-| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. No RestedXP required |
+| [AddOns/AshenTrail](./AddOns/AshenTrail/) | Standalone tracker. Interface 50504 for MoP Classic. No RestedXP required |
 | [AddOns/RXPGuides_CustomHordeForever](./AddOns/RXPGuides_CustomHordeForever/) | Optional RXP guide pack (`#forever`, `<< Horde`) |
 
 ## Route summary
