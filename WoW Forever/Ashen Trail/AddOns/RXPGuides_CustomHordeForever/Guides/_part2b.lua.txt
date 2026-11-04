@@ -3,7 +3,7 @@ et the Grom'gol Base Camp Flight Path
     *While at Grom'gol, dive west for The Drowned City entrance around 35-38.
 step
     >>Travel to Riverglades when you hit the mid-30s - treat it as your primary outdoor XP until ~42
-    +Riverglades: clear hub boards, finish Brotheriood / ogre storylines, run Krol'dok Stronghold near 40
+    +Riverglades: clear hub boards, finish Brotherhood / ogre storylines, run Krol'dok Stronghold near 40
     .xp 38
 step
     .goto Dustwallow Marsh,35.2,30.7
@@ -67,10 +67,11 @@ step
     .xp 52
 step
     .goto Winterspring,60.5,36.3
-    >>Everlook - Winterspring fillers and Timbermary reputation stops,n    .fp >>Get the Everlook Flight Path
+    >>Everlook - Winterspring fillers and Timbermaw reputation stops
+    .fp >>Get the Everlook Flight Path
 step
     .goto Azshara,22,49.7
-p   >>Valormok - Azshara quests + Blackmaw Hold around 55+
+    >>Valormok - Azshara quests + Blackmaw Hold around 55+
     .fp >>Get the Valormok Flight Path
     +Run Blackmaw Hold once with quests between 55-60
 step
