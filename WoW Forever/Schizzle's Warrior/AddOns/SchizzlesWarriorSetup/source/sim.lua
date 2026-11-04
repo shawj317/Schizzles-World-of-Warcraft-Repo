@@ -50,6 +50,8 @@ _G.InCombatLockdown = function() return false end
 _G.ReloadUI = function() end
 _G.C_AddOns = { IsAddOnLoaded = function(n) return n ~= "TomTom" end }
 _G.UnitName = function() return "Tester" end
+local playerClass = "WARRIOR"
+_G.UnitClass = function() return playerClass, playerClass end
 _G.UnitNameUnmodified = function() return "Tester", "Surname" end
 _G.GetRealmName = function() return "Realm" end
 _G.RegionalUniqueNamesEnabled = function() return false end
@@ -106,7 +108,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F1.1", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F1.2", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -194,6 +196,19 @@ popups, _G.SchizzlesWarriorSetupCharDB = {}, nil
 _G.SchizzlesWarriorSetupLocal = { character = "SomeoneElse" }
 frames[1].scripts.OnEvent(frames[1], "PLAYER_LOGIN")
 check(#popups == 0, "local config for another character: no prompt")
+
+-- Another class: general UI only, no account keybinds, no Warrior bars, no aura pack.
+playerClass = "WARLOCK"
+_G.SchizzlesWarriorSetupLocal = nil
+popups, binds, chat, importedAuras = {}, {}, {}, nil
+_G.SlashCmdList.SCHIZZLE("binds")
+check(next(binds) == nil and said("Warrior only"), "binds skipped on a non-Warrior")
+_G.SlashCmdList.SCHIZZLE("auras")
+check(importedAuras == nil and said("Warrior pack"), "/schizzle auras refused on a non-Warrior")
+_G.SchizzlesWarriorSetupCharDB = nil
+frames[1].scripts.OnEvent(frames[1], "PLAYER_LOGIN")
+check(popups[#popups] == "SCHIZZLES_WARRIOR_FIRST", "a non-Warrior is still asked once for the general UI")
+playerClass = "WARRIOR"
 
 print(fails == 0 and "all checks passed" or (fails .. " check(s) failed"))
 os.exit(fails == 0 and 0 or 1)

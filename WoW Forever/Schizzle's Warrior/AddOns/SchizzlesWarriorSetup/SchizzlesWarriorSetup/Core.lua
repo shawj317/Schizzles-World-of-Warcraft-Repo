@@ -5,7 +5,7 @@
 local _, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "F1.1"
+local VERSION = "F1.2"
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -23,6 +23,12 @@ local function localConfig()
 	local c = _G.SchizzlesWarriorSetupLocal
 	return type(c) == "table" and c or {}
 end
+
+-- Keybinds, Bartender4 bars and the aura pack are the Warrior's; every other piece is general UI and runs on any class.
+local function isWarrior()
+	return select(2, UnitClass("player")) == "WARRIOR"
+end
+ns.isWarrior = isWarrior
 
 local function say(msg)
 	DEFAULT_CHAT_FRAME:AddMessage("|cffb87333Schizzle's Warrior|r: " .. msg)
@@ -125,7 +131,7 @@ pieces.details = {
 }
 
 pieces.binds = {
-	label = "Keybinds (account-wide)",
+	label = "Keybinds (account-wide)", warrior = true,
 	run = function()
 		local K = D.Keybinds
 		local function clear(cmd)
@@ -156,7 +162,7 @@ pieces.binds = {
 }
 
 pieces.bars = {
-	label = "Bartender4", addon = "Bartender4",
+	label = "Bartender4", addon = "Bartender4", warrior = true,
 	run = function()
 		local BT4 = Bartender4
 		if not (BT4 and BT4.db) then return false, "Bartender4 not ready" end
@@ -193,6 +199,10 @@ ns.pieces = pieces
 
 local function run(id)
 	local p = pieces[id]
+	if p.warrior and not isWarrior() then
+		say(p.label .. ": Warrior only, skipped on this class.")
+		return false
+	end
 	if p.addon and not IsLoaded(p.addon) then
 		say(p.label .. ": not installed or not enabled, skipped.")
 		return false
@@ -229,8 +239,7 @@ end
 ns.apply = apply
 
 StaticPopupDialogs["SCHIZZLES_WARRIOR_FIRST"] = {
-	text = "Set up Schizzle's Warrior on this character?\n\nConsole variables, keybinds, Bartender4 bars, Prat chat, "
-		.. "SexyMap minimap, Questie, GatherMate2, TomTom and Details!. Each addon gets a new \"Schizzle's Warrior\" "
+	text = "Set up Schizzle's Warrior on this character?\n\n%s Each addon gets a new \"Schizzle's Warrior\" "
 		.. "profile; your old profiles are kept.",
 	button1 = YES or "Yes", button2 = NO or "No",
 	OnAccept = function() apply(order) end,
@@ -251,12 +260,16 @@ f:SetScript("OnEvent", function()
 	if SchizzlesWarriorSetupDB.tray == nil then SchizzlesWarriorSetupDB.tray = cfg.tray ~= false end
 	if ns.trayEnable then ns.trayEnable(SchizzlesWarriorSetupDB.tray) end
 	-- With a local config naming a character, only that character is asked; others can still type /schizzle all.
+	-- Without one, every character is asked once: Warriors get everything, other classes the general UI.
 	local mine = not cfg.character or cfg.character == UnitName("player")
 	if SchizzlesWarriorSetupCharDB.applied == nil and mine then
 		if cfg.autoApply and not InCombatLockdown() then
 			apply(order)
 		else
-			StaticPopup_Show("SCHIZZLES_WARRIOR_FIRST")
+			StaticPopup_Show("SCHIZZLES_WARRIOR_FIRST", isWarrior()
+				and "Console variables, keybinds, Bartender4 bars, Prat chat, SexyMap minimap, Questie, GatherMate2, TomTom and Details!."
+				or "General UI only: console variables, Prat chat, SexyMap minimap, Questie, GatherMate2, TomTom and Details!. "
+				.. "Keybinds and bars are left alone on this class.")
 		end
 	end
 end)
@@ -267,6 +280,10 @@ local function importAuras()
 	local meta = (C_AddOns and C_AddOns.GetAddOnMetadata) or _G.GetAddOnMetadata
 	local title = meta and meta("WeakAuras", "Title")
 	local WA = _G.WeakAuras
+	if not isWarrior() then
+		say("Schizzle's Warrior Essentials is a Warrior pack; log in on your Warrior.")
+		return
+	end
 	if not (WA and WA.Import and type(title) == "string" and title:find("Musca")) then
 		say("Musca Auras isn't loaded. Install Musca Auras 1.14.0 (its folder is called WeakAuras), then try again.")
 		return

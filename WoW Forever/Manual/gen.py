@@ -75,7 +75,7 @@ parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1.1</span><span class='tag'>Warrior Essentials v1.0 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<span class='tag'>Schizzle's Warrior Setup F1.2</span><span class='tag'>Warrior Essentials v1.0 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
 <div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
 parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
@@ -88,7 +88,7 @@ parts.append(table(["Job", "Forever-ready addons"], [
     ["Error catching", "BugSack + !BugGrabber &middot; BugTabs"],
 ]))
 parts.append("<h2>2. First login: one click</h2>")
-parts.append("<ol><li>At the character list, click <b>AddOns</b>. Nothing you rely on should say <i>Out of date</i>.</li><li>Log in on the Warrior. Click <b>Yes</b> on <i>Set up Schizzle's Warrior on this character?</i></li><li>Read the chat lines (one per piece: <i>done</i> or <i>skipped</i>), then click <b>Reload</b>. If the button does nothing, type <code>/reload</code>.</li></ol>")
+parts.append("<ol><li>At the character list, click <b>AddOns</b>. Nothing you rely on should say <i>Out of date</i>.</li><li>Log in on the Warrior. Click <b>Yes</b> on <i>Set up Schizzle's Warrior on this character?</i> (other classes get the general UI only: no keybinds, bars or aura pack)</li><li>Read the chat lines (one per piece: <i>done</i> or <i>skipped</i>), then click <b>Reload</b>. If the button does nothing, type <code>/reload</code>.</li></ol>")
 parts.append(table(["Piece", "What it sets", "Command"], [
     ["Console variables", "auto loot, cast on key down, max camera zoom, enemy nameplates, target of target, full tooltips, <b>Cooldown Manager on</b>", "<code>/schizzle cvars</code>"],
     ["Keybinds", "Bar 3 on Q E R F T G Y + mouse buttons; Shift versions on Bar 2; A/D strafe (account-wide)", "<code>/schizzle binds</code>"],
