@@ -329,6 +329,7 @@ function Pack.Build(spec)
     if options.form then required[#required + 1] = FormTrigger(options.form) end
     if options.needsPet then required[#required + 1] = Generic({ type = "unit", event = "Conditions", use_HasPet = true }) end
     if options.notResting then required[#required + 1] = Generic({ type = "unit", event = "Conditions", use_resting = false }) end
+    if options.alive then required[#required + 1] = Generic({ type = "unit", event = "Conditions", use_alive = true }) end
     if options.offhand then required[#required + 1] = OffhandTrigger() end
     assert(not (FOREVER_AURAS and #required > 0 and options.fallback),
       id .. ": gate, form, pet, rest or offhand and fallback cannot be combined")
@@ -588,6 +589,7 @@ function Pack.Build(spec)
     local options = Requirements(entry, { size = SIZES.reminder,
       outOfCombat = not entry.lowPower and not entry.pet and not entry.combat, notResting = not entry.lowPower })
     options.inCombat = entry.combat == "in"
+    options.alive = entry.alive
     assert(entry.lowPower or options.known ~= nil or options.level, entry.name .. ": a reminder needs known or level")
     local label, trigger, text, color = "Missing " .. entry.name, nil, "Missing: " .. entry.name, nil
     if entry.aura then
@@ -606,7 +608,19 @@ function Pack.Build(spec)
     elseif entry.lowPower then
       label, text, color = entry.name, entry.name, BLUE
       trigger = PowerTrigger(entry.lowPower, entry.below)
+    elseif entry.tracking then
+      -- Musca ClassicEraTriggers Tracking: C_Minimap.GetTrackingInfo by spell ID; inverse = not active.
+      -- Forever-tested path (tutorial: Tracking by spell ID). No custom code / no secret player-buff scan.
+      label = entry.label or entry.name
+      text = entry.text or ("Track " .. entry.name)
+      trigger = Generic({ type = "unit", event = "Tracking",
+        use_trackingSpell = true, trackingSpell = { entry.tracking }, use_inverse = true })
+      if entry.icon then
+        options.texture = entry.texture or ("Interface\\Icons\\Spell_Nature_Earthquake")
+        options.subRegions = { Text(text, "OUTER_BOTTOM", 11) }
+      end
     end
+    assert(trigger, entry.name .. ": reminder has no trigger")
     local data = entry.icon and Icon(reminders, label, trigger, options) or Label(reminders, label, trigger, text, color, options)
     -- Display.Validate rejects any animation on a secretAura, and a pulse on the alpha would override the native
     -- threshold of a low power reminder: only the other reminders pulse. A text has no scale, it flashes.

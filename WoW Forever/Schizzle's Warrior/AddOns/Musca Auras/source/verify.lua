@@ -219,7 +219,37 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.12$") ~= nil, "pack version is v1.12 (" .. root.id .. ")")
+check(root.id:find(" v1%.13$") ~= nil, "pack version is v1.13 (" .. root.id .. ")")
+
+-- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
+do
+  local track
+  for _, child in ipairs(transmit.c) do
+    if child.id:find("Track Minerals") or child.id:find("Find Minerals") then track = child break end
+  end
+  check(track ~= nil, "Track Minerals reminder exists")
+  if track then
+    local t1 = track.triggers[1] and track.triggers[1].trigger
+    check(t1 and t1.event == "Tracking" and t1.use_inverse and t1.use_trackingSpell
+      and type(t1.trackingSpell) == "table" and tonumber(t1.trackingSpell[1]) == 2580,
+      "Track Minerals uses Tracking inverse spell 2580")
+    check(track.regionType == "icon", "Track Minerals is an icon")
+    check(track.load and track.load.use_combat == false, "Track Minerals loads out of combat")
+    check(track.load and track.load.use_spellknown and track.load.spellknown == 2580,
+      "Track Minerals requires Find Minerals known")
+    local hasText, hasAlive
+    for _, sub in ipairs(track.subRegions or {}) do
+      if sub.type == "subtext" and sub.text_text == "Track Minerals" then hasText = true end
+    end
+    for _, entry in ipairs(track.triggers) do
+      local tr = entry.trigger
+      if tr and tr.event == "Conditions" and tr.use_alive == true then hasAlive = true end
+    end
+    check(hasText, "Track Minerals shows Track Minerals text")
+    check(hasAlive, "Track Minerals requires alive (not dead/ghost)")
+    check(track.parent and track.parent:find("Reminders"), "Track Minerals sits in Reminders")
+  end
+end
 
 -- Every leaf aura unloads in Forever 1.60.1 classic capitals (zone name + uiMapID child-maps).
 local CAPITAL_NAMES = {

@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.12"
+local VERSION = "1.13"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -142,5 +142,10 @@ return Pack.Build({
   meleeRange = { { name = "Sunder Armor", spell = 7386 } },
   reminders = {
     { name = "Battle Shout", aura = battleShout, known = 6673 },
+    -- Find Minerals (Mining): Musca Tracking trigger (C_Minimap), inverse = show while off.
+    -- Icon + "Track Minerals" under Reminders; OOC, alive, not resting, capitals via pack load.
+    { name = "Find Minerals", tracking = 2580, known = 2580, icon = true,
+      text = "Track Minerals", label = "Track Minerals", alive = true,
+      texture = "Interface\\Icons\\Spell_Nature_Earthquake" },
   },
 })
