@@ -75,7 +75,7 @@ parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1.6</span><span class='tag'>Warrior Essentials v1.4 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<span class='tag'>Schizzle's Warrior Setup F1.7</span><span class='tag'>Warrior Essentials v1.5 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
 <div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
 parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
@@ -106,7 +106,7 @@ parts.append("<h2>3. Where everything sits</h2>")
 parts.append(screen)
 parts.append("<p>The orange box in the middle belongs to the visual helper (page 4); nothing else goes there. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
 parts.append("<h2>4. The visual helper: Schizzle's Warrior Essentials</h2>")
-parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Group default is <b>0,-55</b> with a <b>100 px</b> rage bar. While Heroic Strike or Cleave is queued, Main priority icons get the Battle Shout Pixel glow and a main-hand swing swirl; Battle Shout shows remaining time. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
+parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Group default is <b>0,-55</b> with a <b>100 px</b> rage bar. While Heroic Strike or Cleave is queued, Main priority icons get the Battle Shout Pixel glow and a main-hand swing swirl; Battle Shout shows remaining time. Main corner numbers are your real keybinds (looked up from the action bars). Rend flashes when it has under 4 seconds left so you can refresh it; if Forever hides the timer in combat the flash simply stays off. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
 parts.append("<div class='hudwrap'>" + hudsketch + "<div class='hudkey'>" + table(["Lane", "Order (press the lowest lit number)"], [
     ["Starter (below 10)", "Rend, Heroic Strike, Thunder Clap"],
     ["Arms", "Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind"],
@@ -198,7 +198,7 @@ parts.append(checks([
     "Visual helper: <i>Missing Battle Shout</i> out of combat; Starter lane below 10, your tree's lane from 10",
     "Rage bar: grey under 15, red, bronze at 30, ember at 60; lane icons dim and light up",
     "Overpower (dodge), Execute (&lt;20%) and Victory Rush (kill) light up with their sounds; Main icons glow + swing swirl while HS/Cleave queued; Battle Shout shows time left",
-    "Rend timer on the target; the lane's Rend glows when it drops. Sunder stacks, Thunder Clap and Demo Shout show",
+    "Rend timer on the target; Main Rend flashes under 4s left and glows when it drops; corner labels match your bars. Sunder stacks, Thunder Clap and Demo Shout show",
     "Cooldown row changes with each stance; <i>Not in melee range</i> when you back off; swing bars fill",
     "Auctionator list imports and searches",
 ]))

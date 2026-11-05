@@ -9,7 +9,7 @@
 --   * the root group's name, place and font come from the spec (the repo's layout rules: centre 0,-55,
 --     Fira Sans Condensed Medium, version in the group name)
 --   * the row heights come from the spec, so the whole pack stays inside the HUD box
---   * "lanes": one priority row per talent tree, each icon numbered, dimmed while the spell can't be used
+--   * "lanes": one priority row per talent tree; corner labels show the real action-bar keybind (dynamic lookup), dimmed while the spell can't be used
 --   * debuffs in a lane glow while they are missing from the target
 --   * rage colour steps: a grey low mark on the bar and coloured copies laid over it at higher percents
 --   * target debuffs and the stance get their own row, and the aura rows can be capped
@@ -72,6 +72,111 @@ local function RemainingText(point, size)
   text.text_text_format_p_time_dynamic_threshold = 60
   text.text_text_format_p_time_legacy_floor = false
   return text
+end
+
+-- Main-lane corner labels: look up the key currently bound to whichever action-bar slot
+-- holds this spell (any rank, macros included). Not the priority index. One shared frame
+-- marks the cache dirty on ACTIONBAR_SLOT_CHANGED / UPDATE_BINDINGS; rebuild skips secret
+-- values and retries out of combat.
+local HOTKEY_INIT = [=[
+function()
+  if _G.SchizzleWA_HotkeyFrame then return end
+  local f = CreateFrame("Frame")
+  _G.SchizzleWA_HotkeyFrame = f
+  _G.SchizzleWA_Hotkeys = { dirty = true }
+  f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  f:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
+  f:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
+  f:RegisterEvent("UPDATE_BINDINGS")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  f:SetScript("OnEvent", function()
+    local c = _G.SchizzleWA_Hotkeys
+    if c then c.dirty = true end
+  end)
+end
+]=]
+
+local function HotkeyCustomText(spellId)
+  return string.format([=[
+function()
+  local want = %d
+  local cache = _G.SchizzleWA_Hotkeys
+  if not cache then return "" end
+  if cache.dirty or not cache.map then
+    local map, ok = {}, true
+    local function firstKey(cmds)
+      for i = 1, #cmds do
+        local key = GetBindingKey(cmds[i])
+        if key and key ~= "" and not (issecretvalue and issecretvalue(key)) then
+          return GetBindingText(key, "KEY_", true) or key
+        end
+      end
+    end
+    local function cmdsForSlot(slot)
+      if slot >= 1 and slot <= 12 then
+        return { "ACTIONBUTTON" .. slot, ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 13 and slot <= 24 then
+        return { ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 25 and slot <= 36 then
+        local i = slot - 24
+        return { "MULTIACTIONBAR3BUTTON" .. i, ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 37 and slot <= 48 then
+        local i = slot - 36
+        return { "MULTIACTIONBAR4BUTTON" .. i, ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 49 and slot <= 60 then
+        local i = slot - 48
+        return { "MULTIACTIONBAR2BUTTON" .. i, ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 61 and slot <= 72 then
+        local i = slot - 60
+        return { "MULTIACTIONBAR1BUTTON" .. i, ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      elseif slot >= 73 and slot <= 120 then
+        return { ("CLICK BT4Button%%d:Keybind"):format(slot) }
+      end
+      return {}
+    end
+    local function note(spell, slot)
+      if not spell or spell == 0 then return end
+      if issecretvalue and issecretvalue(spell) then ok = false; return end
+      local text = firstKey(cmdsForSlot(slot))
+      if not text then return end
+      map[spell] = text
+      local name = GetSpellInfo(spell)
+      if name and not (issecretvalue and issecretvalue(name)) then map[name] = text end
+    end
+    for slot = 1, 120 do
+      local actionType, id = GetActionInfo(slot)
+      if issecretvalue and (issecretvalue(actionType) or issecretvalue(id)) then
+        ok = false
+        break
+      end
+      if actionType == "spell" then
+        note(id, slot)
+      elseif actionType == "macro" and id then
+        local sid = GetMacroSpell(id)
+        if sid then note(sid, slot) end
+      end
+    end
+    if ok then
+      cache.map, cache.dirty = map, false
+    end
+  end
+  local hit = cache.map and cache.map[want]
+  if hit then return hit end
+  local name = GetSpellInfo(want)
+  if name and cache.map then return cache.map[name] or "" end
+  return ""
+end
+]=], spellId)
+end
+
+local function ApplyHotkeyLabel(data, spellId)
+  if not spellId then return data end
+  data.customText = HotkeyCustomText(spellId)
+  data.customTextUpdate = "update"
+  data.customTextUpdateThrottle = 0.25
+  data.actions = data.actions or { start = {}, finish = {}, init = {} }
+  data.actions.init = { do_custom = true, custom = HOTKEY_INIT }
+  return data
 end
 
 local function Animation()
@@ -644,16 +749,22 @@ function Pack.Build(spec)
     ApplyQueuedNextSwing(SpellIcon(main, entry, SIZES.main))
   end
   -- Priority lanes: one row per talent tree (or level range), in the order to press them. Only the lane that matches
-  -- the character loads. A number in the corner gives the priority; the icon dims while the spell can't be used
-  -- (wrong stance, target too healthy for Execute, no proc yet), turns blue without the rage and red out of range.
+  -- the character loads. The corner label is the real keybind from your action bars (dynamic lookup by spell),
+  -- not the priority index; the icon dims while the spell can't be used (wrong stance, target too healthy for
+  -- Execute, no proc yet), turns blue without the rage and red out of range.
   local usableDim = Condition("spellUsable", 0, "alpha", 0.45)
   for _, lane in ipairs(spec.lanes or {}) do
     for index, entry in ipairs(lane.entries) do
       local e = {}
       for key, value in pairs(entry) do e[key] = value end
       e.spec, e.level, e.levelBelow = lane.spec, lane.level, lane.levelBelow
+      -- DoT refresh flash: Proc blink while remaining < 4s (Musca Remaining Time only offers <).
+      -- Aura (Modern) rejects WA alphaPulse animation presets; BLINK glow is the Forever-safe flash.
+      -- When Forever secrets duration in combat, faAuraRemaining fails closed (no flash, no error).
+      -- The blink draws on top of a desaturated icon (visual override).
+      if entry.dot then e.warn = 4 end
       local label = lane.name .. " " .. index .. " " .. entry.name
-      local number = Text(tostring(index), "INNER_TOPLEFT", 11)
+      local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
       if entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"
@@ -664,6 +775,7 @@ function Pack.Build(spec)
         data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, { size = SIZES.main, subRegions = { number },
           conditions = { usableDim, noMana, outOfRange }, idle = true }))
       end
+      ApplyHotkeyLabel(data, entry.spell)
       ApplyQueuedNextSwing(data)
     end
   end

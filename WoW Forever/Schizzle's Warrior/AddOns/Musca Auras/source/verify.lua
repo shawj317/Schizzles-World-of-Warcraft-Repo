@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.4$") ~= nil, "pack version is v1.4 (" .. root.id .. ")")
+check(root.id:find(" v1%.5$") ~= nil, "pack version is v1.5 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -316,6 +316,74 @@ end
 check(#mainIcons > 0, "Main holds priority icons (" .. #mainIcons .. ")")
 check(#badMain == 0, "every Main icon has queued Pixel glow + swing swirl conditions"
   .. (#badMain > 0 and (": " .. table.concat(badMain, ", ")) or ""))
+
+-- Main corner labels: dynamic keybind via %c + customText (GetActionInfo / GetBindingKey), not hard-coded priority index.
+local badHotkey = {}
+for _, child in ipairs(mainIcons) do
+  local hasC
+  for _, sub in ipairs(child.subRegions or {}) do
+    if sub.type == "subtext" and sub.text_text == "%c" and sub.anchor_point == "INNER_TOPLEFT" then
+      hasC = true
+    end
+    if sub.type == "subtext" and type(sub.text_text) == "string" and sub.text_text:match("^%d+$")
+      and sub.anchor_point == "INNER_TOPLEFT" then
+      badHotkey[#badHotkey + 1] = child.id:gsub("^.- %- ", "") .. " hard-coded " .. sub.text_text
+    end
+  end
+  local ct = child.customText or ""
+  local init = child.actions and child.actions.init and child.actions.init.custom or ""
+  if not hasC or not ct:find("GetActionInfo", 1, true) or not ct:find("GetBindingKey", 1, true)
+    or child.customTextUpdate ~= "update"
+    or not (child.actions and child.actions.init and child.actions.init.do_custom)
+    or not init:find("UPDATE_BINDINGS", 1, true)
+    or not init:find("ACTIONBAR_SLOT_CHANGED", 1, true) then
+    badHotkey[#badHotkey + 1] = child.id:gsub("^.- %- ", "") .. " missing dynamic hotkey lookup"
+  end
+end
+check(#badHotkey == 0, "every Main icon labels the real keybind (%c + GetActionInfo/GetBindingKey)"
+  .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
+
+-- Main DoT (Rend): Proc blink flash while remaining < 4s; no hard-coded WA alphaPulse on secretAura.
+local badFlash = {}
+for _, child in ipairs(mainIcons) do
+  local isDot = child.id:find(" Rend$") ~= nil
+  if isDot then
+    local blinkIdx
+    for i, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subglow" and sub.glowType == "Proc" and sub.glow == false
+        and sub.useGlowColor and type(sub.glowColor) == "table"
+        and sub.glowColor[1] == 1 and sub.glowColor[2] == 0 and sub.glowColor[3] == 0 then
+        blinkIdx = i
+      end
+    end
+    local hasFlash
+    for _, cond in ipairs(child.conditions or {}) do
+      local c = cond.check
+      if c and c.variable == "faAuraRemaining" and c.op == "<" and c.value == 4 then
+        for _, ch in ipairs(cond.changes or {}) do
+          if blinkIdx and ch.property == ("sub.%d.glow"):format(blinkIdx) and ch.value == true then
+            hasFlash = true
+          end
+        end
+      end
+    end
+    if not (blinkIdx and hasFlash) then
+      badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "")
+    end
+    for _, cond in ipairs(child.conditions or {}) do
+      local c = cond.check
+      if c and c.variable == "faAuraRemaining" then
+        for _, ch in ipairs(cond.changes or {}) do
+          if ch.property == "conditionAnimation" or ch.property == "alpha" then
+            badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "") .. " illegal remaining→" .. tostring(ch.property)
+          end
+        end
+      end
+    end
+  end
+end
+check(#badFlash == 0, "Main Rend flashes via faAuraRemaining < 4 → Proc blink (secret-safe)"
+  .. (#badFlash > 0 and (": " .. table.concat(badFlash, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).
 -- Rage colour steps intentionally stack on the Resource bar; Reminders (OOC) and Range (combat) share the top band by design.
