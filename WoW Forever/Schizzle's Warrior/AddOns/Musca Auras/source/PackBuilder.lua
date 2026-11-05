@@ -744,68 +744,32 @@ function Pack.Build(spec)
     }
   end
 
-  -- Main-lane DoT (Rend) feedback states, Forever-safe. Precedence:
-  --   1) Timer while present on the target (RemainingText %p + cooldown swipe from the aura).
-  --   2) DESATURATE when insufficientResources (IsSpellUsable power flag) — castability, not "up".
-  --   3) HIGHLIGHT (Action Button Glow) when usable and not blocked on power.
-  --   4) Pixel moving border while THIS spell is queued (same Pixel settings as Battle Shout / HS-Cleave).
-  --   5) Proc blink flash while remaining < 4s (refresh); draws on top; secret duration → no flash.
-  -- Secret usable/power/aura values fail closed (no desat/highlight/timer/flash, no error).
-  local function ApplyMainDotFeedback(data, spellId)
-    if not spellId then return data end
-    data.desaturate = false
-    data.subRegions[#data.subRegions + 1] = RemainingText("INNER_BOTTOM", 11)
-
-    local function glowTemplate(glowType, extra)
-      local g = {
-        type = "subglow", glow = false, glowType = glowType, useGlowColor = false,
-        glowColor = {1, 1, 1, 1}, glowLines = 8, glowFrequency = 0.25, glowDuration = 1,
-        glowLength = 10, glowThickness = 1, glowScale = 1, glowBorder = false,
-        glowXOffset = 0, glowYOffset = 0,
-      }
-      if extra then for k, v in pairs(extra) do g[k] = v end end
-      return g
-    end
-    -- Match Battle Shout / queued HS Pixel border (GLOW defaults).
-    local pixel = {}
-    for k, v in pairs(GLOW) do pixel[k] = v end
-    pixel.glow = false
-    data.subRegions[#data.subRegions + 1] = glowTemplate("buttonOverlay")
-    local highlightIdx = #data.subRegions
-    data.subRegions[#data.subRegions + 1] = pixel
-    local borderIdx = #data.subRegions
-
-    local cdIdx
-    for i, entry in ipairs(data.triggers) do
-      local tr = entry.trigger
-      if tr and tr.type == "spell" and tr.event == "Cooldown Progress (Spell)" then
-        cdIdx = i
-        break
-      end
-    end
-    if cdIdx then
-      data.conditions[#data.conditions + 1] = {
-        check = { trigger = cdIdx, variable = "insufficientResources", value = 1 },
-        changes = { { property = "desaturate", value = true } },
-      }
-      data.conditions[#data.conditions + 1] = {
-        check = { trigger = -2, variable = "AND", checks = {
-          { trigger = cdIdx, variable = "insufficientResources", value = 0 },
-          { trigger = cdIdx, variable = "spellUsable", value = 1 },
-        } },
-        changes = { { property = "sub." .. highlightIdx .. ".glow", value = true } },
-      }
-    end
-
-    local queuedIdx = #data.triggers + 1
-    data.triggers[queuedIdx] = {
-      trigger = Generic({ type = "spell", event = "Queued Action", spellName = spellId,
-        use_exact_spellName = false }),
-      untrigger = {},
+  -- Main-lane DoT (Rend): saturated by default; desaturated while the player's own Rend is on the
+  -- current target. Plain aura2 by spell name (all ranks), ownOnly, showAlways so the icon never
+  -- hides. Presence is condition-only (visibility stays on the cooldown / form triggers).
+  -- On Forever, if UnitAura presence is secret, name-filtered aura2 skips the match and buffed
+  -- stays false → icon stays saturated (fail open toward "reapply").
+  local function AuraNameTrigger(spellName, unit, kind)
+    return {
+      type = "aura2",
+      unit = unit or "target",
+      debuffType = kind or "HARMFUL",
+      ownOnly = true,
+      useName = true,
+      auranames = { spellName },
+      matchesShowOn = "showAlways",
+      unitExists = false,
     }
+  end
+
+  local function ApplyMainDotDesaturate(data, spellName)
+    if not spellName then return data end
+    local idx = #data.triggers + 1
+    data.triggers[idx] = { trigger = AuraNameTrigger(spellName), untrigger = {} }
+    data.desaturate = false
     data.conditions[#data.conditions + 1] = {
-      check = { trigger = queuedIdx, variable = "show", value = 1 },
-      changes = { { property = "sub." .. borderIdx .. ".glow", value = true } },
+      check = { trigger = idx, variable = "buffed", value = 1 },
+      changes = { { property = "desaturate", value = true } },
     }
     return data
   end
@@ -824,15 +788,15 @@ function Pack.Build(spec)
       local e = {}
       for key, value in pairs(entry) do e[key] = value end
       e.spec, e.level, e.levelBelow = lane.spec, lane.level, lane.levelBelow
-      -- DoT refresh flash: Proc blink while remaining < 4s (Musca Remaining Time only offers <).
-      -- Aura (Modern) rejects WA alphaPulse animation presets; BLINK glow is the Forever-safe flash.
-      -- When Forever secrets duration in combat, faAuraRemaining fails closed (no flash, no error).
-      -- The blink draws on top of a desaturated icon (visual override).
-      if entry.dot then e.warn = 4 end
       local label = lane.name .. " " .. index .. " " .. entry.name
       local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
-      if entry.aura then
+      if entry.dot then
+        -- Always-visible cooldown icon; aura2 (by name) only drives desaturate-when-present.
+        data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, {
+          size = SIZES.main, subRegions = { number },
+          conditions = { usableDim, noMana, outOfRange }, idle = true }))
+      elseif entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"
         data = Icon(main, label, AuraTrigger(entry.aura, "showAlways", unit, kind),
           Requirements(e, { size = SIZES.main, fallback = CooldownTrigger(entry.spell), idle = true,
@@ -843,7 +807,7 @@ function Pack.Build(spec)
       end
       ApplyHotkeyLabel(data, entry.spell)
       ApplyQueuedNextSwing(data)
-      if entry.dot then ApplyMainDotFeedback(data, entry.spell) end
+      if entry.dot then ApplyMainDotDesaturate(data, entry.name) end
     end
   end
 

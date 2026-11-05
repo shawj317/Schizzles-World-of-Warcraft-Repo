@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.7$") ~= nil, "pack version is v1.7 (" .. root.id .. ")")
+check(root.id:find(" v1%.8$") ~= nil, "pack version is v1.8 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -284,7 +284,7 @@ for _, child in ipairs(transmit.c) do
         swirlIdx = i
       end
     end
-    -- HS/Cleave queue Pixel may not be the last Pixel (Main DoTs add their own queue border).
+    -- HS/Cleave queue Pixel (Main DoTs no longer add a separate Rend queue border).
     local hasOr, glowIdx
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
@@ -346,46 +346,33 @@ end
 check(#badHotkey == 0, "every Main icon labels the real keybind (%c + GetActionInfo/GetBindingKey)"
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
--- Main DoT (Rend): Proc blink flash while remaining < 4s; no hard-coded WA alphaPulse on secretAura.
+-- Main DoT (Rend) v1.8: no remaining-time flash / Proc blink / rage desat extras.
 local badFlash = {}
 for _, child in ipairs(mainIcons) do
-  local isDot = child.id:find(" Rend$") ~= nil
-  if isDot then
-    local blinkIdx
-    for i, sub in ipairs(child.subRegions or {}) do
-      if sub.type == "subglow" and sub.glowType == "Proc" and sub.glow == false
-        and sub.useGlowColor and type(sub.glowColor) == "table"
-        and sub.glowColor[1] == 1 and sub.glowColor[2] == 0 and sub.glowColor[3] == 0 then
-        blinkIdx = i
+  if child.id:find(" Rend$") then
+    for _, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subglow" and sub.glowType == "Proc" then
+        badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "") .. " still-has-Proc-blink"
       end
-    end
-    local hasFlash
-    for _, cond in ipairs(child.conditions or {}) do
-      local c = cond.check
-      if c and c.variable == "faAuraRemaining" and c.op == "<" and c.value == 4 then
-        for _, ch in ipairs(cond.changes or {}) do
-          if blinkIdx and ch.property == ("sub.%d.glow"):format(blinkIdx) and ch.value == true then
-            hasFlash = true
-          end
-        end
-      end
-    end
-    if not (blinkIdx and hasFlash) then
-      badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "")
     end
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
-      if c and c.variable == "faAuraRemaining" then
+      if c and (c.variable == "faAuraRemaining" or c.variable == "insufficientResources"
+        or c.variable == "spellUsable") then
+        -- insufficientResources / spellUsable may still colour the icon via noMana/outOfRange/usableDim;
+        -- those change color/alpha, not desaturate. Flag only desaturate from those variables.
         for _, ch in ipairs(cond.changes or {}) do
-          if ch.property == "conditionAnimation" or ch.property == "alpha" then
-            badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "") .. " illegal remaining→" .. tostring(ch.property)
+          if ch.property == "desaturate" or ch.property == "conditionAnimation"
+            or (type(ch.property) == "string" and ch.property:match("^sub%.%d+%.glow$")
+              and c.variable == "faAuraRemaining") then
+            badFlash[#badFlash + 1] = child.id:gsub("^.- %- ", "") .. " leftover-" .. tostring(c.variable)
           end
         end
       end
     end
   end
 end
-check(#badFlash == 0, "Main Rend flashes via faAuraRemaining < 4 → Proc blink (secret-safe)"
+check(#badFlash == 0, "Main Rend has no <4s flash / rage-desat leftovers"
   .. (#badFlash > 0 and (": " .. table.concat(badFlash, ", ")) or ""))
 
 -- Target row no longer carries a Rend tracker (timer moved to Main).
@@ -398,45 +385,48 @@ end
 check(#targetRend == 0, "Target row has no Rend (target) duplicate"
   .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
 
--- Main Rend v1.7: rage desat, usable highlight, Pixel queue border, present timer; no ACShine; no grey-while-up.
+-- Main Rend v1.8: default desaturate false; aura2 name "Rend" ownOnly showAlways; buffed→desaturate true.
+-- No remaining timer, buttonOverlay, Rend-queued Pixel, ACShine, or faAuraMissing grey-while-up.
 local badDot = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
     local reasons = {}
     if child.desaturate ~= false then reasons[#reasons + 1] = "desaturate-default-false" end
-    local hasTimer
     for _, sub in ipairs(child.subRegions or {}) do
       if sub.type == "subtext" and sub.text_text == "%p"
         and sub.text_text_format_p_format == "timed" then
-        hasTimer = true
+        reasons[#reasons + 1] = "remaining-timer-removed"
       end
       if sub.type == "subglow" and sub.glowType == "ACShine" then
         reasons[#reasons + 1] = "ACShine-removed"
       end
+      if sub.type == "subglow" and sub.glowType == "buttonOverlay" then
+        reasons[#reasons + 1] = "buttonOverlay-removed"
+      end
     end
-    if not hasTimer then reasons[#reasons + 1] = "remaining-timer" end
 
-    local hiIdx
-    for i, sub in ipairs(child.subRegions or {}) do
-      if sub.type == "subglow" and sub.glowType == "buttonOverlay" and sub.glow == false then hiIdx = i end
-    end
-    if not hiIdx then reasons[#reasons + 1] = "buttonOverlay" end
-
-    local cdIdx, rendQ
+    local cdIdx, auraIdx, rendQ
     for i, entry in ipairs(child.triggers) do
       local tr = entry.trigger
       if tr and tr.event == "Cooldown Progress (Spell)" then cdIdx = i end
+      if tr and tr.type == "aura2" and tr.useName and tr.ownOnly
+        and tr.matchesShowOn == "showAlways" and tr.unit == "target"
+        and tr.debuffType == "HARMFUL"
+        and type(tr.auranames) == "table" and tr.auranames[1] == "Rend" then
+        auraIdx = i
+      end
       if tr and tr.event == "Queued Action" and tr.spellName == 772 then rendQ = i end
     end
     if not cdIdx then reasons[#reasons + 1] = "cooldown-trigger" end
-    if not rendQ then reasons[#reasons + 1] = "rend-queued-trigger" end
+    if not auraIdx then reasons[#reasons + 1] = "aura2-rend-by-name" end
+    if rendQ then reasons[#reasons + 1] = "rend-queued-trigger-removed" end
 
-    local hasDesat, hasHi, hasBorder, greyWhileUp
+    local hasBuffedDesat, greyWhileUp, rageDesat
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
-      if c and c.variable == "insufficientResources" and c.value == 1 and c.trigger == cdIdx then
+      if c and c.variable == "buffed" and c.value == 1 and c.trigger == auraIdx then
         for _, ch in ipairs(cond.changes or {}) do
-          if ch.property == "desaturate" and ch.value == true then hasDesat = true end
+          if ch.property == "desaturate" and ch.value == true then hasBuffedDesat = true end
         end
       end
       if c and c.variable == "faAuraMissing" then
@@ -444,39 +434,24 @@ for _, child in ipairs(mainIcons) do
           if ch.property == "desaturate" then greyWhileUp = true end
         end
       end
-      if c and c.variable == "AND" and c.trigger == -2 then
-        local flags = {}
-        for _, ch in ipairs(c.checks or {}) do
-          if ch.variable == "insufficientResources" and ch.value == 0 then flags.rage = ch.trigger end
-          if ch.variable == "spellUsable" and ch.value == 1 then flags.usable = ch.trigger end
-        end
+      if c and c.variable == "insufficientResources" then
         for _, ch in ipairs(cond.changes or {}) do
-          if hiIdx and ch.property == ("sub.%d.glow"):format(hiIdx) and ch.value == true
-            and flags.rage == cdIdx and flags.usable == cdIdx then
-            hasHi = true
-          end
+          if ch.property == "desaturate" then rageDesat = true end
         end
       end
       if c and c.variable == "show" and c.value == 1 and c.trigger == rendQ then
-        for _, ch in ipairs(cond.changes or {}) do
-          if type(ch.property) == "string" and ch.property:match("^sub%.%d+%.glow$") and ch.value == true then
-            local idx = tonumber(ch.property:match("^sub%.(%d+)%.glow$"))
-            local sub = child.subRegions[idx]
-            if sub and sub.glowType == "Pixel" then hasBorder = true end
-          end
-        end
+        reasons[#reasons + 1] = "rend-queue-border-removed"
       end
     end
-    if not hasDesat then reasons[#reasons + 1] = "rage-desaturate" end
-    if not hasHi then reasons[#reasons + 1] = "usable-highlight" end
-    if not hasBorder then reasons[#reasons + 1] = "queue-pixel-border" end
+    if not hasBuffedDesat then reasons[#reasons + 1] = "buffed-desaturate" end
     if greyWhileUp then reasons[#reasons + 1] = "old-grey-while-up" end
+    if rageDesat then reasons[#reasons + 1] = "rage-desaturate-removed" end
     if #reasons > 0 then
       badDot[#badDot + 1] = child.id:gsub("^.- %- ", "") .. " [" .. table.concat(reasons, ",") .. "]"
     end
   end
 end
-check(#badDot == 0, "Main Rend: rage desat + usable highlight + Pixel queue border + present timer"
+check(#badDot == 0, "Main Rend: saturated by default, desaturated when own Rend is on target (aura2 by name)"
   .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).

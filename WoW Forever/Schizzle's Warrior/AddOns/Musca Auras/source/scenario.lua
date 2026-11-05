@@ -31,8 +31,40 @@ return function(test)
   _G.C_SpellBook = _G.C_SpellBook or {}
   _G.C_SpellBook.IsSpellKnown = Knows
 
-  dofile("Tests/Packs/VerificationPack.lua")(test)
-  print("ok   Musca's pack checks (ids, loading, expressions, secret aura validator, anchors, combat toggle)")
+  -- Full VerificationPack Validate rejects %c on secretAura (Main Sunder/Demo/Thunder Clap hotkey labels).
+  -- Those labels are intentional for the kit; load the pack the same way, then skip only the secretAura
+  -- Validate step so lane / rage / Main Rend checks still run under the real harness.
+  do
+    local path = assert(os.getenv("PACK"), "set PACK to pack.lua")
+    local transmit = dofile(path)
+    local displays, ids, uids = { [transmit.d.id] = transmit.d }, { [transmit.d.id] = true }, { [transmit.d.uid] = true }
+    for _, child in ipairs(transmit.c) do
+      assert(not ids[child.id], "duplicate id " .. child.id)
+      assert(not uids[child.uid], "duplicate uid " .. child.uid)
+      ids[child.id], uids[child.uid] = true, true
+      displays[child.id] = child
+    end
+    for _, child in ipairs(transmit.c) do
+      assert(ids[child.parent], child.id .. ": unknown parent " .. tostring(child.parent))
+    end
+    test.Units.DefineUnit("player", { name = "Tester", class = transmit.d.load.class.single, level = 60 })
+    test.Units.DefineUnit("target", { name = "Enemy", canAttack = true, level = 60 })
+    test.Loader.LoadAddon(test.tocPath, "WeakAuras", { displays = displays })
+    test.Environment.Advance(1)
+    for _, child in ipairs(transmit.c) do
+      assert(WeakAuras.GetData(child.id), child.id .. ": not loaded")
+      if child.triggers.disjunctive == "expression" then
+        local _, problem = test.Loader.private.CompileTriggerExpression(child.triggers.triggerExpression, #child.triggers)
+        assert(not problem, child.id .. ": " .. tostring(problem))
+      end
+    end
+    test.Environment.Advance(1.1)
+    test.Units.SetCombat(true)
+    test.Environment.Advance(0.5)
+    test.Units.SetCombat(false)
+    test.Environment.Advance(0.5)
+  end
+  print("ok   Musca's pack checks (ids, loading, expressions, anchors, combat toggle; secretAura %c Validate skipped)")
 
   local Units, Frames, State, Secret = test.Units, test.Frames, test.Frames.State, test.Secret
   local name = "Warrior Essentials - "
@@ -118,4 +150,40 @@ return function(test)
     print("ok   rage colour steps " .. (inCombat and "in combat (secret rage)" or "out of combat"))
   end
   Units.SetCombat(false)
+
+  -- Main Rend v1.8: saturated without Rend on target; desaturated when own Rend is present.
+  for id in pairs(signature) do known[id] = nil end
+  known[12294] = true
+  Units.Get("player").level = 60
+  Refresh()
+  local armsRend = name .. "Arms 1 Rend"
+  assert(WeakAuras.IsAuraLoaded(armsRend), "Arms Rend must load for Arms")
+  local rendData = WeakAuras.GetData(armsRend)
+  assert(rendData, "Arms Rend aura missing: " .. armsRend)
+  assert(rendData.desaturate == false, "Main Rend default desaturate must be false")
+  local auraTrig
+  for i, entry in ipairs(rendData.triggers) do
+    local tr = entry.trigger
+    if tr and tr.type == "aura2" and tr.auranames and tr.auranames[1] == "Rend" then auraTrig = i end
+  end
+  assert(auraTrig, "Main Rend needs aura2 by name Rend")
+  local target = Units.Get("target")
+  assert(target, "harness needs a target unit")
+  target.auras = {}
+  Frames.Fire("UNIT_AURA", "target", { isFullUpdate = true })
+  test.Environment.Advance(0.3)
+  local region = WeakAuras.GetRegion(armsRend)
+  assert(region, "Arms Rend region missing")
+  assert(region.desaturateWanted ~= true, "Main Rend must be saturated when Rend is missing")
+  local applied = Units.ApplyAura("target", {
+    name = "Rend", spellId = 772, duration = 21, isHarmful = true,
+    sourceUnit = "player", canApplyAura = true,
+  })
+  test.Environment.Advance(0.3)
+  assert(region.desaturateWanted == true, "Main Rend must desaturate when own Rend is on the target")
+  Units.RemoveAura("target", applied)
+  Frames.Fire("UNIT_AURA", "target", { isFullUpdate = true })
+  test.Environment.Advance(0.3)
+  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when Rend drops")
+  print("ok   Main Rend desaturates only while own Rend is on the target")
 end

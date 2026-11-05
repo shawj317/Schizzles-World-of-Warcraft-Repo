@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F2.0** (Nov 4 2026): Schizzle's Warrior Essentials v1.8 — Main Rend only desaturates while your Rend is on the target.
 - **F1.9** (Nov 4 2026): Schizzle's Warrior Essentials v1.7 — Main Rend rage/queue/timer states; Target Rend tracker removed.
 - **F1.8** (Nov 4 2026): Schizzle's Warrior Essentials v1.6 — Main Rend desaturate-when-present, usable Action Button highlight, Autocast queue sparkle.
 - **F1.7** (Nov 4 2026): Schizzle's Warrior Essentials v1.5 — Main labels read real action-bar keybinds; Rend flashes (Proc blink) when remaining < 4s.
