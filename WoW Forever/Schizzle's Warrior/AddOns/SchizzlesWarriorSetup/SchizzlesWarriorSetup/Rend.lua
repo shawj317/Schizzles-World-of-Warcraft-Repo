@@ -219,7 +219,8 @@ f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 f:RegisterEvent("PLAYER_TARGET_CHANGED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:RegisterEvent("UI_ERROR_MESSAGE")
-f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+-- Forever blocks CLEU for addons; try it quietly so it never errors.
+pcall(f.RegisterEvent, f, "COMBAT_LOG_EVENT_UNFILTERED")
 if f.RegisterUnitEvent then
 	f:RegisterUnitEvent("UNIT_FLAGS", "target")
 	f:RegisterUnitEvent("UNIT_HEALTH", "target")
