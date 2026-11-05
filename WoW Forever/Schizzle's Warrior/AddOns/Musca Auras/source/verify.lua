@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.17$") ~= nil, "pack version is v1.17 (" .. root.id .. ")")
+check(root.id:find(" v1%.18$") ~= nil, "pack version is v1.18 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -459,15 +459,33 @@ for _, child in ipairs(transmit.c) do
     if not hasC or not hasKeys then
       badExtraHotkey[#badExtraHotkey + 1] = id:gsub("^.- %- ", "")
     end
-    if trayNames[short] and anchor ~= "OUTER_TOPLEFT" then
+    if trayNames[short] and anchor ~= "INNER_TOPLEFT" then
       badTrayAnchor[#badTrayAnchor + 1] = short .. "=" .. tostring(anchor)
     end
   end
 end
 check(#badExtraHotkey == 0, "Utility/Procs/Battle Shout/Bloodrage icons label keybinds"
   .. (#badExtraHotkey > 0 and (": " .. table.concat(badExtraHotkey, ", ")) or ""))
-check(#badTrayAnchor == 0, "Utility tray keybinds use OUTER_TOPLEFT (not clipped by 34x26 zoom)"
+check(#badTrayAnchor == 0, "Utility tray keybinds use INNER_TOPLEFT (match Main priority row)"
   .. (#badTrayAnchor > 0 and (": " .. table.concat(badTrayAnchor, ", ")) or ""))
+
+-- Every Essentials keybind (%c) must sit inside the icon like Main (3/2/4), never OUTER_*.
+local badOuterKey = {}
+for _, child in ipairs(transmit.c) do
+  for _, sub in ipairs(child.subRegions or {}) do
+    if sub.type == "subtext" and sub.text_text == "%c" then
+      local ap = sub.anchor_point or ""
+      if ap:find("^OUTER_") then
+        badOuterKey[#badOuterKey + 1] = (child.id or "?"):gsub("^.- %- ", "") .. "=" .. ap
+      end
+      if (sub.text_fontSize or 0) ~= 11 then
+        badOuterKey[#badOuterKey + 1] = (child.id or "?"):gsub("^.- %- ", "") .. " size=" .. tostring(sub.text_fontSize)
+      end
+    end
+  end
+end
+check(#badOuterKey == 0, "no %c keybind uses OUTER_ / wrong size"
+  .. (#badOuterKey > 0 and (": " .. table.concat(badOuterKey, ", ")) or ""))
 
 -- Tray customText harness: Charge / Bloodrage / Blood Fury resolve via baked name when C_Spell is empty.
 do

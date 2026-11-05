@@ -434,9 +434,9 @@ function Pack.Build(spec)
   local function SpellIcon(holder, entry, size)
     -- ForeverAuras cannot combine a requirement with the fallback: its buff stays a separate icon (foreverAurasOnly).
     local required = entry.gate or entry.form or entry.needsPet or entry.offhand
-    -- Utility tray icons are 34x26: INNER_TOPLEFT with font 11 can clip under zoom; sit the key outside.
+    -- Keybind label matches Main priority row: INNER_TOPLEFT, font 11, OUTLINE, zero offsets
+    -- (OUTER_TOPLEFT sat the Utility tray keys in the gap above the icons).
     local keyPoint, keySize = "INNER_TOPLEFT", 11
-    if size == SIZES.utility then keyPoint, keySize = "OUTER_TOPLEFT", 10 end
     local data
     if entry.aura and not (FOREVER_AURAS and required) then
       local unit = entry.unit or "player"
