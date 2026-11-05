@@ -117,11 +117,103 @@ local function repFrom(d, nameOverride, tipLabel)
 		color = STANDING[tier] or STANDING[4], factionID = fid }
 end
 
+-- Last faction that gave reputation (chat / UPDATE_FACTION). Used when nothing is watched yet so the
+-- bar still has something to show at low levels, and to auto-watch that faction when the API allows.
+local lastRep = { factionID = nil, name = nil }
+
+local function factionDataByID(fid)
+	if not fid or fid == 0 or not readable(fid) then return nil end
+	if C_Reputation and type(C_Reputation.GetFactionDataByID) == "function" then
+		local d = C_Reputation.GetFactionDataByID(fid)
+		if type(d) == "table" and d.factionID and d.factionID ~= 0 then return d end
+	end
+	if type(GetFactionInfoByID) == "function" then
+		local name, _desc, standingID, barMin, barMax, barValue, _aw, _ct, _ih, _ic, _hr, _iw, _ich, factionID = GetFactionInfoByID(fid)
+		if name and name ~= "" and type(standingID) == "number" and readable(barMin, barMax, barValue) then
+			return {
+				factionID = factionID or fid, name = name, reaction = standingID,
+				currentReactionThreshold = barMin, nextReactionThreshold = barMax, currentStanding = barValue,
+			}
+		end
+	end
+end
+
+-- Classic Era 1.15+ / Forever may expose either API. Prefer the table form; fall back to the multi-return one.
 local function watched()
-	if not (C_Reputation and C_Reputation.GetWatchedFactionData) then return nil end
-	local d = C_Reputation.GetWatchedFactionData()
-	if type(d) ~= "table" or not d.factionID or d.factionID == 0 then return nil end
-	return d
+	if C_Reputation and type(C_Reputation.GetWatchedFactionData) == "function" then
+		local d = C_Reputation.GetWatchedFactionData()
+		if type(d) == "table" and d.factionID and d.factionID ~= 0 and readable(d.factionID) then return d end
+	end
+	if type(GetWatchedFactionInfo) == "function" then
+		local name, reaction, lo, hi, val, fid = GetWatchedFactionInfo()
+		if name and name ~= "" and type(reaction) == "number" and fid and fid ~= 0 and readable(lo, hi, val, fid) then
+			return {
+				factionID = fid, name = name, reaction = reaction,
+				currentReactionThreshold = lo, nextReactionThreshold = hi, currentStanding = val,
+			}
+		end
+	end
+end
+
+local function setWatchedFaction(fid)
+	if not fid or fid == 0 or not readable(fid) then return false end
+	if C_Reputation and type(C_Reputation.SetWatchedFactionByID) == "function" then
+		local ok = pcall(C_Reputation.SetWatchedFactionByID, fid)
+		return ok and true or false
+	end
+	-- Older clients: find the faction index and SetWatchedFactionIndex.
+	if type(SetWatchedFactionIndex) ~= "function" then return false end
+	local getNum = (C_Reputation and C_Reputation.GetNumFactions) or GetNumFactions
+	local getByIndex = C_Reputation and C_Reputation.GetFactionDataByIndex
+	if type(getNum) ~= "function" then return false end
+	local n = getNum()
+	if type(n) ~= "number" or not readable(n) then return false end
+	for i = 1, n do
+		local id
+		if type(getByIndex) == "function" then
+			local d = getByIndex(i)
+			id = type(d) == "table" and d.factionID or nil
+		elseif type(GetFactionInfo) == "function" then
+			id = select(14, GetFactionInfo(i))
+		end
+		if id == fid and readable(id) then
+			local ok = pcall(SetWatchedFactionIndex, i)
+			return ok and true or false
+		end
+	end
+	return false
+end
+
+local function rememberFaction(fid, name)
+	if not fid or fid == 0 or not readable(fid) then return end
+	lastRep.factionID = fid
+	if name and name ~= "" and readable(name) then lastRep.name = name end
+	-- Auto-watch when the player has nothing selected (common at level 10).
+	if not watched() then setWatchedFaction(fid) end
+end
+
+local function noteFactionGain(msg)
+	-- "Reputation with Stormwind increased by 25." / similar locales: pull a known faction name from the message.
+	if type(msg) ~= "string" or msg == "" then return end
+	local getNum = (C_Reputation and C_Reputation.GetNumFactions) or GetNumFactions
+	local getByIndex = C_Reputation and C_Reputation.GetFactionDataByIndex
+	if type(getNum) ~= "function" then return end
+	local n = getNum()
+	if type(n) ~= "number" or not readable(n) then return end
+	for i = 1, n do
+		local name, fid
+		if type(getByIndex) == "function" then
+			local d = getByIndex(i)
+			if type(d) == "table" then name, fid = d.name, d.factionID end
+		elseif type(GetFactionInfo) == "function" then
+			local a, _, _, _, _, _, _, _, isHeader, _, _, _, _, id = GetFactionInfo(i)
+			if not isHeader then name, fid = a, id end
+		end
+		if name and fid and readable(name, fid) and msg:find(name, 1, true) then
+			rememberFaction(fid, name)
+			return
+		end
+	end
 end
 
 local function guildName()
@@ -131,7 +223,22 @@ end
 
 local function repState()
 	local d = watched()
-	if not d then return nil end
+	if not d and lastRep.factionID then
+		d = factionDataByID(lastRep.factionID)
+		if d and (not d.name or d.name == "") and lastRep.name then d.name = lastRep.name end
+	end
+	if not d then
+		-- Placeholder so the tray still shows a reputation slot until the player watches one
+		-- (or gains rep, which auto-watches). Collapses away once a real faction is available.
+		return {
+			value = 0, total = 1, left = "No faction watched", right = "pick in Reputation",
+			title = "Reputation", tip = {
+				{ "Watched faction", "none" },
+				{ "Tip", "Open Reputation and 'Show as Experience Bar', or gain rep to auto-watch" },
+			},
+			color = STANDING[4], placeholder = true,
+		}
+	end
 	return repFrom(d, d.factionID == 1168 and guildName() or nil, "Standing")
 end
 
@@ -140,8 +247,18 @@ end
 local function guildState()
 	if type(IsInGuild) == "function" and not IsInGuild() then return nil end
 	if C_GuildInfo and C_GuildInfo.IsGuildReputationEnabled and not C_GuildInfo.IsGuildReputationEnabled() then return nil end
-	if not (C_Reputation and C_Reputation.GetGuildFactionData) then return nil end
-	local d = C_Reputation.GetGuildFactionData()
+	local d
+	if C_Reputation and type(C_Reputation.GetGuildFactionData) == "function" then
+		d = C_Reputation.GetGuildFactionData()
+	elseif type(GetGuildFactionInfo) == "function" then
+		local name, _desc, reaction, lo, hi, val = GetGuildFactionInfo()
+		if name and type(reaction) == "number" and readable(lo, hi, val) then
+			d = {
+				factionID = 1168, name = name, reaction = reaction,
+				currentReactionThreshold = lo, nextReactionThreshold = hi, currentStanding = val,
+			}
+		end
+	end
 	if type(d) ~= "table" or not d.factionID or d.factionID == 0 then return nil end
 	local w = watched()
 	if w and (w.factionID == d.factionID or w.factionID == 1168) then return nil end
@@ -247,6 +364,9 @@ local function update()
 	layout()
 end
 ns.trayUpdate = update
+ns.trayRememberFaction = rememberFaction
+ns.trayNoteFactionGain = noteFactionGain
+ns.trayLastRep = lastRep
 
 -- Coalesce bursts of events (QUEST_LOG_UPDATE fires a lot) into one redraw on the next frame.
 local pending = false
@@ -257,7 +377,7 @@ local function queue()
 end
 
 local EVENTS = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD",
-	"QUEST_LOG_UPDATE", "QUEST_TURNED_IN", "UPDATE_FACTION", "PLAYER_GUILD_UPDATE" }
+	"QUEST_LOG_UPDATE", "QUEST_TURNED_IN", "UPDATE_FACTION", "PLAYER_GUILD_UPDATE", "CHAT_MSG_COMBAT_FACTION_CHANGE" }
 
 function ns.trayEnable(on)
 	if on then
@@ -268,7 +388,16 @@ function ns.trayEnable(on)
 			tray:SetFrameStrata("LOW")
 			bars = { newBar(), newBar(), newBar() }
 			for _, e in ipairs(EVENTS) do pcall(tray.RegisterEvent, tray, e) end
-			tray:SetScript("OnEvent", queue)
+			tray:SetScript("OnEvent", function(_, event, ...)
+				if event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
+					noteFactionGain(...)
+				elseif event == "UPDATE_FACTION" then
+					-- If something is newly watched, clear the placeholder path; otherwise keep lastRep.
+					local w = watched()
+					if w and w.factionID then lastRep.factionID, lastRep.name = w.factionID, w.name end
+				end
+				queue()
+			end)
 		end
 		tray:Show()
 		queue()

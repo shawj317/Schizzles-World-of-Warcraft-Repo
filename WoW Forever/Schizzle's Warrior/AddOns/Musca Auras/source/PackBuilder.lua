@@ -78,13 +78,15 @@ end
 -- (unsandboxed Bartender4 BT4Button HotKey / CLICK binds). Bare global name (not _G.X):
 -- Musca's sandboxed _G is the custom env; __index falls through to the real global table.
 -- No init action: Setup owns the cache and refreshes on UPDATE_BINDINGS / ACTIONBAR_*.
-local function HotkeyCustomText(spellId)
+local function HotkeyCustomText(spellId, spellName)
+  -- Bake the display name so lookup still works if C_Spell.GetSpellName is nil/secret
+  -- in the Musca sandbox; Keys remembers both id and name from the action bar.
   return string.format([=[
 function()
-  local want = %d
+  local want, baked = %d, %q
   local keys = SchizzlesWarriorSetup_Keys
   if type(keys) ~= "table" then return "" end
-  local hit = keys[want]
+  local hit = keys[want] or (baked ~= "" and keys[baked]) or nil
   if hit then return hit end
   local name
   if C_Spell and C_Spell.GetSpellName then
@@ -101,12 +103,12 @@ function()
   if name then return keys[name] or "" end
   return ""
 end
-]=], spellId)
+]=], spellId, spellName or "")
 end
 
-local function ApplyHotkeyLabel(data, spellId)
+local function ApplyHotkeyLabel(data, spellId, spellName)
   if not spellId then return data end
-  data.customText = HotkeyCustomText(spellId)
+  data.customText = HotkeyCustomText(spellId, spellName)
   data.customTextUpdate = "update"
   data.customTextUpdateThrottle = 0.25
   -- No actions.init: key map lives in SchizzlesWarriorSetup_Keys (Setup addon).
@@ -432,6 +434,9 @@ function Pack.Build(spec)
   local function SpellIcon(holder, entry, size)
     -- ForeverAuras cannot combine a requirement with the fallback: its buff stays a separate icon (foreverAurasOnly).
     local required = entry.gate or entry.form or entry.needsPet or entry.offhand
+    -- Utility tray icons are 34x26: INNER_TOPLEFT with font 11 can clip under zoom; sit the key outside.
+    local keyPoint, keySize = "INNER_TOPLEFT", 11
+    if size == SIZES.utility then keyPoint, keySize = "OUTER_TOPLEFT", 10 end
     local data
     if entry.aura and not (FOREVER_AURAS and required) then
       local unit = entry.unit or "player"
@@ -440,13 +445,13 @@ function Pack.Build(spec)
       assert(not (entry.kind == "HARMFUL" and (unit == "player" or unit == "pet")), entry.name .. ": debuff on self")
       data = Icon(holder, entry.name, AuraTrigger(entry.aura, "showAlways", entry.unit, entry.kind),
         Requirements(entry, { size = size, fallback = CooldownTrigger(entry.spell),
-        idle = true, subRegions = { Text("%c", "INNER_TOPLEFT", 11) } }))
+        idle = true, subRegions = { Text("%c", keyPoint, keySize) } }))
     else
       data = Icon(holder, entry.name, CooldownTrigger(entry.spell),
         Requirements(entry, { size = size, conditions = { noMana, outOfRange }, idle = true,
-          subRegions = { Text("%c", "INNER_TOPLEFT", 11) } }))
+          subRegions = { Text("%c", keyPoint, keySize) } }))
     end
-    return ApplyHotkeyLabel(data, entry.spell)
+    return ApplyHotkeyLabel(data, entry.spell, entry.name)
   end
 
   local function AuraIcon(holder, label, entry, unit, kind, noGlow)
@@ -476,7 +481,7 @@ function Pack.Build(spec)
     local trigger = AuraTrigger(entry.aura, entry.missing and "showAlways" or "showOnActive", unit, kind)
     if kind == "HARMFUL" and (unit or "player") == "player" then trigger.nativeFilters = nil end
     local data = Icon(holder, label, trigger, options)
-    if keySpell then ApplyHotkeyLabel(data, keySpell) end
+    if keySpell then ApplyHotkeyLabel(data, keySpell, entry.name or label) end
     return data
   end
 
@@ -554,7 +559,7 @@ function Pack.Build(spec)
       options.subRegions[#options.subRegions + 1] = Text("%c", "INNER_TOPLEFT", 11)
     end
     local data = entry.icon and Icon(reminders, label, trigger, options) or Label(reminders, label, trigger, text, color, options)
-    if entry.known then ApplyHotkeyLabel(data, entry.known) end
+    if entry.known then ApplyHotkeyLabel(data, entry.known, entry.name) end
     -- Display.Validate rejects any animation on a secretAura, and a pulse on the alpha would override the native
     -- threshold of a low power reminder: only the other reminders pulse. A text has no scale, it flashes.
     if not entry.aura and not entry.lowPower then
@@ -579,7 +584,7 @@ function Pack.Build(spec)
       local data = Icon(procs, entry.name, Generic({ type = "spell", event = "Action Usable", spellName = entry.usable,
         use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.usable,
           subRegions = { GLOW, Text("%c", "INNER_TOPLEFT", 11) } }))
-      ApplyHotkeyLabel(data, entry.usable)
+      ApplyHotkeyLabel(data, entry.usable, entry.name)
       if entry.sound then
         data.actions.start = { do_sound = true, sound = entry.sound, sound_channel = "Master" }
       end
@@ -799,7 +804,10 @@ end
     for index, entry in ipairs(lane.entries) do
       local e = {}
       for key, value in pairs(entry) do e[key] = value end
-      e.spec, e.level, e.levelBelow = lane.spec, lane.level, lane.levelBelow
+      -- Lane supplies forever_spec / level band; an entry may tighten levelBelow (e.g. early-game HS/TC).
+      e.spec = lane.spec
+      if e.level == nil then e.level = lane.level end
+      if e.levelBelow == nil then e.levelBelow = lane.levelBelow end
       local label = lane.name .. " " .. index .. " " .. entry.name
       local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
@@ -822,7 +830,7 @@ end
         data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, { size = SIZES.main, subRegions = { number },
           conditions = { usableDim, noMana, outOfRange }, idle = true }))
       end
-      ApplyHotkeyLabel(data, entry.spell)
+      ApplyHotkeyLabel(data, entry.spell, entry.name)
       ApplyQueuedNextSwing(data, entry.spell)
       if entry.dot then ApplyMainDotDesaturate(data) end
     end
@@ -898,8 +906,8 @@ end
 
   -- Overflow: past 8 known spells the main grid opens a second line, and every row below moves down with it.
   -- Resource bars grow down from their top, so a druid's mana bar under the form bar pushes the main grid too.
-  resource.group.selfPoint, resource.group.yOffset = "TOP", Y("resourceTop", 26)
-  Below(main, resource, -10)
+  resource.group.selfPoint, resource.group.yOffset = "TOP", Y("resourceTop", 20)
+  Below(main, resource, -4)
   Below(utility, main, -4)
   local offset = -6
   if #upkeep.members > 0 then

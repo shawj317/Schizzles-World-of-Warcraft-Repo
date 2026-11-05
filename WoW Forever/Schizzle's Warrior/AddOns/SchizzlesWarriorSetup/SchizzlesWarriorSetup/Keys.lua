@@ -34,6 +34,7 @@ local WATCH = {
 	{ name = "Battle Shout", id = 6673 },
 	{ name = "Bloodrage", id = 2687 },
 	{ name = "Charge", id = 100 },
+	{ name = "Blood Fury", id = 20572 },
 	{ name = "Victory Rush", id = 402927 },
 	{ name = "Overpower", id = 7384 },
 	{ name = "Mortal Strike", id = 12294 },
@@ -351,6 +352,34 @@ local function diagnose()
 		local wantName = spellName(entry.id) or entry.name
 		say(("— %s (%d → %s); map=%s"):format(entry.name, entry.id, tostring(wantName),
 			tostring(KEYS[entry.id] or KEYS[wantName] or KEYS[entry.name] or "(none)")))
+	end
+	-- Utility / cooldown tray icons the pack shows early (Charge, Bloodrage, racial).
+	local tray = {
+		{ name = "Bloodrage", id = 2687 },
+		{ name = "Charge", id = 100 },
+		{ name = "Blood Fury", id = 20572 },
+		{ name = "Berserking", id = 20554 },
+		{ name = "Stoneform", id = 20594 },
+		{ name = "Will of the Forsaken", id = 7744 },
+		{ name = "Escape Artist", id = 20589 },
+		{ name = "Perception", id = 20600 },
+		{ name = "War Stomp", id = 20549 },
+		{ name = "Shadowmeld", id = 20580 },
+		{ name = "Cannibalize", id = 20577 },
+		{ name = "Intercept", id = 20252 },
+		{ name = "Pummel", id = 6552 },
+		{ name = "Shield Bash", id = 72 },
+		{ name = "Intimidating Shout", id = 5246 },
+		{ name = "Retaliation", id = 20230 },
+		{ name = "Recklessness", id = 1719 },
+		{ name = "Berserker Rage", id = 18499 },
+	}
+	say("--- Essentials Utility tray ---")
+	for _, entry in ipairs(tray) do
+		local wantName = spellName(entry.id) or entry.name
+		local mapped = KEYS[entry.id] or KEYS[wantName] or KEYS[entry.name]
+		say(("tray %s (%d → %s); map=%s"):format(entry.name, entry.id, tostring(wantName),
+			tostring(mapped or "(none)")))
 	end
 	say("done. Paste this if Main/Utility labels stay blank after /reload.")
 end

@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.16"
+local VERSION = "1.17"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -29,14 +29,15 @@ return Pack.Build({
   -- The group's centre sits at 0,-55 from the middle of the screen. Every row below is measured from there and stays
   -- inside the HUD box (170 px either side, 180 px below to 160 px above the group's centre).
   x = 0, y = -55,
-  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26 },
+  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 20 },
   -- At most 10 icons per aura row: 10 x 30 px with 3 px gaps is 327 px, inside the 340 px box.
   rowLimit = 10,
   reminderSize = 24,
   noTrinkets = false,
 
   -- What to press, in order. Arms, Fury and Protection load from the tree with the most talent points spent
-  -- (from level 10); below level 10 the Starter lane shows instead.
+  -- (from level 10); below level 10 the Starter lane shows instead. Spec lanes keep Heroic Strike and
+  -- Thunder Clap so they stay on the row after the first talent point, before the key talent is known.
   lanes = {
     { name = "Starter", levelBelow = 10, entries = {
       { name = "Rend", spell = 772, aura = rend, dot = true },
@@ -44,7 +45,11 @@ return Pack.Build({
       { name = "Thunder Clap", spell = 6343, form = 1 },
     } },
     { name = "Arms", spec = "WARRIOR_ARMS", level = 10, entries = {
+      -- Heroic Strike + Thunder Clap stay from Starter into early Arms (10-39): forever_spec
+      -- flips to Arms on the first Arms talent point (e.g. Improved Rend), before Mortal Strike.
       { name = "Rend", spell = 772, aura = rend, dot = true },
+      { name = "Heroic Strike", spell = 78, levelBelow = 40 },
+      { name = "Thunder Clap", spell = 6343, form = 1, levelBelow = 40 },
       { name = "Overpower", spell = 7384, form = 1 },
       { name = "Mortal Strike", spell = 12294 },
       { name = "Slam", spell = 1240193 },
@@ -55,6 +60,8 @@ return Pack.Build({
     } },
     { name = "Fury", spec = "WARRIOR_FURY", level = 10, entries = {
       { name = "Bloodthirst", spell = 23881 },
+      { name = "Heroic Strike", spell = 78, levelBelow = 40 },
+      { name = "Thunder Clap", spell = 6343, form = 1, levelBelow = 40 },
       { name = "Whirlwind", spell = 1680, form = 3 },
       { name = "Execute", spell = 5308 },
       { name = "Victory Rush", spell = 402927 },
@@ -65,6 +72,7 @@ return Pack.Build({
       { name = "Shield Slam", spell = 23922 },
       { name = "Revenge", spell = 6572, form = 2 },
       { name = "Sunder Armor", spell = 7386, aura = sunder },
+      { name = "Heroic Strike", spell = 78, levelBelow = 40 },
       { name = "Shield Block", spell = 2565, form = 2 },
       { name = "Demoralizing Shout", spell = 1160, aura = demoShout },
       { name = "Thunder Clap", spell = 6343, aura = thunderClap, form = 1 },

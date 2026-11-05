@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.16` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.17` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.8 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.9 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -29,7 +29,7 @@ Everything sits in the HUD box around the middle of the screen. The group's cent
 | Procs | +41 to +63 | Overpower, Revenge, Execute, Victory Rush (glow and sound) |
 | Your buffs | +15 to +37 | buffs while they're up; Battle Shout shows remaining time; the last 3 seconds blink red. At most 10 icons |
 | Target and stance | -11 to +11 | your debuffs on the target with time left, then your stance |
-| Rage bar | -28 to -14 | rage, 100 px wide, coloured by how much you have |
+| Rage bar | -20 and below | rage, 100 px wide, coloured by how much you have |
 | Priority lane | from -38 | what to press, in order, numbered 1 to 8; while Heroic Strike or Cleave is queued, every icon here gets Battle Shout's Pixel glow and a main-hand swing swirl (does not replace the spell's own cooldown swipe) |
 | Cooldowns | below the lane | major cooldowns, interrupts, taunts, trinkets and your racial; each only in the stance that can use it |
 | Swing timers | bottom, above -220 | main hand and off hand |
@@ -42,9 +42,9 @@ The lane loads from the talent tree with the most points spent, from level 10. B
 | Lane | Order | Notes |
 |---|---|---|
 | Starter (below 10) | Rend, Heroic Strike, Thunder Clap | Thunder Clap in Battle Stance |
-| Arms | Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind | Overpower and Sweeping Strikes in Battle Stance, Whirlwind in Berserker |
-| Fury | Bloodthirst, Whirlwind, Execute, Victory Rush, Slam, Rend | Whirlwind in Berserker; Rend in Battle or Defensive |
-| Protection | Shield Slam, Revenge, Sunder Armor, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush | Revenge and Shield Block in Defensive, Thunder Clap in Battle |
+| Arms | Rend, Heroic Strike, Thunder Clap, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind | HS/TC kept after first talent point; Overpower and Sweeping Strikes in Battle Stance, Whirlwind in Berserker |
+| Fury | Bloodthirst, Heroic Strike, Thunder Clap, Whirlwind, Execute, Victory Rush, Slam, Rend | HS/TC early; Whirlwind in Berserker; Rend in Battle or Defensive |
+| Protection | Shield Slam, Revenge, Sunder Armor, Heroic Strike, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush | HS early; Revenge and Shield Block in Defensive, Thunder Clap in Battle |
 
 Sunder Armor, Demoralizing Shout and Thunder Clap in a lane track the target debuff. Main Rend always shows; it greys while Setup reports your Rend landed on the current target (rank duration; Forever cannot read target debuffs or CLEU in combat).
 
@@ -106,6 +106,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.17 | Level-10 Arms keeps HS/TC; rage bar default Y 20; Utility tray keybinds OUTER_TOPLEFT + baked names |
 | 1.16 | All BT4 bars + castable Essentials keybind labels; Main Rend rank duration + miss-safe land via Setup (CLEU closed on Forever) |
 | 1.15 | Main hotkeys via Setup SchizzlesWarriorSetup_Keys (Bartender4 BT4Button primary) |
 | 1.14 | Main hotkeys: Bartender4 CLICK BT4ButtonN:Keybind/LeftButton + skip-secret scan; Blizzard/BT4 harness |

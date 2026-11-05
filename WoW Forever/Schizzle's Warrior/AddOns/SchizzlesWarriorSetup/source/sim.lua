@@ -140,7 +140,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.8", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.9", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -157,7 +157,8 @@ check(#b == 3, "tray has three bars")
 ns.trayUpdate()
 check(b[1].shown and b[1].value == 4000 and b[1].max == 10000, "XP bar shows 4,000 / 10,000")
 check(b[1].left.text == "Level 20   Rested 30%", "XP left text: " .. tostring(b[1].left.text))
-check(not b[2].shown and not b[3].shown, "rep and guild bars hidden with nothing to show")
+check(b[2].shown and b[2].left.text == "No faction watched" and not b[3].shown,
+	"rep placeholder when nothing watched; guild hidden")
 
 env.quests = { { xp = 500, done = true }, { xp = 900, done = false }, { xp = 700, done = true } }
 ns.trayUpdate()
@@ -180,9 +181,58 @@ check(b[2].shown and b[2].left.text == "Guild   Friendly" and not b[3].shown, "g
 env.xp = "secret"
 ns.trayUpdate()
 check(not b[1].shown, "a hidden (secret) value hides the XP bar instead of erroring")
-env.xp, env.level = 4000, 60
+env.xp, env.level = 4000, 20
+
+-- Forever / Classic without C_Reputation.GetWatchedFactionData: GetWatchedFactionInfo fallback.
+env.watched = nil
+local keepCR = _G.C_Reputation
+_G.C_Reputation = { GetGuildFactionData = keepCR.GetGuildFactionData }
+_G.GetWatchedFactionInfo = function()
+	return "Darkspear Trolls", 5, 3000, 9000, 4500, 530
+end
 ns.trayUpdate()
-check(not b[1].shown and b[2].points[1][5] == 0, "XP bar hidden at the cap, reputation moves up to the top")
+check(b[2].shown and b[2].left.text == "Darkspear Trolls   Friendly" and b[2].value == 1500,
+	"GetWatchedFactionInfo fallback fills the rep bar")
+_G.GetWatchedFactionInfo = nil
+_G.C_Reputation = keepCR
+
+-- Auto-watch / last-gained: with nothing watched, rememberFaction stores and SetWatchedFactionByID runs.
+env.watched = nil
+local setCalls = {}
+_G.C_Reputation.SetWatchedFactionByID = function(fid) setCalls[#setCalls + 1] = fid; env.watched = {
+	factionID = fid, name = "Orgrimmar", reaction = 5,
+	currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 5000,
+} end
+_G.C_Reputation.GetFactionDataByID = function(fid)
+	if fid == 76 then
+		return { factionID = 76, name = "Orgrimmar", reaction = 5,
+			currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 5000 }
+	end
+end
+ns.trayRememberFaction(76, "Orgrimmar")
+ns.trayUpdate()
+check(setCalls[1] == 76, "auto-watch calls SetWatchedFactionByID for last-gained faction")
+check(b[2].shown and b[2].left.text:find("Orgrimmar", 1, true), "auto-watched Orgrimmar shows on rep bar")
+-- Chat faction-gain path: message containing a known faction name.
+env.watched = nil
+setCalls = {}
+_G.C_Reputation.GetNumFactions = function() return 1 end
+_G.C_Reputation.GetFactionDataByIndex = function()
+	return { factionID = 76, name = "Orgrimmar", reaction = 5,
+		currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 5000 }
+end
+ns.trayNoteFactionGain("Reputation with Orgrimmar increased by 25.")
+check(setCalls[1] == 76, "CHAT faction-gain note auto-watches Orgrimmar")
+_G.C_Reputation.SetWatchedFactionByID = nil
+_G.C_Reputation.GetFactionDataByID = nil
+_G.C_Reputation.GetNumFactions = nil
+_G.C_Reputation.GetFactionDataByIndex = nil
+
+-- Cap: XP hides, watched rep (or last-gained) moves to the top of the tray.
+env.watched = { factionID = 72, name = "Stormwind", reaction = 6, currentReactionThreshold = 9000, nextReactionThreshold = 21000, currentStanding = 15000 }
+env.level, env.xp = 60, 4000
+ns.trayUpdate()
+check(not b[1].shown and b[2].shown and b[2].points[1][5] == 0, "XP bar hidden at the cap, reputation moves up to the top")
 
 _G.SlashCmdList.SCHIZZLE("tray")
 check(_G.SchizzlesWarriorSetupDB.tray == false, "/schizzle tray toggles it off")
@@ -269,7 +319,7 @@ do
 			local names = {
 				[78] = "Heroic Strike", [772] = "Rend", [6343] = "Thunder Clap", [100] = "Charge",
 				[6673] = "Battle Shout", [2687] = "Bloodrage", [5308] = "Execute", [7384] = "Overpower",
-				[6572] = "Revenge", [845] = "Cleave",
+				[6572] = "Revenge", [845] = "Cleave", [20572] = "Blood Fury",
 			}
 			return names[id]
 		end,
@@ -305,6 +355,7 @@ do
 	mkbtn(61, 61, nil); actions[61] = { "spell", 845 }; bindings["MULTIACTIONBAR1BUTTON1"] = "C"
 	-- HotKey-only on bar 3
 	mkbtn(27, 27, "R"); actions[27] = { "spell", 100 }
+	mkbtn(28, 28, "G"); actions[28] = { "spell", 20572 }
 	-- Warrior Battle stance page: BT4Button1 shows action 73 (Charge page), bind still ACTIONBUTTON1
 	mkbtn(1, 73, "1"); actions[73] = { "spell", 7384 }; bindings["ACTIONBUTTON1"] = "1"
 	-- Raw stance slot without button still maps ACTIONBUTTON
@@ -328,6 +379,8 @@ do
 		"keys: Cleave bar6 MULTIACTIONBAR1")
 	check(_G.SchizzlesWarriorSetup_Keys[100] == "R" or _G.SchizzlesWarriorSetup_Keys["Charge"] == "R",
 		"keys: Charge HotKey-only")
+	check(_G.SchizzlesWarriorSetup_Keys[20572] == "G" or _G.SchizzlesWarriorSetup_Keys["Blood Fury"] == "G",
+		"keys: Blood Fury on tray")
 	check(_G.SchizzlesWarriorSetup_Keys[7384] == "1" or _G.SchizzlesWarriorSetup_Keys["Overpower"] == "1",
 		"keys: stance-paged bar1 action 73 → ACTIONBUTTON1")
 	check(_G.SchizzlesWarriorSetup_Keys[6572] == "2" or _G.SchizzlesWarriorSetup_Keys["Revenge"] == "2",
@@ -345,6 +398,9 @@ do
 	end
 	check(keyed, "/schizzle keys prints diagnose header")
 	check(listed, "/schizzle keys lists BT4Button25 Rend with spell/bind")
+	local trayLine = false
+	for _, m in ipairs(chat) do if m:find("Essentials Utility tray", 1, true) then trayLine = true end end
+	check(trayLine, "/schizzle keys lists Essentials Utility tray section")
 	-- Slash command routes to the same diagnose.
 	chat = {}
 	_G.SlashCmdList.SCHIZZLE("keys")

@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F2.9** (Nov 5 2026): Essentials v1.17 — level-10 HS/TC on Arms; rage Y 20; Utility tray keybind labels + `/schizzle keys` tray section; XP/Rep tray GetWatchedFactionInfo fallback, auto-watch last-gained, placeholder.
 - **F2.8** (Nov 4 2026): Keys for all BT4 bars 1-10 + Blizzard-binding mode; Essentials keybind labels on Utility/Procs/reminders; Main Rend land tracker (rank duration, miss cancel; CLEU closed on Forever).
 - **F2.7** (Nov 4 2026): Schizzle's Warrior Essentials v1.15 — keybind map in Setup (BT4 primary), `/schizzle keys`.
 - **F2.6** (Nov 4 2026): Schizzle's Warrior Essentials v1.14 — Main keybind labels (Bartender4).

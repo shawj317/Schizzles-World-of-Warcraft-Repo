@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.16$") ~= nil, "pack version is v1.16 (" .. root.id .. ")")
+check(root.id:find(" v1%.17$") ~= nil, "pack version is v1.17 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -437,26 +437,77 @@ check(#badHotkey == 0, "every Main icon labels the real keybind (%c + SchizzlesW
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
 -- Utility / Procs / Battle Shout also carry Setup keybind labels.
-local badExtraHotkey = {}
+local badExtraHotkey, badTrayAnchor = {}, {}
+local trayNames = { Bloodrage = true, Charge = true, ["Blood Fury"] = true }
 for _, child in ipairs(transmit.c) do
   local id = child.id or ""
+  local short = id:match(" %- ([^%-]+)$") or id
   local want = id:find(" %- Utility %- ") or id:find(" %- Procs %- ")
     or id:find(" %- Battle Shout$") or id:find("Missing Battle Shout")
-    or id:find(" %- Bloodrage$")
+    or id:find(" %- Bloodrage$") or id:find(" %- Charge$") or id:find(" %- Blood Fury$")
   if want and child.regionType == "icon" then
-    local hasC, hasKeys
+    local hasC, hasKeys, anchor
     for _, sub in ipairs(child.subRegions or {}) do
-      if sub.type == "subtext" and sub.text_text == "%c" then hasC = true end
+      if sub.type == "subtext" and sub.text_text == "%c" then
+        hasC = true
+        anchor = sub.anchor_point
+      end
     end
     local ct = child.customText or ""
     hasKeys = ct:find("SchizzlesWarriorSetup_Keys", 1, true) ~= nil
+      and ct:find("local want", 1, true) ~= nil
     if not hasC or not hasKeys then
       badExtraHotkey[#badExtraHotkey + 1] = id:gsub("^.- %- ", "")
+    end
+    if trayNames[short] and anchor ~= "OUTER_TOPLEFT" then
+      badTrayAnchor[#badTrayAnchor + 1] = short .. "=" .. tostring(anchor)
     end
   end
 end
 check(#badExtraHotkey == 0, "Utility/Procs/Battle Shout/Bloodrage icons label keybinds"
   .. (#badExtraHotkey > 0 and (": " .. table.concat(badExtraHotkey, ", ")) or ""))
+check(#badTrayAnchor == 0, "Utility tray keybinds use OUTER_TOPLEFT (not clipped by 34x26 zoom)"
+  .. (#badTrayAnchor > 0 and (": " .. table.concat(badTrayAnchor, ", ")) or ""))
+
+-- Tray customText harness: Charge / Bloodrage / Blood Fury resolve via baked name when C_Spell is empty.
+do
+  local traySamples = {}
+  for _, child in ipairs(transmit.c) do
+    local id = child.id or ""
+    if (id:find(" %- Charge$") or id:find(" %- Bloodrage$") or id:find(" %- Blood Fury$"))
+      and child.customText and child.customText:find("SchizzlesWarriorSetup_Keys", 1, true) then
+      traySamples[#traySamples + 1] = child
+    end
+  end
+  check(#traySamples >= 3, "tray keybind harness found Charge/Bloodrage/Blood Fury customText (" .. #traySamples .. ")")
+  for _, sample in ipairs(traySamples) do
+    local want, baked = sample.customText:match('local want,?%s*%w*%s*=%s*(%d+),%s*"([^"]*)"')
+    want = tonumber(want) or tonumber(sample.customText:match("local want,?%s*%w*%s*=%s*(%d+)"))
+    check(want ~= nil, sample.id .. " parsed want id")
+    local function run(keys, spells)
+      local env = {
+        SchizzlesWarriorSetup_Keys = keys,
+        type = type, tostring = tostring, pairs = pairs,
+        C_Spell = {
+          GetSpellName = function(id) return spells and spells[id] end,
+          GetSpellInfo = function(id)
+            if spells and spells[id] then return { name = spells[id], spellID = id } end
+          end,
+        },
+      }
+      local fn, err = loadstring("return " .. sample.customText, "tray-hotkey")
+      assert(fn, err)
+      setfenv(fn, env)
+      local body = fn()
+      setfenv(body, env)
+      return body()
+    end
+    check(run({ [want] = "F" }, {}) == "F", sample.id .. " map by id")
+    if baked and baked ~= "" then
+      check(run({ [baked] = "R" }, {}) == "R", sample.id .. " map by baked name " .. baked)
+    end
+  end
+end
 
 
 -- Harness: customText reads Setup global; mocked BT4-style map (spell id + name + cross-rank).
@@ -470,7 +521,7 @@ do
   end
   check(sample ~= nil, "hotkey harness has a Main customText sample")
   if sample then
-    local want = tonumber(sample.customText:match("local want = (%d+)"))
+    local want = tonumber(sample.customText:match("local want,?%s*%w*%s*=%s*(%d+)"))
     check(want ~= nil, "hotkey harness parsed want spell id")
     local function run(keys, spells)
       local env = {
@@ -498,6 +549,33 @@ do
     check(run({ [want] = "2", ["Rend"] = "Q" }, { [want] = "Heroic Strike", [772] = "Rend" }) == "2",
       "hotkey harness id wins over unrelated names")
   end
+end
+
+-- Default rage bar Y: resourceTop 20 (Jon moved from 26 → 20; re-import must keep it).
+do
+  local found
+  for _, child in ipairs(transmit.c) do
+    if child.id and child.id:match("Warrior Essentials %- Resource$") then found = child break end
+  end
+  check(found ~= nil, "Resource group present")
+  if found then
+    check(found.yOffset == 20, "resourceTop default is 20 (was 26); got " .. tostring(found.yOffset))
+  end
+end
+
+-- Arms early-game keeps Heroic Strike + Thunder Clap (level-10 forever_spec flip).
+do
+  local have = {}
+  for _, child in ipairs(transmit.c) do
+    local id = child.id or ""
+    if id:find("Arms %d+ Heroic Strike$") then have.hs = true end
+    if id:find("Arms %d+ Thunder Clap$") then have.tc = true end
+    if id:find("Fury %d+ Heroic Strike$") then have.fhs = true end
+    if id:find("Protection %d+ Heroic Strike$") then have.phs = true end
+  end
+  check(have.hs and have.tc, "Arms lane includes Heroic Strike and Thunder Clap")
+  check(have.fhs, "Fury lane includes Heroic Strike")
+  check(have.phs, "Protection lane includes Heroic Strike")
 end
 
 -- Main DoT (Rend) v1.10: no remaining-time flash / Proc blink / rage desat extras.

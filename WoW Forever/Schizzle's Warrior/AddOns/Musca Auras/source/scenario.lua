@@ -98,12 +98,36 @@ return function(test)
     Frames.Fire("PLAYER_LEVEL_UP", Units.Get("player").level)
     test.Environment.Advance(1.1)
   end
+  local function LevelAllows(id, level)
+    local data = WeakAuras.GetData(id)
+    local load = data and data.load
+    if not (load and load.use_level and type(load.level) == "table") then return true end
+    local ops = load.level_operator or {}
+    for i, raw in ipairs(load.level) do
+      local n, op = tonumber(raw), ops[i]
+      if n and op == ">=" and level < n then return false end
+      if n and op == "<" and level >= n then return false end
+      if n and op == ">" and level <= n then return false end
+      if n and op == "<=" and level > n then return false end
+    end
+    return true
+  end
   local function ExpectLane(expected, label)
+    local level = Units.Get("player").level
     for lane, ids in pairs(lanes) do
       assert(#ids > 0, lane .. " lane is empty")
       for _, id in ipairs(ids) do
         local loaded = WeakAuras.IsAuraLoaded(id) and true or false
-        assert(loaded == (lane == expected), ("%s: %s %s"):format(label, id, loaded and "loaded" or "not loaded"))
+        local should = (lane == expected) and LevelAllows(id, level)
+        -- Spell-known load: if the aura requires a spell we have not marked known, it should stay unloaded.
+        local data = WeakAuras.GetData(id)
+        if should and data and data.load and data.load.use_spellknown then
+          local sid = tonumber(data.load.spellknown)
+          if sid and not known[sid] and not signature[sid] then should = false end
+          -- signature spells are toggled per case; treat missing known as not-should when not in known
+          if sid and not known[sid] then should = false end
+        end
+        assert(loaded == should, ("%s: %s %s (expected %s)"):format(label, id, loaded and "loaded" or "not loaded", should and "loaded" or "not loaded"))
       end
     end
     print("ok   " .. label .. ": only the " .. expected .. " lane loads")
@@ -119,6 +143,47 @@ return function(test)
   Units.Get("player").level = 5
   Refresh()
   ExpectLane("Starter", "level 5")
+
+  -- Level 10 with 1 Arms talent point (Improved Rend) and no Mortal Strike yet: forever_spec
+  -- picks Arms; Heroic Strike + Thunder Clap must stay on the Arms row (they used to live only
+  -- in Starter, which unloads at 10).
+  do
+    for id in pairs(signature) do known[id] = nil end
+    known[772], known[78], known[6343] = true, true, true
+    Units.Get("player").level = 10
+    local spent = { [0] = 1, [1] = 0, [2] = 0 }
+    C_SpecializationInfo = C_SpecializationInfo or {}
+    C_SpecializationInfo.GetActiveSpecGroup = function() return 1 end
+    C_SpecializationInfo.GetCombatConfigIDForSpecGroup = function(group) return group == 1 and 42 or nil end
+    C_Traits = C_Traits or {}
+    C_Traits.GetConfigInfo = function(configID) return configID == 42 and { treeIDs = { 7 } } or nil end
+    C_Traits.GetGroupDisplayInfoByTreeID = function(treeID)
+      return { { groupID = 100, orderIndex = 0 }, { groupID = 101, orderIndex = 1 }, { groupID = 102, orderIndex = 2 } }
+    end
+    C_Traits.GetGroupCurrencyInfo = function(configID, groupIDs)
+      local result = {}
+      for _, groupID in ipairs(groupIDs) do
+        local points = spent[groupID - 100]
+        if points ~= nil then
+          result[#result + 1] = { traitNodeGroupID = groupID, currencyInfos = { { spent = points } } }
+        end
+      end
+      return result
+    end
+    Refresh()
+    ExpectLane("Arms", "level 10, 1 Arms talent point, no MS")
+    local hs = name .. "Arms 2 Heroic Strike"
+    local tc = name .. "Arms 3 Thunder Clap"
+    local rend = name .. "Arms 1 Rend"
+    assert(WeakAuras.IsAuraLoaded(rend), "level 10 Arms Rend must load")
+    assert(WeakAuras.IsAuraLoaded(hs), "level 10 Arms Heroic Strike must load: " .. hs)
+    assert(WeakAuras.IsAuraLoaded(tc), "level 10 Arms Thunder Clap must load: " .. tc)
+    print("ok   level 10 Arms keeps Rend + Heroic Strike + Thunder Clap")
+    -- Clear talent stubs so later signature-spell cases use KnowsAnySpell again.
+    C_Traits.GetGroupCurrencyInfo = function() return {} end
+    spent[0], spent[1], spent[2] = 0, 0, 0
+  end
+
   Units.Get("player").level = 60
   Refresh()
 
