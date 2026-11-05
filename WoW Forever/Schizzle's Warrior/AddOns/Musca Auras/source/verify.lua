@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.8$") ~= nil, "pack version is v1.8 (" .. root.id .. ")")
+check(root.id:find(" v1%.9$") ~= nil, "pack version is v1.9 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -264,61 +264,71 @@ for _, sub in ipairs(battleShout.subRegions or {}) do
 end
 check(hasRemaining, "Battle Shout shows remaining-time text (%p timed)")
 
--- Every Main priority icon: Queued Action HS + Cleave + Swing Timer, Pixel glow + circular swirl under OR condition.
-local mainIcons, badMain = {}, {}
+-- Main HS / Cleave icons only: Queued Action for THAT spell + Swing Timer, Pixel glow + swirl
+-- when IsCurrentSpell matches. Other Main icons must not inherit the queue border.
+local mainIcons, badMain, badQueueLeak = {}, {}, {}
 for _, child in ipairs(transmit.c) do
   if child.parent and child.parent:find(" %- Main$") and child.regionType == "icon" then
     mainIcons[#mainIcons + 1] = child
+    local isHS = child.id:find(" Heroic Strike$") ~= nil
+    local isCleave = child.id:find(" Cleave$") ~= nil
+    local wantQueue = isHS or isCleave
     local n = #child.triggers
-    local hasHS, hasCleave, hasSwing = false, false, false
+    local hasOwn, hasOther, hasSwing = false, false, false
     for i = 1, n do
       local tr = child.triggers[i] and child.triggers[i].trigger
-      if tr and tr.event == "Queued Action" and tr.spellName == 78 then hasHS = true end
-      if tr and tr.event == "Queued Action" and tr.spellName == 845 then hasCleave = true end
+      if tr and tr.event == "Queued Action" then
+        if (isHS and tr.spellName == 78) or (isCleave and tr.spellName == 845) then
+          hasOwn = i
+        else
+          hasOther = true
+        end
+      end
       if tr and tr.event == "Swing Timer" and (tr.hand == "main" or tr.hand == 0) then hasSwing = i end
     end
-    local swirlIdx
-    for i, sub in ipairs(child.subRegions or {}) do
-      if sub.type == "subcirculartexture" and sub.progressSource and sub.progressSource[1] == hasSwing
-        and sub.progressSource[2] == "expirationTime" and sub.circularTextureVisible == false then
-        swirlIdx = i
+    if not wantQueue then
+      if hasOwn or hasOther or hasSwing then
+        badQueueLeak[#badQueueLeak + 1] = child.id:gsub("^.- %- ", "")
       end
-    end
-    -- HS/Cleave queue Pixel (Main DoTs no longer add a separate Rend queue border).
-    local hasOr, glowIdx
-    for _, cond in ipairs(child.conditions or {}) do
-      local c = cond.check
-      if c and c.variable == "OR" and c.trigger == -2 then
-        local changes = {}
-        for _, ch in ipairs(cond.changes or {}) do changes[ch.property] = ch.value end
-        for prop, val in pairs(changes) do
-          local gi = prop:match("^sub%.(%d+)%.glow$")
-          if gi and val == true then
-            local sub = child.subRegions[tonumber(gi)]
-            if sub and pixelGlow(sub) and sub.glow == false then glowIdx = tonumber(gi) end
+    else
+      local swirlIdx, glowIdx, hasShow
+      for i, sub in ipairs(child.subRegions or {}) do
+        if sub.type == "subcirculartexture" and sub.progressSource and sub.progressSource[1] == hasSwing
+          and sub.progressSource[2] == "expirationTime" and sub.circularTextureVisible == false then
+          swirlIdx = i
+        end
+      end
+      for _, cond in ipairs(child.conditions or {}) do
+        local c = cond.check
+        if c and c.variable == "show" and c.value == 1 and c.trigger == hasOwn then
+          local changes = {}
+          for _, ch in ipairs(cond.changes or {}) do changes[ch.property] = ch.value end
+          for prop, val in pairs(changes) do
+            local gi = prop:match("^sub%.(%d+)%.glow$")
+            if gi and val == true then
+              local sub = child.subRegions[tonumber(gi)]
+              if sub and pixelGlow(sub) and sub.glow == false then glowIdx = tonumber(gi) end
+            end
+          end
+          if glowIdx and swirlIdx and changes["sub." .. glowIdx .. ".glow"] == true
+            and changes["sub." .. swirlIdx .. ".circularTextureVisible"] == true then
+            hasShow = true
           end
         end
-        if glowIdx and swirlIdx and changes["sub." .. glowIdx .. ".glow"] == true
-          and changes["sub." .. swirlIdx .. ".circularTextureVisible"] == true then
-          hasOr = true
-        end
       end
-    end
-    -- Visibility must not require the queued triggers (expression omits them, or all/any converted).
-    local expr = child.triggers.triggerExpression or ""
-    local exprOk = child.triggers.disjunctive == "expression"
-      and not expr:find(tostring(n)) -- last trigger is swing; expression should not require swing/hs/cleave alone
-    -- Stronger: expression must not contain hs/cleave/swing indices as required without original triggers.
-    -- Simply: expression exists and # of original show path >= 1; queued triggers are the last three.
-    exprOk = child.triggers.disjunctive == "expression" and type(expr) == "string" and #expr > 0
-    if not (hasHS and hasCleave and hasSwing and glowIdx and swirlIdx and hasOr and exprOk) then
-      badMain[#badMain + 1] = child.id:gsub("^.- %- ", "")
+      local expr = child.triggers.triggerExpression or ""
+      local exprOk = child.triggers.disjunctive == "expression" and type(expr) == "string" and #expr > 0
+      if not (hasOwn and not hasOther and hasSwing and glowIdx and swirlIdx and hasShow and exprOk) then
+        badMain[#badMain + 1] = child.id:gsub("^.- %- ", "")
+      end
     end
   end
 end
 check(#mainIcons > 0, "Main holds priority icons (" .. #mainIcons .. ")")
-check(#badMain == 0, "every Main icon has queued Pixel glow + swing swirl conditions"
+check(#badMain == 0, "HS/Cleave Main icons have own-spell queued Pixel + swing swirl"
   .. (#badMain > 0 and (": " .. table.concat(badMain, ", ")) or ""))
+check(#badQueueLeak == 0, "non-HS/Cleave Main icons have no queued Pixel / swing swirl"
+  .. (#badQueueLeak > 0 and (": " .. table.concat(badQueueLeak, ", ")) or ""))
 
 -- Main corner labels: dynamic keybind via %c + customText (GetActionInfo / GetBindingKey), not hard-coded priority index.
 local badHotkey = {}
@@ -346,7 +356,7 @@ end
 check(#badHotkey == 0, "every Main icon labels the real keybind (%c + GetActionInfo/GetBindingKey)"
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
--- Main DoT (Rend) v1.8: no remaining-time flash / Proc blink / rage desat extras.
+-- Main DoT (Rend) v1.9: no remaining-time flash / Proc blink / rage desat extras.
 local badFlash = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
@@ -385,8 +395,9 @@ end
 check(#targetRend == 0, "Target row has no Rend (target) duplicate"
   .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
 
--- Main Rend v1.8: default desaturate false; aura2 name "Rend" ownOnly showAlways; buffed→desaturate true.
--- No remaining timer, buttonOverlay, Rend-queued Pixel, ACShine, or faAuraMissing grey-while-up.
+-- Main Rend v1.9: aura2 primary (showAlways); default desaturate false; buffed→desaturate true.
+-- No Cooldown Progress (avoids Forever secret SetDesaturation grey). No remaining timer,
+-- buttonOverlay, Rend-queued Pixel, ACShine, faAuraMissing grey-while-up, or any other desaturate.
 local badDot = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
@@ -405,7 +416,7 @@ for _, child in ipairs(mainIcons) do
       end
     end
 
-    local cdIdx, auraIdx, rendQ
+    local cdIdx, auraIdx, rendQ, otherDesat
     for i, entry in ipairs(child.triggers) do
       local tr = entry.trigger
       if tr and tr.event == "Cooldown Progress (Spell)" then cdIdx = i end
@@ -417,14 +428,14 @@ for _, child in ipairs(mainIcons) do
       end
       if tr and tr.event == "Queued Action" and tr.spellName == 772 then rendQ = i end
     end
-    if not cdIdx then reasons[#reasons + 1] = "cooldown-trigger" end
-    if not auraIdx then reasons[#reasons + 1] = "aura2-rend-by-name" end
+    if cdIdx then reasons[#reasons + 1] = "no-cooldown-trigger" end
+    if auraIdx ~= 1 then reasons[#reasons + 1] = "aura2-rend-primary" end
     if rendQ then reasons[#reasons + 1] = "rend-queued-trigger-removed" end
 
-    local hasBuffedDesat, greyWhileUp, rageDesat
+    local hasBuffedDesat, greyWhileUp, rageDesat, onCdDesat
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
-      if c and c.variable == "buffed" and c.value == 1 and c.trigger == auraIdx then
+      if c and c.variable == "buffed" and c.value == 1 and c.trigger == 1 then
         for _, ch in ipairs(cond.changes or {}) do
           if ch.property == "desaturate" and ch.value == true then hasBuffedDesat = true end
         end
@@ -439,19 +450,36 @@ for _, child in ipairs(mainIcons) do
           if ch.property == "desaturate" then rageDesat = true end
         end
       end
+      if c and c.variable == "onCooldown" then
+        for _, ch in ipairs(cond.changes or {}) do
+          if ch.property == "desaturate" then onCdDesat = true end
+        end
+      end
       if c and c.variable == "show" and c.value == 1 and c.trigger == rendQ then
         reasons[#reasons + 1] = "rend-queue-border-removed"
+      end
+      -- Any desaturate change that is not buffed→true is forbidden.
+      for _, ch in ipairs(cond.changes or {}) do
+        if ch.property == "desaturate" then
+          local ok = c and c.variable == "buffed" and c.value == 1 and c.trigger == 1 and ch.value == true
+          if not ok then otherDesat = tostring(c and c.variable) end
+        end
       end
     end
     if not hasBuffedDesat then reasons[#reasons + 1] = "buffed-desaturate" end
     if greyWhileUp then reasons[#reasons + 1] = "old-grey-while-up" end
     if rageDesat then reasons[#reasons + 1] = "rage-desaturate-removed" end
+    if onCdDesat then reasons[#reasons + 1] = "onCooldown-desaturate-removed" end
+    if otherDesat then reasons[#reasons + 1] = "extra-desaturate:" .. otherDesat end
+    -- Primary cooldown trigger must not carry Forever-unsafe desaturateOnCooldown either.
+    local t1 = child.triggers[1] and child.triggers[1].trigger
+    if t1 and t1.use_desaturateOnCooldown then reasons[#reasons + 1] = "desaturateOnCooldown-off" end
     if #reasons > 0 then
       badDot[#badDot + 1] = child.id:gsub("^.- %- ", "") .. " [" .. table.concat(reasons, ",") .. "]"
     end
   end
 end
-check(#badDot == 0, "Main Rend: saturated by default, desaturated when own Rend is on target (aura2 by name)"
+check(#badDot == 0, "Main Rend: aura2 primary, only buffed→desaturate, no Cooldown Progress"
   .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).

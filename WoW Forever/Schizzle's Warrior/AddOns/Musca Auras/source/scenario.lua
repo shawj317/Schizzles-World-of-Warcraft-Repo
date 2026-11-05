@@ -151,7 +151,7 @@ return function(test)
   end
   Units.SetCombat(false)
 
-  -- Main Rend v1.8: saturated without Rend on target; desaturated when own Rend is present.
+  -- Main Rend v1.9: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
   for id in pairs(signature) do known[id] = nil end
   known[12294] = true
   Units.Get("player").level = 60
@@ -167,6 +167,12 @@ return function(test)
     if tr and tr.type == "aura2" and tr.auranames and tr.auranames[1] == "Rend" then auraTrig = i end
   end
   assert(auraTrig, "Main Rend needs aura2 by name Rend")
+  assert(auraTrig == 1, "Main Rend aura2 must be primary trigger")
+  for i, entry in ipairs(rendData.triggers) do
+    local tr = entry.trigger
+    assert(not (tr and tr.event == "Cooldown Progress (Spell)"),
+      "Main Rend must not use Cooldown Progress (Forever secret desat)")
+  end
   local target = Units.Get("target")
   assert(target, "harness needs a target unit")
   target.auras = {}

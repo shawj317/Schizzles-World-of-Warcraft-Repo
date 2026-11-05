@@ -203,11 +203,12 @@ local function Generic(fields)
 end
 
 local function CooldownTrigger(spellId)
+  -- Forever secrets cooldown remaining. Built-in desaturateOnCooldown calls SetDesaturation(secret)
+  -- and greys icons even when ready / not on CD. Never enable it in this pack; Icon() adds an
+  -- onCooldown→desaturate condition for Cooldown Progress primaries instead.
   local trigger = Generic({ type = "spell", event = "Cooldown Progress (Spell)", spellName = spellId,
     use_exact_spellName = false, genericShowOn = "showAlways", use_genericShowOn = true,
-    use_showgcd = true, use_hidegcdtext = true,
-    use_desaturateOnCooldown = true, desaturateOnCooldown = true })
-  if FOREVER_AURAS then trigger.use_desaturateOnCooldown, trigger.desaturateOnCooldown = nil, nil end
+    use_showgcd = true, use_hidegcdtext = true })
   return trigger
 end
 
@@ -446,7 +447,8 @@ function Pack.Build(spec)
       end
     end
     if options.idle then conditions[#conditions + 1] = idle end
-    if FOREVER_AURAS and trigger.event == "Cooldown Progress (Spell)" then
+    -- Forever-safe CD greying: condition-driven, never SetDesaturation(secret) via desaturateOnCooldown.
+    if trigger.event == "Cooldown Progress (Spell)" then
       conditions[#conditions + 1] = Condition("onCooldown", 1, "desaturate", true)
     end
     options.subRegions, options.conditions = subRegions, conditions
@@ -684,14 +686,20 @@ function Pack.Build(spec)
   -- swing overlay on every Main priority icon. Extra triggers do not affect visibility (expression stays
   -- on the original triggers). The overlay is separate from the icon's own cooldown swipe so spell/aura
   -- progress is unchanged; the swirl only appears under the queued condition.
-  local function ApplyQueuedNextSwing(data)
+  -- HS / Cleave next-swing feedback: only the icon for the ability that is actually queued
+  -- (IsCurrentSpell for that spell) gets Pixel glow + MH swing swirl. Other Main icons stay quiet.
+  local function ApplyQueuedNextSwing(data, spellId)
     local spells = spec.queuedSwing or { 78, 845 }
+    local mine
+    for _, id in ipairs(spells) do
+      if spellId == id then mine = id break end
+    end
+    if not mine then return data end
+
     local triggers = data.triggers
     local n = #triggers
-    local hs, cleave, swing = n + 1, n + 2, n + 3
-    triggers[hs] = { trigger = Generic({ type = "spell", event = "Queued Action", spellName = spells[1],
-      use_exact_spellName = false }), untrigger = {} }
-    triggers[cleave] = { trigger = Generic({ type = "spell", event = "Queued Action", spellName = spells[2],
+    local queued, swing = n + 1, n + 2
+    triggers[queued] = { trigger = Generic({ type = "spell", event = "Queued Action", spellName = mine,
       use_exact_spellName = false }), untrigger = {} }
     triggers[swing] = { trigger = Generic({ type = "unit", event = "Swing Timer", hand = "main",
       use_hand = true }), untrigger = {} }
@@ -719,7 +727,7 @@ function Pack.Build(spec)
     data.subRegions[#data.subRegions + 1] = {
       type = "subcirculartexture",
       circularTextureVisible = false,
-      circularTextureTexture = "Interface\\AddOns\\WeakAuras\\Media\\Textures\\Circle_AlphaGradient_Out.tga",
+      circularTextureTexture = "Interface\AddOns\WeakAuras\Media\Textures\Circle_AlphaGradient_Out.tga",
       circularTextureDesaturate = false,
       circularTextureColor = {1, 1, 1, 0.9},
       circularTextureBlendMode = "BLEND",
@@ -733,22 +741,20 @@ function Pack.Build(spec)
     }
     local swirlIdx = #data.subRegions
     data.conditions[#data.conditions + 1] = {
-      check = { trigger = -2, variable = "OR", checks = {
-        { trigger = hs, variable = "show", value = 1 },
-        { trigger = cleave, variable = "show", value = 1 },
-      } },
+      check = { trigger = queued, variable = "show", value = 1 },
       changes = {
         { property = "sub." .. glowIdx .. ".glow", value = true },
         { property = "sub." .. swirlIdx .. ".circularTextureVisible", value = true },
       },
     }
+    return data
   end
 
-  -- Main-lane DoT (Rend): saturated by default; desaturated while the player's own Rend is on the
-  -- current target. Plain aura2 by spell name (all ranks), ownOnly, showAlways so the icon never
-  -- hides. Presence is condition-only (visibility stays on the cooldown / form triggers).
-  -- On Forever, if UnitAura presence is secret, name-filtered aura2 skips the match and buffed
-  -- stays false → icon stays saturated (fail open toward "reapply").
+  -- Main-lane DoT (Rend): primary = target debuff aura2 (showAlways). Saturated by default;
+  -- desaturate only while own Rend is present (buffed→desaturate). No Cooldown Progress for color —
+  -- its desaturateOnCooldown / SetDesaturation(secret) was greying the icon unconditionally on Forever.
+  -- If UnitAura presence is secret, name-filtered aura2 skips the match and buffed stays false
+  -- → icon stays saturated (fail open toward "reapply").
   local function AuraNameTrigger(spellName, unit, kind)
     return {
       type = "aura2",
@@ -762,13 +768,10 @@ function Pack.Build(spec)
     }
   end
 
-  local function ApplyMainDotDesaturate(data, spellName)
-    if not spellName then return data end
-    local idx = #data.triggers + 1
-    data.triggers[idx] = { trigger = AuraNameTrigger(spellName), untrigger = {} }
+  local function ApplyMainDotDesaturate(data)
     data.desaturate = false
     data.conditions[#data.conditions + 1] = {
-      check = { trigger = idx, variable = "buffed", value = 1 },
+      check = { trigger = 1, variable = "buffed", value = 1 },
       changes = { { property = "desaturate", value = true } },
     }
     return data
@@ -776,7 +779,7 @@ function Pack.Build(spec)
 
   local main = Group("Main", "dynamicgroup", Y("main", 4), "GRID", 8)
   for _, entry in ipairs(spec.rotation or {}) do
-    ApplyQueuedNextSwing(SpellIcon(main, entry, SIZES.main))
+    ApplyQueuedNextSwing(SpellIcon(main, entry, SIZES.main), entry.spell)
   end
   -- Priority lanes: one row per talent tree (or level range), in the order to press them. Only the lane that matches
   -- the character loads. The corner label is the real keybind from your action bars (dynamic lookup by spell),
@@ -792,10 +795,12 @@ function Pack.Build(spec)
       local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
       if entry.dot then
-        -- Always-visible cooldown icon; aura2 (by name) only drives desaturate-when-present.
-        data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, {
-          size = SIZES.main, subRegions = { number },
-          conditions = { usableDim, noMana, outOfRange }, idle = true }))
+        -- Aura2 primary (showAlways): color from buffed only. Fallback texture when aura missing.
+        data = Icon(main, label, AuraNameTrigger(entry.name), Requirements(e, {
+          size = SIZES.main,
+          texture = entry.texture or "Interface\\Icons\\Ability_Gouge",
+          subRegions = { number },
+          idle = true }))
       elseif entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"
         data = Icon(main, label, AuraTrigger(entry.aura, "showAlways", unit, kind),
@@ -806,8 +811,8 @@ function Pack.Build(spec)
           conditions = { usableDim, noMana, outOfRange }, idle = true }))
       end
       ApplyHotkeyLabel(data, entry.spell)
-      ApplyQueuedNextSwing(data)
-      if entry.dot then ApplyMainDotDesaturate(data, entry.name) end
+      ApplyQueuedNextSwing(data, entry.spell)
+      if entry.dot then ApplyMainDotDesaturate(data) end
     end
   end
 
