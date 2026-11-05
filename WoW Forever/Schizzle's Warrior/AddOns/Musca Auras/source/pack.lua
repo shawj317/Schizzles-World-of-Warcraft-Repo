@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.1"
+local VERSION = "1.2"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -26,9 +26,9 @@ return Pack.Build({
   class = "WARRIOR", name = "Warrior Essentials", prefix = "schzWarE1",
   root = "Schizzle's Warrior Essentials v" .. VERSION,
   font = "Fira Sans Condensed Medium",
-  -- The group's centre sits at 0,-40 from the middle of the screen. Every row below is measured from there and stays
+  -- The group's centre sits at 0,-55 from the middle of the screen. Every row below is measured from there and stays
   -- inside the HUD box (170 px either side, 180 px below to 160 px above the group's centre).
-  x = 0, y = -40,
+  x = 0, y = -55,
   layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26, nextSwing = 8 },
   -- At most 10 icons per aura row: 10 x 30 px with 3 px gaps is 327 px, inside the 340 px box.
   rowLimit = 10,
@@ -138,7 +138,7 @@ return Pack.Build({
 
   -- Rage: red as usual, grey below 15 (nothing to spend), bronze from 30 (Heroic Strike or Cleave on top of your
   -- rotation), ember from 60 (dump it before it's wasted).
-  power = { { label = "Rage", type = 1, height = 14, low = { value = 15, color = GREY }, steps = {
+  power = { { label = "Rage", type = 1, width = 100, height = 14, low = { value = 15, color = GREY }, steps = {
     { value = 30, color = BRONZE },
     { value = 60, color = EMBER },
   } } },

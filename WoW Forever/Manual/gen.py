@@ -50,13 +50,13 @@ screen = "<div class='screen'>" + "".join([
     box(1, 2, 14, 12, "Player + target<br>(BetterBlizzFrames, Blizzard spots)"),
     box(84, 2, 15, 26, "SexyMap minimap<br>1.5x, square"),
     box(41, 4, 18, 6, "TomTom arrow"),
-    box(41.1, 28, 17.7, 31, "HUD box<br>Warrior Essentials<br>(Musca Auras)<br>centre x 0, y -40", "border-color:#FF7800;color:#FFD100"),
+    box(41.1, 28, 17.7, 31, "HUD box<br>Warrior Essentials<br>(Musca Auras)<br>centre x 0, y -55", "border-color:#FF7800;color:#FFD100"),
     box(1, 62, 26, 26, "Prat chat"),
     box(31, 78, 38, 18, "Bartender4 bars 1-3<br>(bars 4-5 on mouseover)"),
     box(73.8, 78.4, 26, 13, "Details! x2<br>250 x 141 each"),
     box(73.8, 91.8, 26, 3.4, "XP / Rep / Guild tray", "border-color:#FF7800;font-size:10px"),
 ]) + "</div>"
-# The HUD box at 1:1: 340 x 340 px, x from -170 to 170, y from 120 down to -220 (screen centre at 0,0).
+# The HUD box at 1:1: 340 x 340 px, x from -170 to 170, y from 120 down to -235 (screen centre at 0,0).
 # Rows are the pack's places as printed by Musca Auras/source/verify.lua (a lane of two rows).
 def hud(x0, x1, y0, y1, label, style=""):
     return box((x0 + 170) / 3.4, (120 - y1) / 3.4, (x1 - x0) / 3.4, (y1 - y0) / 3.4, label, style)
@@ -76,7 +76,7 @@ parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1.3</span><span class='tag'>Warrior Essentials v1.1 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<span class='tag'>Schizzle's Warrior Setup F1.4</span><span class='tag'>Warrior Essentials v1.2 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
 <div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
 parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
@@ -107,13 +107,13 @@ parts.append("<h2>3. Where everything sits</h2>")
 parts.append(screen)
 parts.append("<p>The orange box in the middle belongs to the visual helper (page 4); nothing else goes there. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
 parts.append("<h2>4. The visual helper: Schizzle's Warrior Essentials</h2>")
-parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. v1.1 lights Heroic Strike or Cleave with a glow and gold <b>NEXT SWING</b> text while queued (clears when the swing fires). Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
+parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Group default is <b>0,-55</b> with a <b>100 px</b> rage bar. Queued Heroic Strike or Cleave get a glow and gold <b>NEXT SWING</b> text (clears when the swing fires). Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
 parts.append("<div class='hudwrap'>" + hudsketch + "<div class='hudkey'>" + table(["Lane", "Order (press the lowest lit number)"], [
     ["Starter (below 10)", "Rend, Heroic Strike, Thunder Clap"],
     ["Arms", "Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind"],
     ["Fury", "Bloodthirst, Whirlwind, Execute, Victory Rush, Slam, Rend"],
     ["Protection", "Shield Slam, Revenge, Sunder Armor, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush"],
-]) + "<p class='sub'>The box at 1:1 scale: 340 px wide, from 120 px above the screen's centre to 220 px below; the group's centre is at x 0, y -40. The lane follows the talent tree with the most points (both lanes on a tie). Spells only show in the stance that can use them.</p></div></div>")
+]) + "<p class='sub'>The box at 1:1 scale: 340 px wide, from 120 px above the screen's centre to 235 px below; the group's centre is at x 0, y -55. The lane follows the talent tree with the most points (both lanes on a tie). Spells only show in the stance that can use them.</p></div></div>")
 parts.append(table(["You see", "Sound", "It means", "Do"], [
     ["Overpower lights up", "water drop", "the target dodged", "Overpower now (Battle Stance)"],
     ["Revenge lights up", "water drop", "you blocked, dodged or parried", "Revenge now (Defensive Stance)"],

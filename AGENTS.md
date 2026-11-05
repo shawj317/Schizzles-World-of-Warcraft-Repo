@@ -24,9 +24,9 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
 
 ## Standing rules for authorized agents
 
-- **Rotation WeakAura position:** every rotation WeakAura group in this repo defaults to x 0, y -40, with the
+- **Rotation WeakAura position:** every rotation WeakAura group in this repo defaults to x 0, y -55, with the
   group's CENTER anchored to the CENTER of UIParent (WeakAuras `anchorFrameType = "SCREEN"`,
-  `anchorPoint = "CENTER"`, `selfPoint = "CENTER"`, `xOffset = 0`, `yOffset = -40`). Child auras are positioned
+  `anchorPoint = "CENTER"`, `selfPoint = "CENTER"`, `xOffset = 0`, `yOffset = -55`). Child auras are positioned
   relative to the group. New or rebuilt rotation auras must keep this default, and their READMEs should note that
   WeakAuras only applies a new position on Update when **Size & Position** is ticked.
 - **Rotation WeakAura cooldown tray:** every rotation WeakAura includes a ready-only cooldown tray at the
@@ -57,7 +57,7 @@ Jon Shaw (Schizzle) and a link to https://github.com/shawj317/Schizzles-World-of
 - **Non-ElvUI Warrior interface kit:** `Schizzle's Warrior/AddOns/` also holds Jon's full interface without
   ElvUI or Plater (indexed in the Warrior README under "Non-ElvUI interface kit"). Keep its shared design: charcoal
   {0.06,0.06,0.06}, bronze {0.72,0.45,0.2}, gold {1,0.82,0}, tan {0.78,0.61,0.43}, ember {1,0.47,0}; Fira Sans Condensed
-  Medium; the "Minimalist" texture. Nothing may sit in the WeakAuras HUD box (x within 170 px of centre, y from 220 px below
+  Medium; the "Minimalist" texture. Nothing may sit in the WeakAuras HUD box (x within 170 px of centre, y from 235 px below
   to 120 px above centre), on the Details! windows (two 250x141 side by side, 4 px from the right edge, bottom 38 px up, title bars topping
   out 199 px up), on the WeakAuras XP & Rep Tray under them (three 500x10 bars 2 px apart = 500x34, 4 px from the right
   and bottom edges, XP / watched rep / guild rep top to bottom, hidden bars collapse upwards; keep the two in step:

@@ -6,7 +6,7 @@
 --
 -- Changes by Jon Shaw (Schizzle), Nov 2026:
 --   * the ForeverAuras variant is removed (this pack is for Musca Auras only)
---   * the root group's name, place and font come from the spec (the repo's layout rules: centre 0,-40,
+--   * the root group's name, place and font come from the spec (the repo's layout rules: centre 0,-55,
 --     Fira Sans Condensed Medium, version in the group name)
 --   * the row heights come from the spec, so the whole pack stays inside the HUD box
 --   * "lanes": one priority row per talent tree, each icon numbered, dimmed while the spell can't be used
@@ -529,6 +529,7 @@ function Pack.Build(spec)
       local bar = Bar(resource, power.label, PowerTrigger(power.type, nil, nil, power.unit), { gate = power.gate },
         POWER_COLORS[power.type] or POWER_COLORS[0], "%p", 12)
       if power.height then bar.height = power.height end
+      if power.width then bar.width = power.width end
       -- Low strata, so the colour steps below can sit over it.
       if power.steps then bar.frameStrata = 3 end
       -- Below power.low the bar turns grey. One condition per property works on secret power; a second one on the
@@ -545,7 +546,7 @@ function Pack.Build(spec)
         holder.group.anchorFrameParent = false
         local over = Bar(holder, power.label .. " " .. step.value .. "+", PowerTrigger(power.type, step.value, true,
           power.unit), { title = power.label }, step.color, "%p", bar.height)
-        over.backgroundColor, over.frameStrata = {0, 0, 0, 0}, 3 + index
+        over.width, over.backgroundColor, over.frameStrata = bar.width, {0, 0, 0, 0}, 3 + index
         -- The base bar's text stays visible through the copy: the copy draws none.
         over.subRegions = { over.subRegions[1], over.subRegions[2] }
       end

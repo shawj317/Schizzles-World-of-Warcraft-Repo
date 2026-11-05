@@ -9,8 +9,8 @@
 -- 1. The import string is current (build.lua --check).
 -- 2. The pack loads and works in the harness: Musca's own pack checks, the lanes per tree and level, the rage colours.
 -- 3. Every spell ID exists; aura IDs carry an aura; lane and proc icons are named after their spell.
--- 4. Everything sits inside the HUD box (AGENTS.md): 170 px either side of the screen centre, from 220 px below it
---    to 120 px above it. The group's centre is at 0,-40.
+-- 4. Everything sits inside the HUD box (AGENTS.md): 170 px either side of the screen centre, from 235 px below it
+--    to 120 px above it. The group's centre is at 0,-55.
 -- 5. Kit rules: font, group name with the version, no private words.
 local MUSCA = assert(os.getenv("MUSCA"), "set MUSCA to a Musca Auras v1.14.0 folder")
 local fails = 0
@@ -107,9 +107,9 @@ end
 -- 4. -------------------------------------------------------------------------------------------------------------
 -- Rows measured from the group's centre. A dynamic row's worst case is every member shown at once; aura rows stop
 -- at their limit.
-local BOX = { left = -170, right = 170, bottom = -220, top = 120 }
-check(root.xOffset == 0 and root.yOffset == -40 and root.anchorPoint == "CENTER" and root.selfPoint == "CENTER"
-  and (root.anchorFrameType or "SCREEN") == "SCREEN", "the group is centred at 0,-40 on the screen")
+local BOX = { left = -170, right = 170, bottom = -235, top = 120 }
+check(root.xOffset == 0 and root.yOffset == -55 and root.anchorPoint == "CENTER" and root.selfPoint == "CENTER"
+  and (root.anchorFrameType or "SCREEN") == "SCREEN", "the group is centred at 0,-55 on the screen")
 local rows = {}
 for _, child in ipairs(transmit.c) do
   if child.parent == root.id then rows[#rows + 1] = child end
@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.1$") ~= nil, "pack version is v1.1 (" .. root.id .. ")")
+check(root.id:find(" v1%.2$") ~= nil, "pack version is v1.2 (" .. root.id .. ")")
 -- Next-swing dump: Queued Action by name (all ranks), glow, and NEXT SWING label near the priority lane.
 local queued = {}
 for _, child in ipairs(transmit.c) do
@@ -242,7 +242,13 @@ local nextGroup
 for _, child in ipairs(transmit.c) do
   if child.id:find(" %- Next Swing$") then nextGroup = child end
 end
-check(nextGroup and nextGroup.yOffset == 8, "Next Swing sits at group-relative y=8 (near the priority lane at 0,-40)")
+check(nextGroup and nextGroup.yOffset == 8, "Next Swing sits at group-relative y=8 (near the priority lane at 0,-55)")
+local rageBar
+for _, child in ipairs(transmit.c) do
+  if child.regionType == "aurabar" and child.id:find(" %- Rage$") then rageBar = child end
+end
+check(rageBar and rageBar.width == 100 and rageBar.height == 14, "Rage bar is 100x14 (was 334 wide)")
+
 
 local badFont = {}
 for _, child in ipairs(transmit.c) do

@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.1` (96 auras) | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.2` (96 auras) | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F1.3 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F1.4 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -20,7 +20,7 @@ Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret v
 Importing again updates the auras you already have (each aura's ID stays the same between versions). Your own changes to them are overwritten.
 
 ## What's on screen
-Everything sits in the HUD box around the middle of the screen. The group's centre is 40 px below the screen's centre. The rows below are listed top to bottom, with their place measured from the screen's centre (+ is up).
+Everything sits in the HUD box around the middle of the screen. The group's centre is 55 px below the screen's centre. The rows below are listed top to bottom, with their place measured from the screen's centre (+ is up).
 
 | Row | Where (y) | Shows |
 |---|---|---|
@@ -30,12 +30,12 @@ Everything sits in the HUD box around the middle of the screen. The group's cent
 | Next Swing | -43 to -21 | Heroic Strike or Cleave while queued on your next swing (glow and gold **NEXT SWING** text); clears when the swing fires |
 | Your buffs | +15 to +37 | buffs while they're up, with time left; the last 3 seconds blink red. At most 10 icons |
 | Target and stance | -11 to +11 | your debuffs on the target with time left, then your stance |
-| Rage bar | -28 to -14 | rage, 334 px wide, coloured by how much you have |
+| Rage bar | -28 to -14 | rage, 100 px wide, coloured by how much you have |
 | Priority lane | from -38 | what to press, in order, numbered 1 to 8 |
 | Cooldowns | below the lane | major cooldowns, interrupts, taunts, trinkets and your racial; each only in the stance that can use it |
 | Swing timers | bottom, above -220 | main hand and off hand |
 
-`verify.lua` works out the worst case for every row (all of a row's icons up at once) and checks it stays inside the box: x within 170 px of the centre, y from 220 px below to 120 px above.
+`verify.lua` works out the worst case for every row (all of a row's icons up at once) and checks it stays inside the box: x within 170 px of the centre, y from 235 px below to 120 px above.
 
 ## Per spec
 The lane loads from the talent tree with the most points spent, from level 10. Below level 10 the Starter lane shows. If two trees have the same number of points, both lanes show. A lane icon dims while the spell can't be used yet (not enough rage, on cooldown, wrong stance or no proc), turns red while the target is out of range and blue while you're short of rage. Out of combat with no target the whole lane fades.
