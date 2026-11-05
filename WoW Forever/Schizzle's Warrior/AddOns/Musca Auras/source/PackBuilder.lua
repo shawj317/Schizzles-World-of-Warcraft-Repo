@@ -78,8 +78,9 @@ end
 -- holds this spell (any rank, macros included). Not the priority index. One shared frame
 -- marks the cache dirty on ACTIONBAR_SLOT_CHANGED / UPDATE_BINDINGS; rebuild skips secret
 -- values and retries out of combat.
+-- Body only: Musca wraps actions.init.custom as LoadFunction("return function() "..custom.."\n end").
+-- A leading "function()" here becomes "return function() function()" and errors on every Main icon.
 local HOTKEY_INIT = [=[
-function()
   if _G.SchizzleWA_HotkeyFrame then return end
   local f = CreateFrame("Frame")
   _G.SchizzleWA_HotkeyFrame = f
@@ -93,7 +94,6 @@ function()
     local c = _G.SchizzleWA_Hotkeys
     if c then c.dirty = true end
   end)
-end
 ]=]
 
 local function HotkeyCustomText(spellId)

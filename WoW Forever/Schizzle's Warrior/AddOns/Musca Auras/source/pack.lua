@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.9"
+local VERSION = "1.10"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -122,7 +122,7 @@ return Pack.Build({
   },
 
   -- Your debuffs on the target, with their time left. Main Rend desaturates while your Rend is on the target
-  -- (v1.9); the Target-row Rend tracker stays removed.
+  -- (v1.10); the Target-row Rend tracker stays removed.
   debuffs = {
     { name = "Sunder Armor", aura = sunder, stacks = true },
     { name = "Thunder Clap", aura = thunderClap },

@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.9$") ~= nil, "pack version is v1.9 (" .. root.id .. ")")
+check(root.id:find(" v1%.10$") ~= nil, "pack version is v1.10 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -353,10 +353,21 @@ for _, child in ipairs(mainIcons) do
     badHotkey[#badHotkey + 1] = child.id:gsub("^.- %- ", "") .. " missing dynamic hotkey lookup"
   end
 end
+-- actions.init.custom must be a BODY (Musca wraps return function() .. custom .. end).
+local badInit = {}
+for _, child in ipairs(mainIcons) do
+  local custom = child.actions and child.actions.init and child.actions.init.custom
+  if type(custom) == "string" and custom:match("^%s*function%s*%(") then
+    badInit[#badInit + 1] = child.id:gsub("^.- %- ", "")
+  end
+end
+check(#badInit == 0, "Main actions.init.custom is body-only (no leading function())"
+  .. (#badInit > 0 and (": " .. table.concat(badInit, ", ")) or ""))
+
 check(#badHotkey == 0, "every Main icon labels the real keybind (%c + GetActionInfo/GetBindingKey)"
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
--- Main DoT (Rend) v1.9: no remaining-time flash / Proc blink / rage desat extras.
+-- Main DoT (Rend) v1.10: no remaining-time flash / Proc blink / rage desat extras.
 local badFlash = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
@@ -395,7 +406,7 @@ end
 check(#targetRend == 0, "Target row has no Rend (target) duplicate"
   .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
 
--- Main Rend v1.9: aura2 primary (showAlways); default desaturate false; buffed→desaturate true.
+-- Main Rend v1.10: aura2 primary (showAlways); default desaturate false; buffed→desaturate true.
 -- No Cooldown Progress (avoids Forever secret SetDesaturation grey). No remaining timer,
 -- buttonOverlay, Rend-queued Pixel, ACShine, faAuraMissing grey-while-up, or any other desaturate.
 local badDot = {}

@@ -31,6 +31,16 @@ return function(test)
   _G.C_SpellBook = _G.C_SpellBook or {}
   _G.C_SpellBook.IsSpellKnown = Knows
 
+  -- Hotkey customText walks action bars; stub the lookups the harness does not document.
+  _G.GetActionInfo = _G.GetActionInfo or function() return nil end
+  _G.GetMacroSpell = _G.GetMacroSpell or function() return nil end
+  _G.GetBindingKey = _G.GetBindingKey or function() return nil end
+  _G.GetBindingText = _G.GetBindingText or function(key) return key end
+  _G.GetSpellInfo = _G.GetSpellInfo or function(id)
+    if type(id) == "number" then return "Spell" .. id end
+    return id
+  end
+
   -- Full VerificationPack Validate rejects %c on secretAura (Main Sunder/Demo/Thunder Clap hotkey labels).
   -- Those labels are intentional for the kit; load the pack the same way, then skip only the secretAura
   -- Validate step so lane / rage / Main Rend checks still run under the real harness.
@@ -151,7 +161,7 @@ return function(test)
   end
   Units.SetCombat(false)
 
-  -- Main Rend v1.9: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
+  -- Main Rend v1.10: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
   for id in pairs(signature) do known[id] = nil end
   known[12294] = true
   Units.Get("player").level = 60
