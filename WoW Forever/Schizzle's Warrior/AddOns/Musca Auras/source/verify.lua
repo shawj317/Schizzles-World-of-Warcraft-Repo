@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.5$") ~= nil, "pack version is v1.5 (" .. root.id .. ")")
+check(root.id:find(" v1%.6$") ~= nil, "pack version is v1.6 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -384,6 +384,75 @@ for _, child in ipairs(mainIcons) do
 end
 check(#badFlash == 0, "Main Rend flashes via faAuraRemaining < 4 → Proc blink (secret-safe)"
   .. (#badFlash > 0 and (": " .. table.concat(badFlash, ", ")) or ""))
+
+-- Main Rend: desaturate while present (default on + faAuraMissing clears), Action Button highlight when usable
+-- (insufficientResources flag), Autocast Shine while Rend itself is queued.
+local badDot = {}
+for _, child in ipairs(mainIcons) do
+  if child.id:find(" Rend$") then
+    local reasons = {}
+    if child.desaturate ~= true then reasons[#reasons + 1] = "desaturate-default" end
+    local clearMissing
+    for _, cond in ipairs(child.conditions or {}) do
+      local c = cond.check
+      if c and c.variable == "faAuraMissing" then
+        for _, ch in ipairs(cond.changes or {}) do
+          if ch.property == "desaturate" and ch.value == false then clearMissing = true end
+        end
+      end
+    end
+    if not clearMissing then reasons[#reasons + 1] = "missing-clears-desaturate" end
+
+    local hiIdx, sparkIdx
+    for i, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subglow" and sub.glowType == "buttonOverlay" and sub.glow == false then hiIdx = i end
+      if sub.type == "subglow" and sub.glowType == "ACShine" and sub.glow == false then sparkIdx = i end
+    end
+    if not hiIdx then reasons[#reasons + 1] = "buttonOverlay" end
+    if not sparkIdx then reasons[#reasons + 1] = "ACShine" end
+
+    local cdIdx, rendQ
+    for i, entry in ipairs(child.triggers) do
+      local tr = entry.trigger
+      if tr and tr.event == "Cooldown Progress (Spell)" then cdIdx = i end
+      if tr and tr.event == "Queued Action" and tr.spellName == 772 then rendQ = i end
+    end
+    if not cdIdx then reasons[#reasons + 1] = "cooldown-trigger" end
+    if not rendQ then reasons[#reasons + 1] = "rend-queued-trigger" end
+
+    local hasHi, hasSpark
+    for _, cond in ipairs(child.conditions or {}) do
+      local c = cond.check
+      if c and c.variable == "AND" and c.trigger == -2 then
+        local flags = {}
+        for _, ch in ipairs(c.checks or {}) do
+          if ch.variable == "insufficientResources" and ch.value == 0 then flags.rage = ch.trigger end
+          if ch.variable == "spellUsable" and ch.value == 1 then flags.usable = ch.trigger end
+        end
+        for _, ch in ipairs(cond.changes or {}) do
+          if hiIdx and ch.property == ("sub.%d.glow"):format(hiIdx) and ch.value == true
+            and flags.rage == cdIdx and flags.usable == cdIdx then
+            hasHi = true
+          end
+        end
+      end
+      if c and c.variable == "show" and c.value == 1 and c.trigger == rendQ then
+        for _, ch in ipairs(cond.changes or {}) do
+          if sparkIdx and ch.property == ("sub.%d.glow"):format(sparkIdx) and ch.value == true then
+            hasSpark = true
+          end
+        end
+      end
+    end
+    if not hasHi then reasons[#reasons + 1] = "usable-highlight" end
+    if not hasSpark then reasons[#reasons + 1] = "queue-sparkle" end
+    if #reasons > 0 then
+      badDot[#badDot + 1] = child.id:gsub("^.- %- ", "") .. " [" .. table.concat(reasons, ",") .. "]"
+    end
+  end
+end
+check(#badDot == 0, "Main Rend has desaturate-when-present + usable highlight + queue sparkle"
+  .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).
 -- Rage colour steps intentionally stack on the Resource bar; Reminders (OOC) and Range (combat) share the top band by design.

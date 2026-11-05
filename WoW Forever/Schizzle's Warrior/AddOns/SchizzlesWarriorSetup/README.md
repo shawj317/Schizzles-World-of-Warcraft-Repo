@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F1.8** (Nov 4 2026): Schizzle's Warrior Essentials v1.6 — Main Rend desaturate-when-present, usable Action Button highlight, Autocast queue sparkle.
 - **F1.7** (Nov 4 2026): Schizzle's Warrior Essentials v1.5 — Main labels read real action-bar keybinds; Rend flashes (Proc blink) when remaining < 4s.
 - **F1.6** (Nov 4 2026): Schizzle's Warrior Essentials v1.4 — queued HS/Cleave Pixel glow + MH swing swirl on Main priority icons (no standalone Procs auras).
 - **F1.5** (Nov 4 2026): Schizzle's Warrior Essentials v1.3 — remove Next Swing row; Heroic Strike/Cleave in Procs with Battle Shout Pixel glow + main-hand swing radial; Battle Shout remaining-time text.
