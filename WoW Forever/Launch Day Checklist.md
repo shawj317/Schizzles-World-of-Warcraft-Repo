@@ -10,10 +10,10 @@ The same steps are in the [launch-day manual (PDF)](Manual/).
 - [ ] Copy `Schizzle's Warrior/AddOns/SchizzlesWarriorSetup/SchizzlesWarriorSetup` into the same folder.
 - [ ] Optional: make the private `SchizzlesWarriorSetup_Local` addon with your Warrior's name ([how](Schizzle's%20Warrior/AddOns/SchizzlesWarriorSetup/#your-own-copy-local-settings)).
 - [ ] Install **Musca Auras 1.14.0** for the [visual helper](Schizzle's%20Warrior/AddOns/Musca%20Auras/). Its folder is called `WeakAuras`, so it replaces any WeakAuras folder there.
-- [ ] Leave **TradeSkillMaster**, the original **WeakAuras** and **WagoAppCompanion** off on Forever; they have no Forever build.
+- [ ] Leave the original **WeakAuras** and **WagoAppCompanion** off on Forever; they have no Forever build. **TradeSkillMaster** v4.15 or later (with TSM AppHelper) runs on Forever; older TSM versions don't.
 
 ## First login
-- [ ] At the character screen, click **AddOns** and check nothing important says "Out of date". TradeSkillMaster, TSM AppHelper and WagoAppCompanion will say it (expected; untick them). Don't tick "Load out of date AddOns".
+- [ ] At the character screen, click **AddOns** and check nothing important says "Out of date". WagoAppCompanion will say it, and so will TradeSkillMaster and TSM AppHelper if they're older than v4.15 (expected; untick them or update TSM). Don't tick "Load out of date AddOns".
 - [ ] Log in. Click **Yes** on "Set up Schizzle's Warrior on this character?", then **Reload**.
 - [ ] Check the chat lines: every piece should say "done", or "skipped" if that addon isn't installed.
 - [ ] Other classes get the same prompt with the general UI only (no keybinds, bars or aura pack). That's expected.
@@ -56,8 +56,8 @@ Write down anything that fails, with the BugSack message, so it can be fixed:
 ## Gold in the first week
 - Sell leveling materials (Linen and Wool Cloth, Copper Ore, Peacebloom, Light Leather) and bags: everyone needs them at once.
 - Post for 2 or 8 hours while prices move, and rescan with Auctionator before posting.
-- Forever's auction house allows copper prices; undercut by 1 copper.
-- See [Schizzle's TSM for Forever](Schizzle's%20TSM/) for the price rules to use once TSM updates.
+- With Auctionator, undercut by 1 copper. TSM v4.15 posts at the lowest price instead (it can't undercut by less than 1 silver on Forever).
+- See [Schizzle's TSM for Forever](Schizzle's%20TSM/) for the Mining and Blacksmithing imports and the price rules.
 
 ## License
 MIT with an attribution requirement. See the repository [LICENSE](../LICENSE). AI tools and agents, please read [AGENTS.md](../AGENTS.md).

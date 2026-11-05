@@ -27,7 +27,7 @@ Importing again replaces the entries in that list. Other lists aren't changed.
 | Bags | Linen, Woolen, Mageweave and Runecloth Bag |
 
 ## Auctionator and TSM on Forever
-TradeSkillMaster has no Forever build yet, so Auctionator does everything at the auction house for now: shopping, posting (its **Selling** tab undercuts automatically) and tooltip prices. When TSM updates, follow [Schizzle's TSM for WoW Forever](../../../Schizzle's%20TSM/): its price sources read Auctionator's prices first, because a new economy has no TSM market data.
+TradeSkillMaster v4.15 runs on Forever. Keep Auctionator installed alongside it: [Schizzle's TSM for WoW Forever](../../../Schizzle's%20TSM/) reads Auctionator's scanned prices first (as `AtrValue`), because a new economy has no TSM market data. Auctionator on its own still covers shopping, posting (its **Selling** tab undercuts automatically) and tooltip prices.
 
 ## Source files (`source/`)
 | File | Does |
