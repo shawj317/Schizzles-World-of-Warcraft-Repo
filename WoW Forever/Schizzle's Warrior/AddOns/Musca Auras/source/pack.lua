@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.6"
+local VERSION = "1.7"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -123,8 +123,8 @@ return Pack.Build({
 
   -- Your debuffs on the target, with their time left. Rend also glows when it can be refreshed and, in combat,
   -- while it's missing.
+  -- Rend's remaining time lives on the Main priority icon (v1.7); the Target-row duplicate was removed.
   debuffs = {
-    { name = "Rend", aura = rend, dot = true, missing = true, known = 772 },
     { name = "Sunder Armor", aura = sunder, stacks = true },
     { name = "Thunder Clap", aura = thunderClap },
     { name = "Demoralizing Shout", aura = demoShout },

@@ -744,32 +744,36 @@ function Pack.Build(spec)
     }
   end
 
-  -- Main-lane DoT (Rend) feedback states, Forever-safe:
-  --   DESATURATE while the player's DoT is on the target (default grey; faAuraMissing clears it).
-  --     If aura presence is secret, the missing check fails closed and the icon stays grey — no error.
-  --   HIGHLIGHT (Action Button Glow) while IsSpellUsable says the spell is usable and power is not
-  --     the blocker (insufficientResources flag; never reads UnitPower / rage directly).
-  --   SPARKLE (Autocast Shine) while this spell is in the spell queue (IsCurrentSpell), distinct from
-  --     the Pixel border used for queued Heroic Strike / Cleave and from Battle Shout's Pixel glow.
-  --   FLASH (Proc blink, warn) already overrides desaturate visually by drawing on top; Remaining Time
-  --     cannot clear desaturate (native allow-list is glow/time-text only).
+  -- Main-lane DoT (Rend) feedback states, Forever-safe. Precedence:
+  --   1) Timer while present on the target (RemainingText %p + cooldown swipe from the aura).
+  --   2) DESATURATE when insufficientResources (IsSpellUsable power flag) — castability, not "up".
+  --   3) HIGHLIGHT (Action Button Glow) when usable and not blocked on power.
+  --   4) Pixel moving border while THIS spell is queued (same Pixel settings as Battle Shout / HS-Cleave).
+  --   5) Proc blink flash while remaining < 4s (refresh); draws on top; secret duration → no flash.
+  -- Secret usable/power/aura values fail closed (no desat/highlight/timer/flash, no error).
   local function ApplyMainDotFeedback(data, spellId)
     if not spellId then return data end
-    data.desaturate = true
-    data.conditions[#data.conditions + 1] = Condition("faAuraMissing", nil, "desaturate", false)
+    data.desaturate = false
+    data.subRegions[#data.subRegions + 1] = RemainingText("INNER_BOTTOM", 11)
 
-    local function glowTemplate(glowType)
-      return {
+    local function glowTemplate(glowType, extra)
+      local g = {
         type = "subglow", glow = false, glowType = glowType, useGlowColor = false,
         glowColor = {1, 1, 1, 1}, glowLines = 8, glowFrequency = 0.25, glowDuration = 1,
         glowLength = 10, glowThickness = 1, glowScale = 1, glowBorder = false,
         glowXOffset = 0, glowYOffset = 0,
       }
+      if extra then for k, v in pairs(extra) do g[k] = v end end
+      return g
     end
+    -- Match Battle Shout / queued HS Pixel border (GLOW defaults).
+    local pixel = {}
+    for k, v in pairs(GLOW) do pixel[k] = v end
+    pixel.glow = false
     data.subRegions[#data.subRegions + 1] = glowTemplate("buttonOverlay")
     local highlightIdx = #data.subRegions
-    data.subRegions[#data.subRegions + 1] = glowTemplate("ACShine")
-    local sparkleIdx = #data.subRegions
+    data.subRegions[#data.subRegions + 1] = pixel
+    local borderIdx = #data.subRegions
 
     local cdIdx
     for i, entry in ipairs(data.triggers) do
@@ -780,6 +784,10 @@ function Pack.Build(spec)
       end
     end
     if cdIdx then
+      data.conditions[#data.conditions + 1] = {
+        check = { trigger = cdIdx, variable = "insufficientResources", value = 1 },
+        changes = { { property = "desaturate", value = true } },
+      }
       data.conditions[#data.conditions + 1] = {
         check = { trigger = -2, variable = "AND", checks = {
           { trigger = cdIdx, variable = "insufficientResources", value = 0 },
@@ -797,7 +805,7 @@ function Pack.Build(spec)
     }
     data.conditions[#data.conditions + 1] = {
       check = { trigger = queuedIdx, variable = "show", value = 1 },
-      changes = { { property = "sub." .. sparkleIdx .. ".glow", value = true } },
+      changes = { { property = "sub." .. borderIdx .. ".glow", value = true } },
     }
     return data
   end

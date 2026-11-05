@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.6$") ~= nil, "pack version is v1.6 (" .. root.id .. ")")
+check(root.id:find(" v1%.7$") ~= nil, "pack version is v1.7 (" .. root.id .. ")")
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
@@ -277,24 +277,27 @@ for _, child in ipairs(transmit.c) do
       if tr and tr.event == "Queued Action" and tr.spellName == 845 then hasCleave = true end
       if tr and tr.event == "Swing Timer" and (tr.hand == "main" or tr.hand == 0) then hasSwing = i end
     end
-    local glowIdx, swirlIdx
+    local swirlIdx
     for i, sub in ipairs(child.subRegions or {}) do
-      if pixelGlow(sub) and sub.glow == false then glowIdx = i end
       if sub.type == "subcirculartexture" and sub.progressSource and sub.progressSource[1] == hasSwing
         and sub.progressSource[2] == "expirationTime" and sub.circularTextureVisible == false then
         swirlIdx = i
       end
     end
-    local hasOr
+    -- HS/Cleave queue Pixel may not be the last Pixel (Main DoTs add their own queue border).
+    local hasOr, glowIdx
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
       if c and c.variable == "OR" and c.trigger == -2 then
-        local shows = {}
-        for _, ch in ipairs(c.checks or {}) do
-          if ch.variable == "show" and ch.value == 1 then shows[ch.trigger] = true end
-        end
         local changes = {}
         for _, ch in ipairs(cond.changes or {}) do changes[ch.property] = ch.value end
+        for prop, val in pairs(changes) do
+          local gi = prop:match("^sub%.(%d+)%.glow$")
+          if gi and val == true then
+            local sub = child.subRegions[tonumber(gi)]
+            if sub and pixelGlow(sub) and sub.glow == false then glowIdx = tonumber(gi) end
+          end
+        end
         if glowIdx and swirlIdx and changes["sub." .. glowIdx .. ".glow"] == true
           and changes["sub." .. swirlIdx .. ".circularTextureVisible"] == true then
           hasOr = true
@@ -385,31 +388,39 @@ end
 check(#badFlash == 0, "Main Rend flashes via faAuraRemaining < 4 → Proc blink (secret-safe)"
   .. (#badFlash > 0 and (": " .. table.concat(badFlash, ", ")) or ""))
 
--- Main Rend: desaturate while present (default on + faAuraMissing clears), Action Button highlight when usable
--- (insufficientResources flag), Autocast Shine while Rend itself is queued.
+-- Target row no longer carries a Rend tracker (timer moved to Main).
+local targetRend = {}
+for _, child in ipairs(transmit.c) do
+  if child.parent and child.parent:find(" %- Target$") and child.id:find("Rend") then
+    targetRend[#targetRend + 1] = child.id
+  end
+end
+check(#targetRend == 0, "Target row has no Rend (target) duplicate"
+  .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
+
+-- Main Rend v1.7: rage desat, usable highlight, Pixel queue border, present timer; no ACShine; no grey-while-up.
 local badDot = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
     local reasons = {}
-    if child.desaturate ~= true then reasons[#reasons + 1] = "desaturate-default" end
-    local clearMissing
-    for _, cond in ipairs(child.conditions or {}) do
-      local c = cond.check
-      if c and c.variable == "faAuraMissing" then
-        for _, ch in ipairs(cond.changes or {}) do
-          if ch.property == "desaturate" and ch.value == false then clearMissing = true end
-        end
+    if child.desaturate ~= false then reasons[#reasons + 1] = "desaturate-default-false" end
+    local hasTimer
+    for _, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subtext" and sub.text_text == "%p"
+        and sub.text_text_format_p_format == "timed" then
+        hasTimer = true
+      end
+      if sub.type == "subglow" and sub.glowType == "ACShine" then
+        reasons[#reasons + 1] = "ACShine-removed"
       end
     end
-    if not clearMissing then reasons[#reasons + 1] = "missing-clears-desaturate" end
+    if not hasTimer then reasons[#reasons + 1] = "remaining-timer" end
 
-    local hiIdx, sparkIdx
+    local hiIdx
     for i, sub in ipairs(child.subRegions or {}) do
       if sub.type == "subglow" and sub.glowType == "buttonOverlay" and sub.glow == false then hiIdx = i end
-      if sub.type == "subglow" and sub.glowType == "ACShine" and sub.glow == false then sparkIdx = i end
     end
     if not hiIdx then reasons[#reasons + 1] = "buttonOverlay" end
-    if not sparkIdx then reasons[#reasons + 1] = "ACShine" end
 
     local cdIdx, rendQ
     for i, entry in ipairs(child.triggers) do
@@ -420,9 +431,19 @@ for _, child in ipairs(mainIcons) do
     if not cdIdx then reasons[#reasons + 1] = "cooldown-trigger" end
     if not rendQ then reasons[#reasons + 1] = "rend-queued-trigger" end
 
-    local hasHi, hasSpark
+    local hasDesat, hasHi, hasBorder, greyWhileUp
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
+      if c and c.variable == "insufficientResources" and c.value == 1 and c.trigger == cdIdx then
+        for _, ch in ipairs(cond.changes or {}) do
+          if ch.property == "desaturate" and ch.value == true then hasDesat = true end
+        end
+      end
+      if c and c.variable == "faAuraMissing" then
+        for _, ch in ipairs(cond.changes or {}) do
+          if ch.property == "desaturate" then greyWhileUp = true end
+        end
+      end
       if c and c.variable == "AND" and c.trigger == -2 then
         local flags = {}
         for _, ch in ipairs(c.checks or {}) do
@@ -438,20 +459,24 @@ for _, child in ipairs(mainIcons) do
       end
       if c and c.variable == "show" and c.value == 1 and c.trigger == rendQ then
         for _, ch in ipairs(cond.changes or {}) do
-          if sparkIdx and ch.property == ("sub.%d.glow"):format(sparkIdx) and ch.value == true then
-            hasSpark = true
+          if type(ch.property) == "string" and ch.property:match("^sub%.%d+%.glow$") and ch.value == true then
+            local idx = tonumber(ch.property:match("^sub%.(%d+)%.glow$"))
+            local sub = child.subRegions[idx]
+            if sub and sub.glowType == "Pixel" then hasBorder = true end
           end
         end
       end
     end
+    if not hasDesat then reasons[#reasons + 1] = "rage-desaturate" end
     if not hasHi then reasons[#reasons + 1] = "usable-highlight" end
-    if not hasSpark then reasons[#reasons + 1] = "queue-sparkle" end
+    if not hasBorder then reasons[#reasons + 1] = "queue-pixel-border" end
+    if greyWhileUp then reasons[#reasons + 1] = "old-grey-while-up" end
     if #reasons > 0 then
       badDot[#badDot + 1] = child.id:gsub("^.- %- ", "") .. " [" .. table.concat(reasons, ",") .. "]"
     end
   end
 end
-check(#badDot == 0, "Main Rend has desaturate-when-present + usable highlight + queue sparkle"
+check(#badDot == 0, "Main Rend: rage desat + usable highlight + Pixel queue border + present timer"
   .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).
