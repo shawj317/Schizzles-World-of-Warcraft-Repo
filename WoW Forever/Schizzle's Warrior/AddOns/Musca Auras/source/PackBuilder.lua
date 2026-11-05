@@ -510,9 +510,20 @@ function Pack.Build(spec)
   end
 
   local function Label(holder, label, trigger, text, color, options)
+    -- Text regions reject subtext on Forever/Musca ("unknown or incompatible sub element type").
+    options = options or {}
+    if options.subRegions then
+      local keep = {}
+      for _, sub in ipairs(options.subRegions) do
+        if sub.type ~= "subtext" then keep[#keep + 1] = sub end
+      end
+      options.subRegions = keep
+    end
     local data = Base(name .. " - " .. label, nil, "text", trigger, options)
     data.displayText, data.font, data.fontSize, data.outline = text, FONT, spec.reminderSize or 30, "OUTLINE"
     data.color, data.justify = color or {1, 0.82, 0, 1}, "CENTER"
+    -- No keybind customText on text auras (Missing Battle Shout stays plain label).
+    data.customText, data.customTextUpdate, data.customTextUpdateThrottle = nil, nil, nil
     return Add(holder, data)
   end
 
@@ -554,12 +565,14 @@ function Pack.Build(spec)
       end
     end
     assert(trigger, entry.name .. ": reminder has no trigger")
-    if entry.known then
+    -- Keybinds only on icon reminders (Find Minerals). Label reminders (Missing Battle Shout)
+    -- cannot host subtext — Musca errors "unknown or incompatible sub element type 'subtext'".
+    if entry.icon and entry.known then
       options.subRegions = options.subRegions or {}
       options.subRegions[#options.subRegions + 1] = Text("%c", "INNER_TOPLEFT", 11)
     end
     local data = entry.icon and Icon(reminders, label, trigger, options) or Label(reminders, label, trigger, text, color, options)
-    if entry.known then ApplyHotkeyLabel(data, entry.known, entry.name) end
+    if entry.icon and entry.known then ApplyHotkeyLabel(data, entry.known, entry.name) end
     -- Display.Validate rejects any animation on a secretAura, and a pulse on the alpha would override the native
     -- threshold of a low power reminder: only the other reminders pulse. A text has no scale, it flashes.
     if not entry.aura and not entry.lowPower then

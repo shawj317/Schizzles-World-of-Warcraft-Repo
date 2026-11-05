@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.18$") ~= nil, "pack version is v1.18 (" .. root.id .. ")")
+check(root.id:find(" v1%.19$") ~= nil, "pack version is v1.19 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -442,9 +442,11 @@ local trayNames = { Bloodrage = true, Charge = true, ["Blood Fury"] = true }
 for _, child in ipairs(transmit.c) do
   local id = child.id or ""
   local short = id:match(" %- ([^%-]+)$") or id
+  -- Missing Battle Shout is a text Label — no %c subtext (Musca rejects it).
   local want = id:find(" %- Utility %- ") or id:find(" %- Procs %- ")
-    or id:find(" %- Battle Shout$") or id:find("Missing Battle Shout")
+    or id:find(" %- Battle Shout$")
     or id:find(" %- Bloodrage$") or id:find(" %- Charge$") or id:find(" %- Blood Fury$")
+    or id:find("Track Minerals")
   if want and child.regionType == "icon" then
     local hasC, hasKeys, anchor
     for _, sub in ipairs(child.subRegions or {}) do
@@ -468,6 +470,42 @@ check(#badExtraHotkey == 0, "Utility/Procs/Battle Shout/Bloodrage icons label ke
   .. (#badExtraHotkey > 0 and (": " .. table.concat(badExtraHotkey, ", ")) or ""))
 check(#badTrayAnchor == 0, "Utility tray keybinds use INNER_TOPLEFT (match Main priority row)"
   .. (#badTrayAnchor > 0 and (": " .. table.concat(badTrayAnchor, ", ")) or ""))
+
+
+-- Missing Battle Shout: plain text reminder, no subtext / no hotkey customText.
+do
+  local mbs
+  for _, child in ipairs(transmit.c) do
+    if (child.id or ""):find("Missing Battle Shout") then mbs = child break end
+  end
+  check(mbs ~= nil, "Missing Battle Shout reminder exists")
+  if mbs then
+    check(mbs.regionType == "text", "Missing Battle Shout is a text region (not icon)")
+    local badSub = {}
+    for _, sub in ipairs(mbs.subRegions or {}) do
+      if sub.type == "subtext" then badSub[#badSub + 1] = tostring(sub.text_text) end
+    end
+    check(#badSub == 0, "Missing Battle Shout has no subtext subRegions"
+      .. (#badSub > 0 and (": " .. table.concat(badSub, ", ")) or ""))
+    local ct = mbs.customText
+    check(ct == nil or ct == "", "Missing Battle Shout has no hotkey customText")
+  end
+end
+
+-- No text aura may carry a subtext subRegion (Forever/Musca reject it).
+local badTextSub = {}
+for _, child in ipairs(transmit.c) do
+  if child.regionType == "text" then
+    for _, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subtext" then
+        badTextSub[#badTextSub + 1] = (child.id or "?"):gsub("^.- %- ", "") .. "=" .. tostring(sub.text_text)
+      end
+    end
+  end
+end
+check(#badTextSub == 0, "no text aura has subtext subRegions"
+  .. (#badTextSub > 0 and (": " .. table.concat(badTextSub, ", ")) or ""))
+
 
 -- Every Essentials keybind (%c) must sit inside the icon like Main (3/2/4), never OUTER_*.
 local badOuterKey = {}
