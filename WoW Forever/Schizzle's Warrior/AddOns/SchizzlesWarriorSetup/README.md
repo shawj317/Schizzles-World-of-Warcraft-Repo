@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F2.7** (Nov 4 2026): Schizzle's Warrior Essentials v1.15 — keybind map in Setup (BT4 primary), `/schizzle keys`.
 - **F2.6** (Nov 4 2026): Schizzle's Warrior Essentials v1.14 — Main keybind labels (Bartender4).
 - **F2.5** (Nov 4 2026): Schizzle's Warrior Essentials v1.13 — Track Minerals reminder (Mining).
 - **F2.4** (Nov 4 2026): Schizzle's Warrior Essentials v1.12 — C_Spell hotkeys; Main Rend Forever self-timer; Musca scanner in build gate.

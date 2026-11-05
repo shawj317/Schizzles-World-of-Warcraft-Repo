@@ -5,7 +5,8 @@
 local _, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "F2.6"
+local VERSION = "F2.7"
+ns.VERSION = VERSION
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -328,7 +329,7 @@ end
 
 local aliases = { all = "all", cvars = "cvars", cvar = "cvars", details = "details", tray = "tray",
 	auras = "auras", musca = "auras", wa = "auras", cdm = "cdm", cooldowns = "cdm",
-	binds = "binds", keys = "binds", bars = "bars", bt4 = "bars", chat = "chat", prat = "chat",
+	binds = "binds", bars = "bars", bt4 = "bars", chat = "chat", prat = "chat",
 	map = "map", minimap = "map", quests = "quests", questie = "quests", gather = "gather", gathermate = "gather", tomtom = "tomtom" }
 
 SLASH_SCHIZZLE1 = "/schizzle"
@@ -343,6 +344,8 @@ SlashCmdList.SCHIZZLE = function(msg)
 		importAuras()
 	elseif cmd == "cdm" then
 		toggleCooldownManager()
+	elseif cmd == "keys" then
+		if ns.diagnoseKeys then ns.diagnoseKeys() else say("Keys.lua not loaded.") end
 	elseif cmd == "all" then
 		apply(order)
 	elseif cmd then
@@ -358,5 +361,6 @@ SlashCmdList.SCHIZZLE = function(msg)
 		say("/schizzle tray - show or hide the XP & Rep Tray")
 		say("/schizzle auras - import Schizzle's Warrior Essentials into Musca Auras")
 		say("/schizzle cdm - turn Blizzard's Cooldown Manager on or off")
+		say("/schizzle keys - print action-bar keybind diagnose (paste if Main labels blank)")
 	end
 end

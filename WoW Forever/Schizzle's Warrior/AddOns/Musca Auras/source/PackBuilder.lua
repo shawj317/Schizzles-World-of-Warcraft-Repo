@@ -74,132 +74,19 @@ local function RemainingText(point, size)
   return text
 end
 
--- Main-lane corner labels: look up the key currently bound to whichever action-bar slot
--- holds this spell (any rank, macros included). Not the priority index. One shared frame
--- marks the cache dirty on ACTIONBAR_SLOT_CHANGED / UPDATE_BINDINGS.
--- Cache lives on the frame object (and _G alias) so init + customText + OnEvent share it inside
--- Musca's sandboxed _G (which is the custom env, not the real global table).
--- Body only: Musca wraps actions.init.custom as LoadFunction("return function() "..custom.."\n end").
--- A leading "function()" here becomes "return function() function()" and errors on every Main icon.
--- Binding commands: Blizzard ACTIONBUTTON / MULTIACTIONBARnBUTTON, plus Bartender4
--- CLICK BT4ButtonN:Keybind and :LeftButton (Jon's Setup binds bar 2 as CLICK BT4Button13-24:Keybind).
-local HOTKEY_INIT = [=[
-  if _G.SchizzleWA_HotkeyFrame then return end
-  local f = CreateFrame("Frame")
-  f.cache = { dirty = true }
-  _G.SchizzleWA_HotkeyFrame = f
-  _G.SchizzleWA_Hotkeys = f.cache
-  f:RegisterEvent("PLAYER_ENTERING_WORLD")
-  f:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
-  f:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
-  f:RegisterEvent("UPDATE_BINDINGS")
-  f:RegisterEvent("PLAYER_REGEN_ENABLED")
-  f:SetScript("OnEvent", function(self)
-    if self.cache then self.cache.dirty = true end
-  end)
-]=]
-
+-- Main-lane corner labels: read SchizzlesWarriorSetup_Keys built by the Setup addon
+-- (unsandboxed Bartender4 BT4Button HotKey / CLICK binds). Bare global name (not _G.X):
+-- Musca's sandboxed _G is the custom env; __index falls through to the real global table.
+-- No init action: Setup owns the cache and refreshes on UPDATE_BINDINGS / ACTIONBAR_*.
 local function HotkeyCustomText(spellId)
   return string.format([=[
 function()
   local want = %d
-  local frame = _G.SchizzleWA_HotkeyFrame
-  local cache = (frame and frame.cache) or _G.SchizzleWA_Hotkeys
-  if not cache then return "" end
-  if cache.dirty or not cache.map then
-    local map, sawSecret = {}, false
-    local function spellName(id)
-      if not id or id == 0 then return end
-      if issecretvalue and issecretvalue(id) then return end
-      local name
-      if C_Spell and C_Spell.GetSpellName then
-        name = C_Spell.GetSpellName(id)
-      end
-      if (not name or name == "") and C_Spell and C_Spell.GetSpellInfo then
-        local info = C_Spell.GetSpellInfo(id)
-        if type(info) == "table" then
-          name = info.name
-        elseif type(info) == "string" then
-          name = info
-        end
-      end
-      if name and name ~= "" and not (issecretvalue and issecretvalue(name)) then return name end
-    end
-    local function firstKey(cmds)
-      for i = 1, #cmds do
-        local key = GetBindingKey(cmds[i])
-        if key and key ~= "" and not (issecretvalue and issecretvalue(key)) then
-          local text = GetBindingText and GetBindingText(key, "KEY_", true) or key
-          if text and text ~= "" then return text end
-          return key
-        end
-      end
-    end
-    local function cmdsForSlot(slot)
-      local bt4 = ("CLICK BT4Button%%d:Keybind"):format(slot)
-      local bt4l = ("CLICK BT4Button%%d:LeftButton"):format(slot)
-      if slot >= 1 and slot <= 12 then
-        return { "ACTIONBUTTON" .. slot, bt4, bt4l }
-      elseif slot >= 13 and slot <= 24 then
-        return { bt4, bt4l }
-      elseif slot >= 25 and slot <= 36 then
-        local i = slot - 24
-        return { "MULTIACTIONBAR3BUTTON" .. i, bt4, bt4l }
-      elseif slot >= 37 and slot <= 48 then
-        local i = slot - 36
-        return { "MULTIACTIONBAR4BUTTON" .. i, bt4, bt4l }
-      elseif slot >= 49 and slot <= 60 then
-        local i = slot - 48
-        return { "MULTIACTIONBAR2BUTTON" .. i, bt4, bt4l }
-      elseif slot >= 61 and slot <= 72 then
-        local i = slot - 60
-        return { "MULTIACTIONBAR1BUTTON" .. i, bt4, bt4l }
-      elseif slot >= 73 and slot <= 120 then
-        return { bt4, bt4l }
-      end
-      return {}
-    end
-    local function note(spell, slot)
-      if not spell or spell == 0 then return end
-      if issecretvalue and issecretvalue(spell) then sawSecret = true; return end
-      local text = firstKey(cmdsForSlot(slot))
-      if not text then return end
-      map[spell] = text
-      local name = spellName(spell)
-      if name then map[name] = text end
-    end
-    for slot = 1, 120 do
-      local actionType, id = GetActionInfo(slot)
-      if issecretvalue and (issecretvalue(actionType) or issecretvalue(id)) then
-        -- Skip secret slots; keep scanning so OOC Blizzard/BT4 binds still populate the map.
-        sawSecret = true
-      elseif actionType == "spell" then
-        note(id, slot)
-      elseif actionType == "macro" and id then
-        local sid = GetMacroSpell(id)
-        if type(sid) == "number" then
-          note(sid, slot)
-        elseif type(sid) == "string" and sid ~= "" then
-          local text = firstKey(cmdsForSlot(slot))
-          if text then
-            map[sid] = text
-            -- Resolve name -> id when Forever/C_Spell can, so want=spellID still hits.
-            if C_Spell and C_Spell.GetSpellInfo then
-              local info = C_Spell.GetSpellInfo(sid)
-              local resolved = type(info) == "table" and info.spellID or nil
-              if resolved then map[resolved] = text end
-            end
-          end
-        end
-      end
-    end
-    -- Always keep what we found. Stay dirty only when secrets blocked a full read (retry OOC).
-    cache.map = map
-    if not sawSecret then cache.dirty = false end
-  end
-  local hit = cache.map and cache.map[want]
+  local keys = SchizzlesWarriorSetup_Keys
+  if type(keys) ~= "table" then return "" end
+  local hit = keys[want]
   if hit then return hit end
-  local name = nil
+  local name
   if C_Spell and C_Spell.GetSpellName then
     name = C_Spell.GetSpellName(want)
   end
@@ -211,7 +98,7 @@ function()
       name = info
     end
   end
-  if name and cache.map then return cache.map[name] or "" end
+  if name then return keys[name] or "" end
   return ""
 end
 ]=], spellId)
@@ -222,8 +109,7 @@ local function ApplyHotkeyLabel(data, spellId)
   data.customText = HotkeyCustomText(spellId)
   data.customTextUpdate = "update"
   data.customTextUpdateThrottle = 0.25
-  data.actions = data.actions or { start = {}, finish = {}, init = {} }
-  data.actions.init = { do_custom = true, custom = HOTKEY_INIT }
+  -- No actions.init: key map lives in SchizzlesWarriorSetup_Keys (Setup addon).
   return data
 end
 

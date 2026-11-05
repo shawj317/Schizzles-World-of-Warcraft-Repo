@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.14$") ~= nil, "pack version is v1.14 (" .. root.id .. ")")
+check(root.id:find(" v1%.15$") ~= nil, "pack version is v1.15 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -398,7 +398,7 @@ check(#badMain == 0, "HS/Cleave Main icons have own-spell queued Pixel + swing s
 check(#badQueueLeak == 0, "non-HS/Cleave Main icons have no queued Pixel / swing swirl"
   .. (#badQueueLeak > 0 and (": " .. table.concat(badQueueLeak, ", ")) or ""))
 
--- Main corner labels: dynamic keybind via %c + customText (GetActionInfo / GetBindingKey), not hard-coded priority index.
+-- Main corner labels: %c reads SchizzlesWarriorSetup_Keys (Setup addon / Bartender4).
 local badHotkey = {}
 for _, child in ipairs(mainIcons) do
   local hasC
@@ -412,41 +412,35 @@ for _, child in ipairs(mainIcons) do
     end
   end
   local ct = child.customText or ""
-  local init = child.actions and child.actions.init and child.actions.init.custom or ""
   local bareGetSpellInfo = ct:find("[^%w_%.]GetSpellInfo%s*%(", 1) or ct:find("^GetSpellInfo%s*%(", 1)
-  if not hasC or not ct:find("GetActionInfo", 1, true) or not ct:find("GetBindingKey", 1, true)
+  local hasInit = child.actions and child.actions.init and child.actions.init.do_custom
+  if not hasC or not ct:find("SchizzlesWarriorSetup_Keys", 1, true)
     or not ct:find("C_Spell", 1, true)
-    or not ct:find("BT4Button", 1, true)
-    or not ct:find("LeftButton", 1, true)
-    or not ct:find("Keybind", 1, true)
     or bareGetSpellInfo
     or child.customTextUpdate ~= "update"
-    or not (child.actions and child.actions.init and child.actions.init.do_custom)
-    or not init:find("UPDATE_BINDINGS", 1, true)
-    or not init:find("ACTIONBAR_SLOT_CHANGED", 1, true)
-    or not init:find("f.cache", 1, true) then
-    badHotkey[#badHotkey + 1] = child.id:gsub("^.- %- ", "") .. " missing dynamic hotkey lookup"
+    or hasInit then
+    badHotkey[#badHotkey + 1] = child.id:gsub("^.- %- ", "") .. " missing Setup-keys customText"
   end
 end
--- actions.init.custom must be a BODY (Musca wraps return function() .. custom .. end).
+-- No actions.init for hotkeys (Setup owns the map).
 local badInit = {}
 for _, child in ipairs(mainIcons) do
   local custom = child.actions and child.actions.init and child.actions.init.custom
-  if type(custom) == "string" and custom:match("^%s*function%s*%(") then
+  if type(custom) == "string" and custom ~= "" then
     badInit[#badInit + 1] = child.id:gsub("^.- %- ", "")
   end
 end
-check(#badInit == 0, "Main actions.init.custom is body-only (no leading function())"
+check(#badInit == 0, "Main has no hotkey actions.init (Setup owns SchizzlesWarriorSetup_Keys)"
   .. (#badInit > 0 and (": " .. table.concat(badInit, ", ")) or ""))
 
-check(#badHotkey == 0, "every Main icon labels the real keybind (%c + GetActionInfo/GetBindingKey)"
+check(#badHotkey == 0, "every Main icon labels the real keybind (%c + SchizzlesWarriorSetup_Keys)"
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
--- Harness: run one Main customText with mocked action bars / bindings (Blizzard + Bartender4).
+-- Harness: customText reads Setup global; mocked BT4-style map (spell id + name + cross-rank).
 do
   local sample
   for _, child in ipairs(mainIcons) do
-    if child.customText and child.customText:find("GetActionInfo", 1, true) then
+    if child.customText and child.customText:find("SchizzlesWarriorSetup_Keys", 1, true) then
       sample = child
       break
     end
@@ -455,41 +449,17 @@ do
   if sample then
     local want = tonumber(sample.customText:match("local want = (%d+)"))
     check(want ~= nil, "hotkey harness parsed want spell id")
-
-    local function runLookup(actions, bindings, spells)
+    local function run(keys, spells)
       local env = {
-        _G = {},
+        SchizzlesWarriorSetup_Keys = keys,
+        type = type, tostring = tostring, pairs = pairs,
         C_Spell = {
-          GetSpellName = function(id)
-            if type(id) == "number" then return spells[id] end
-          end,
+          GetSpellName = function(id) return spells[id] end,
           GetSpellInfo = function(id)
-            if type(id) == "number" and spells[id] then
-              return { name = spells[id], spellID = id }
-            end
-            if type(id) == "string" then
-              for sid, name in pairs(spells) do
-                if name == id then return { name = name, spellID = sid } end
-              end
-            end
+            if spells[id] then return { name = spells[id], spellID = id } end
           end,
         },
-        GetActionInfo = function(slot)
-          local a = actions[slot]
-          if not a then return nil end
-          return a[1], a[2]
-        end,
-        GetMacroSpell = function() return nil end,
-        GetBindingKey = function(cmd) return bindings[cmd] end,
-        GetBindingText = function(key) return key end,
-        issecretvalue = function() return false end,
       }
-      env._G = env
-      local frame = { cache = { dirty = true } }
-      env.SchizzleWA_HotkeyFrame = frame
-      env.SchizzleWA_Hotkeys = frame.cache
-      env._G.SchizzleWA_HotkeyFrame = frame
-      env._G.SchizzleWA_Hotkeys = frame.cache
       local fn, err = loadstring("return " .. sample.customText, "hotkey")
       assert(fn, err)
       setfenv(fn, env)
@@ -497,46 +467,13 @@ do
       setfenv(body, env)
       return body()
     end
-
-    -- Blizzard-style: MULTIACTIONBAR3BUTTON1 = Q, spell on slot 25 (bar 3 button 1).
-    local blizzard = runLookup(
-      { [25] = { "spell", want } },
-      { ["MULTIACTIONBAR3BUTTON1"] = "Q" },
-      { [want] = "TestSpell", [want + 1] = "TestSpell" }
-    )
-    check(blizzard == "Q", "hotkey harness Blizzard MULTIACTIONBAR3 -> Q (got " .. tostring(blizzard) .. ")")
-
-    -- Cross-rank: bar has want+1, label still resolves via spell name.
-    local rank = runLookup(
-      { [25] = { "spell", want + 1 } },
-      { ["MULTIACTIONBAR3BUTTON1"] = "E" },
-      { [want] = "TestSpell", [want + 1] = "TestSpell" }
-    )
-    check(rank == "E", "hotkey harness cross-rank by name -> E (got " .. tostring(rank) .. ")")
-
-    -- Bartender4 bar 2: CLICK BT4Button13:Keybind = SHIFT-Q (no Blizzard bind).
-    local bt4 = runLookup(
-      { [13] = { "spell", want } },
-      { ["CLICK BT4Button13:Keybind"] = "SHIFT-Q" },
-      { [want] = "TestSpell" }
-    )
-    check(bt4 == "SHIFT-Q", "hotkey harness BT4 Keybind -> SHIFT-Q (got " .. tostring(bt4) .. ")")
-
-    -- Older Bartender4 LeftButton fallback when Keybind is empty.
-    local left = runLookup(
-      { [13] = { "spell", want } },
-      { ["CLICK BT4Button13:LeftButton"] = "SHIFT-E" },
-      { [want] = "TestSpell" }
-    )
-    check(left == "SHIFT-E", "hotkey harness BT4 LeftButton -> SHIFT-E (got " .. tostring(left) .. ")")
-
-    -- Bar 1 Blizzard ACTIONBUTTON still works alongside BT4 candidates.
-    local bar1 = runLookup(
-      { [1] = { "spell", want } },
-      { ["ACTIONBUTTON1"] = "1" },
-      { [want] = "TestSpell" }
-    )
-    check(bar1 == "1", "hotkey harness ACTIONBUTTON1 -> 1 (got " .. tostring(bar1) .. ")")
+    local spells = { [want] = "Heroic Strike", [want + 1] = "Heroic Strike" }
+    check(run({ [want] = "2" }, spells) == "2", "hotkey harness Setup map by spell id -> 2")
+    check(run({ ["Heroic Strike"] = "s-Q" }, spells) == "s-Q", "hotkey harness Setup map by name -> s-Q")
+    check(run({}, spells) == "", "hotkey harness empty Setup map -> blank")
+    -- Why middle icon alone could show '2': only that spell id was in the old ACTIONBUTTON map.
+    check(run({ [want] = "2", ["Rend"] = "Q" }, { [want] = "Heroic Strike", [772] = "Rend" }) == "2",
+      "hotkey harness id wins over unrelated names")
   end
 end
 

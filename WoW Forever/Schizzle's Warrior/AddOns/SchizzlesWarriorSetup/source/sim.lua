@@ -77,6 +77,18 @@ _G.C_GuildInfo = { IsGuildReputationEnabled = function() return env.guildRep end
 _G.IsInGuild = function() return env.inGuild end
 _G.GetGuildInfo = function() return env.inGuild and "Guild" or nil end
 _G.issecretvalue = function(v) return v == "secret" end
+_G.wipe = function(t) for k in pairs(t) do t[k] = nil end; return t end
+_G.RANGE_INDICATOR = "●"
+_G.GetActionInfo = function() return nil end
+_G.GetMacroSpell = function() return nil end
+_G.GetBindingText = function(k) return k end
+_G.pcall = pcall
+_G.LibStub = function() return nil end
+_G.tostring = tostring
+_G.type = type
+_G.pairs = pairs
+_G.ipairs = ipairs
+_G.table = table
 
 -- Addons the helper talks to.
 local bt = { profile = {}, ns = {} }
@@ -90,7 +102,7 @@ _G.Details = { ImportProfile = function(_, s, name, autorun, prompt, over) impor
 _G.Prat3DB, _G.QuestieConfig, _G.GatherMate2DB, _G.SexyMap2DB = {}, {}, {}, {}
 
 local ns = {}
-for _, file in ipairs({ "Data.lua", "Core.lua", "Tray.lua" }) do
+for _, file in ipairs({ "Data.lua", "Core.lua", "Keys.lua", "Tray.lua" }) do
 	assert(loadfile("../SchizzlesWarriorSetup/" .. file))("SchizzlesWarriorSetup", ns)
 end
 
@@ -108,7 +120,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.6", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.7", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -222,6 +234,68 @@ ns.pieces.map.run()
 check(_G.SexyMap2DB["First Last"] == "global", "SexyMap regional: plain First Last key points at global")
 check(_G.SexyMap2DB["First Last-PvE"] == "global", "SexyMap regional: First Last-PvE key kept for older SexyMap")
 _G.RegionalUniqueNamesEnabled = function() return false end
+
+-- Key map: Bartender4 BT4Button primary (action + HotKey / CLICK binds).
+do
+	local actions, bindings = {}, {}
+	_G.GetActionInfo = function(slot)
+		local a = actions[slot]
+		if a then return a[1], a[2] end
+	end
+	_G.GetBindingKey = function(cmd) return bindings[cmd] end
+	_G.C_Spell = {
+		GetSpellName = function(id)
+			local names = { [78] = "Heroic Strike", [772] = "Rend", [6343] = "Thunder Clap", [100] = "Charge" }
+			return names[id]
+		end,
+		GetSpellInfo = function(id)
+			local n = _G.C_Spell.GetSpellName(id)
+			if n then return { name = n, spellID = id } end
+		end,
+	}
+	-- Mock BT4 buttons: bar1 slot2 = HS (ACTIONBUTTON2=2), bar3 slot25 = Rend (CLICK + HotKey),
+	-- bar3 slot26 = Thunder Clap via MULTIACTIONBAR3, bar1 no Charge — Charge on BT4Button27 HotKey only.
+	local function mkbtn(i, action, hot)
+		local b = widget()
+		b._state_action = action
+		b.action = action
+		b.GetName = function() return "BT4Button" .. i end
+		b.GetAttribute = function(_, k) if k == "action" then return action end end
+		b.HotKey = { GetText = function() return hot end }
+		_G["BT4Button" .. i] = b
+		return b
+	end
+	mkbtn(2, 2, "2")
+	actions[2] = { "spell", 78 }
+	bindings["ACTIONBUTTON2"] = "2"
+	mkbtn(25, 25, "Q")
+	actions[25] = { "spell", 772 }
+	bindings["CLICK BT4Button25:Keybind"] = "Q"
+	mkbtn(26, 26, "●")  -- range indicator must be ignored; bind supplies E
+	actions[26] = { "spell", 6343 }
+	bindings["MULTIACTIONBAR3BUTTON2"] = "E"
+	mkbtn(27, 27, "R")  -- HotKey-only (no GetBindingKey)
+	actions[27] = { "spell", 100 }
+
+	local map = ns.rebuildKeys()
+	check(_G.SchizzlesWarriorSetup_Keys[78] == "2", "keys: Heroic Strike from BT4Button2/ACTIONBUTTON2")
+	check(_G.SchizzlesWarriorSetup_Keys["Heroic Strike"] == "2", "keys: Heroic Strike by name")
+	check(_G.SchizzlesWarriorSetup_Keys[772] == "Q" or _G.SchizzlesWarriorSetup_Keys["Rend"] == "Q",
+		"keys: Rend from BT4 CLICK Keybind (got " .. tostring(_G.SchizzlesWarriorSetup_Keys[772] or _G.SchizzlesWarriorSetup_Keys["Rend"]) .. ")")
+	check(_G.SchizzlesWarriorSetup_Keys[6343] == "E" or _G.SchizzlesWarriorSetup_Keys["Thunder Clap"] == "E",
+		"keys: Thunder Clap from MULTIACTIONBAR3 (ignore HotKey ●)")
+	check(_G.SchizzlesWarriorSetup_Keys[100] == "R" or _G.SchizzlesWarriorSetup_Keys["Charge"] == "R",
+		"keys: Charge from BT4 HotKey text when bind empty")
+	-- Shorten helper
+	check(ns.keysShorten("SHIFT-Q") == "s-Q", "keys: shorten SHIFT-Q")
+	check(ns.keysShorten("CTRL-BUTTON4") == "c-M4", "keys: shorten CTRL-BUTTON4")
+	-- /schizzle keys runs diagnose without error
+	chat = {}
+	_G.SlashCmdList.SCHIZZLE("keys")
+	local keyed = false
+	for _, m in ipairs(chat) do if m:find("keybind diagnose", 1, true) then keyed = true end end
+	check(keyed, "/schizzle keys prints diagnose header")
+end
 
 print(fails == 0 and "all checks passed" or (fails .. " check(s) failed"))
 os.exit(fails == 0 and 0 or 1)
