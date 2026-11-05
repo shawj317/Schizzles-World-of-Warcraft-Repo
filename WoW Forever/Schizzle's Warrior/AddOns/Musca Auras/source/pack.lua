@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.2"
+local VERSION = "1.3"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -29,7 +29,7 @@ return Pack.Build({
   -- The group's centre sits at 0,-55 from the middle of the screen. Every row below is measured from there and stays
   -- inside the HUD box (170 px either side, 180 px below to 160 px above the group's centre).
   x = 0, y = -55,
-  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26, nextSwing = 8 },
+  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26 },
   -- At most 10 icons per aura row: 10 x 30 px with 3 px gaps is 327 px, inside the 340 px box.
   rowLimit = 10,
   reminderSize = 24,
@@ -72,18 +72,14 @@ return Pack.Build({
     } },
   },
 
-  -- Lights up the moment it can be used, with a glow and a sound.
+  -- Lights up the moment it can be used, with a glow and a sound. Queued Heroic Strike / Cleave sit here too:
+  -- Pixel glow (same as Battle Shout) plus a radial main-hand swing timer on the icon while queued.
+  -- Spell IDs are rank-1; Queued Action resolves the name so every rank matches (HS 78..25286, Cleave 845..20569).
   procs = {
     { name = "Overpower", usable = 7384, form = 1, sound = SOUND .. "WaterDrop.ogg" },
     { name = "Revenge", usable = 6572, form = 2, sound = SOUND .. "WaterDrop.ogg" },
     { name = "Execute", usable = 5308, sound = SOUND .. "RobotBlip.ogg" },
     { name = "Victory Rush", usable = 402927, sound = SOUND .. "WaterDrop.ogg" },
-  },
-
-  -- On-next-swing dump: lights with a glow and "NEXT SWING" while Heroic Strike or Cleave is queued.
-  -- Spell IDs are the rank-1 IDs; Queued Action resolves the name so every rank matches.
-  -- Confirmed on Forever build 1.60.1.70755: Heroic Strike 78..25286, Cleave 845..20569.
-  nextSwing = {
     { name = "Heroic Strike", queued = 78 },
     { name = "Cleave", queued = 845 },
   },
@@ -111,7 +107,7 @@ return Pack.Build({
 
   -- Your buffs while they are up; the last 3 seconds blink red.
   buffs = {
-    { name = "Battle Shout", aura = battleShout },
+    { name = "Battle Shout", aura = battleShout, remaining = true },
     { name = "Enrage", aura = { 12880 }, known = 12317 },
     { name = "Flurry", aura = { 12966 }, known = 12319 },
     { name = "Blood Craze", aura = { 16488 }, known = 16487 },

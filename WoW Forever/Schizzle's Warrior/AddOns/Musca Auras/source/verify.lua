@@ -219,30 +219,104 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.2$") ~= nil, "pack version is v1.2 (" .. root.id .. ")")
--- Next-swing dump: Queued Action by name (all ranks), glow, and NEXT SWING label near the priority lane.
-local queued = {}
-for _, child in ipairs(transmit.c) do
-  if child.parent and child.parent:find(" %- Next Swing$") and child.regionType == "icon" then
-    queued[#queued + 1] = child
-    local trigger = child.triggers[1] and child.triggers[1].trigger
-    check(trigger and trigger.event == "Queued Action" and trigger.use_exact_spellName == false,
-      child.id .. ": Queued Action by spell name (every rank)")
-    -- The hidden test Musca builds is C_Spell.IsCurrentSpell(spellname); keep that contract.
-    local hasGlow, hasLabel = false, false
-    for _, sub in ipairs(child.subRegions or {}) do
-      if sub.type == "subglow" and sub.glow then hasGlow = true end
-      if sub.type == "subtext" and sub.text_text == "NEXT SWING" then hasLabel = true end
-    end
-    check(hasGlow and hasLabel, child.id .. ": pixel glow and NEXT SWING label")
-  end
-end
-check(#queued == 2, "Next Swing holds Heroic Strike and Cleave (" .. #queued .. ")")
+check(root.id:find(" v1%.3$") ~= nil, "pack version is v1.3 (" .. root.id .. ")")
+
+-- No Next Swing row (removed in v1.3): HS/Cleave live in Procs.
 local nextGroup
 for _, child in ipairs(transmit.c) do
   if child.id:find(" %- Next Swing$") then nextGroup = child end
 end
-check(nextGroup and nextGroup.yOffset == 8, "Next Swing sits at group-relative y=8 (near the priority lane at 0,-55)")
+check(nextGroup == nil, "Next Swing group is gone")
+
+-- Pixel GLOW settings that Battle Shout uses while active (moving border).
+local function pixelGlow(sub)
+  return sub.type == "subglow" and sub.glow and sub.glowType == "Pixel"
+    and sub.glowLines == 8 and sub.glowFrequency == 0.25 and sub.glowLength == 10
+    and sub.glowThickness == 1 and sub.useGlowColor == false
+end
+local battleShout
+for _, child in ipairs(transmit.c) do
+  if child.id:find(" %- Battle Shout$") and child.parent and child.parent:find(" %- Effects$") then
+    battleShout = child
+  end
+end
+check(battleShout ~= nil, "Battle Shout buff icon is in Effects")
+local shoutGlow
+for _, sub in ipairs(battleShout.subRegions or {}) do
+  if pixelGlow(sub) then shoutGlow = sub break end
+end
+check(shoutGlow ~= nil, "Battle Shout has Pixel moving-border glow")
+-- Remaining-time countdown on Battle Shout (%p, timed).
+local hasRemaining = false
+for _, sub in ipairs(battleShout.subRegions or {}) do
+  if sub.type == "subtext" and sub.text_text == "%p"
+    and sub.text_text_format_p_format == "timed" then
+    hasRemaining = true
+  end
+  check(not (sub.type == "subtext" and sub.text_text == "NEXT SWING"), "no NEXT SWING text anywhere")
+end
+check(hasRemaining, "Battle Shout shows remaining-time text (%p timed)")
+check(battleShout.cooldown == true and battleShout.cooldownSwipe ~= false,
+  "Battle Shout keeps cooldown swipe for the radial duration")
+
+-- Queued HS/Cleave in Procs: Queued Action visibility + Swing Timer progress + same Pixel glow.
+local queued = {}
+for _, child in ipairs(transmit.c) do
+  if child.parent and child.parent:find(" %- Procs$") and child.regionType == "icon"
+    and (child.id:find(" %- Heroic Strike$") or child.id:find(" %- Cleave$")) then
+    queued[#queued + 1] = child
+    local t1 = child.triggers[1] and child.triggers[1].trigger
+    local t2 = child.triggers[2] and child.triggers[2].trigger
+    check(t1 and t1.event == "Queued Action" and t1.use_exact_spellName == false,
+      child.id .. ": Queued Action by spell name (every rank)")
+    check(t2 and t2.event == "Swing Timer" and (t2.hand == "main" or t2.hand == 0 or t2.swingType == 0),
+      child.id .. ": Swing Timer (main hand) as second trigger")
+    check(child.triggers.disjunctive == "expression" and child.triggers.triggerExpression == "1",
+      child.id .. ": visible only when Queued Action (expression 1)")
+    check(child.progressSource and child.progressSource[1] == 2
+      and child.progressSource[2] == "expirationTime",
+      child.id .. ": progressSource from Swing Timer (trigger 2)")
+    check(child.cooldown == true and child.cooldownSwipe ~= false,
+      child.id .. ": cooldown swipe (radial swing timer)")
+    local hasGlow, hasNextLabel = false, false
+    for _, sub in ipairs(child.subRegions or {}) do
+      if pixelGlow(sub) then hasGlow = true end
+      if sub.type == "subtext" and sub.text_text == "NEXT SWING" then hasNextLabel = true end
+    end
+    check(hasGlow, child.id .. ": Pixel glow matches Battle Shout")
+    check(not hasNextLabel, child.id .. ": no NEXT SWING text (subtle)")
+  end
+end
+check(#queued == 2, "Procs holds queued Heroic Strike and Cleave (" .. #queued .. ")")
+
+-- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).
+-- Rage colour steps intentionally stack on the Resource bar; Reminders (OOC) and Range (combat) share the top band by design.
+local function ignoreOverlap(a, b)
+  local an, bn = a.id, b.id
+  if an:find("Rage step") or bn:find("Rage step") then return true end
+  if (an:find(" %- Reminders$") and bn:find(" %- Range$"))
+    or (an:find(" %- Range$") and bn:find(" %- Reminders$")) then
+    return true
+  end
+  return false
+end
+local overlaps = {}
+for i = 1, #rows do
+  local a = place(rows[i])
+  for j = i + 1, #rows do
+    if not ignoreOverlap(rows[i], rows[j]) then
+      local b = place(rows[j])
+      local xOverlap = a.left < b.right and a.right > b.left
+      local yOverlap = a.bottom < b.top and a.top > b.bottom
+      if xOverlap and yOverlap then
+        overlaps[#overlaps + 1] = rows[i].id:gsub("^.- %- ", "") .. " x " .. rows[j].id:gsub("^.- %- ", "")
+      end
+    end
+  end
+end
+check(#overlaps == 0, "no overlapping row boxes" ..
+  (#overlaps > 0 and (": " .. table.concat(overlaps, ", ")) or ""))
+
 local rageBar
 for _, child in ipairs(transmit.c) do
   if child.regionType == "aurabar" and child.id:find(" %- Rage$") then rageBar = child end

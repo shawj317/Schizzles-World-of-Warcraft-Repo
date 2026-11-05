@@ -61,6 +61,19 @@ local function Text(text, point, size)
   }
 end
 
+-- Countdown on an icon (Battle Shout remaining, etc.). Built-in timed format: 1:45 | 45 | 5.
+-- On secretAura, Musca binds %p through the native duration text; if Forever secrets the value in combat
+-- the text stays blank rather than erroring.
+local function RemainingText(point, size)
+  local text = Text("%p", point or "INNER_BOTTOM", size or 11)
+  text.text_text_format_p_format = "timed"
+  text.text_text_format_p_time_format = 0
+  text.text_text_format_p_time_precision = 1
+  text.text_text_format_p_time_dynamic_threshold = 60
+  text.text_text_format_p_time_legacy_floor = false
+  return text
+end
+
 local function Animation()
   local step = { duration_type = "seconds", easeStrength = 3, easeType = "none", type = "none" }
   return { start = step, main = step, finish = step }
@@ -203,6 +216,14 @@ function Pack.Build(spec)
       triggers[2] = { trigger = options.fallback, untrigger = {} }
       triggers.disjunctive, triggers.activeTriggerMode = "any", 1
     end
+    -- Second trigger supplies progress (cooldown swirl) only; expression "1" keeps visibility on trigger 1.
+    if options.progressTrigger then
+      assert(not options.fallback and #required == 0,
+        id .. ": progressTrigger cannot combine with gate, form, pet, rest, offhand or fallback")
+      triggers[2] = { trigger = options.progressTrigger, untrigger = {} }
+      triggers.disjunctive, triggers.activeTriggerMode = "expression", 1
+      triggers.triggerExpression = "1"
+    end
     for index, extra in ipairs(required) do triggers[index + 1] = { trigger = extra, untrigger = {} } end
     if #required > 0 then triggers.disjunctive, triggers.activeTriggerMode = "all", 1 end
     if trigger.type == "secretAura" and #required > 0 then triggers.secretFallback = "none" end
@@ -327,8 +348,12 @@ function Pack.Build(spec)
     local data = Base(name .. " - " .. label, nil, "icon", trigger, options)
     data.width, data.height, data.keepAspectRatio = options.size[1], options.size[2], true
     data.iconSource, data.displayIcon = -1, options.texture
-    data.cooldown, data.cooldownTextDisabled = true, true
+    data.cooldown, data.cooldownTextDisabled, data.cooldownSwipe = true, true, true
     data.desaturate, data.color, data.zoom = false, {1, 1, 1, 1}, 0.3
+    if options.progressTrigger then
+      -- Dynamic info from trigger 2 (Swing Timer): radial countdown over the icon.
+      data.progressSource = { 2, "expirationTime" }
+    end
     return Add(holder, data)
   end
 
@@ -350,7 +375,8 @@ function Pack.Build(spec)
 
   local function AuraIcon(holder, label, entry, unit, kind, noGlow)
     local subRegions = {}
-    if entry.stacks then subRegions[1] = Text("%s", "INNER_BOTTOMRIGHT", 12) end
+    if entry.stacks then subRegions[#subRegions + 1] = Text("%s", "INNER_BOTTOMRIGHT", 12) end
+    if entry.remaining then subRegions[#subRegions + 1] = RemainingText("INNER_BOTTOM", 11) end
     local options = Requirements(entry, { size = SIZES.aura, subRegions = subRegions, missing = entry.missing,
       glow = not noGlow and entry.glow })
     -- A flash aura (a proc) blinks only when asked: it is spent before it expires.
@@ -458,23 +484,13 @@ function Pack.Build(spec)
         data.actions.start = { do_sound = true, sound = entry.sound, sound_channel = "Master" }
       end
     elseif entry.queued then
-      -- Kept for older pack tables; prefer spec.nextSwing (glow + NEXT SWING label).
+      -- Queued Action by name (all ranks) for visibility; Swing Timer (main hand) as trigger 2 for the
+      -- radial cooldown swirl. Pixel GLOW matches Battle Shout's moving border. No extra text.
+      local swing = { type = "unit", event = "Swing Timer", hand = "main", use_hand = true }
       Icon(procs, entry.name, Generic({ type = "spell", event = "Queued Action", spellName = entry.queued,
-        use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.queued }))
+        use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.queued,
+        subRegions = { GLOW }, progressTrigger = Generic(swing) }))
     end
-  end
-
-  -- Queued on-next-swing abilities (Heroic Strike / Cleave). Musca's Queued Action trigger calls
-  -- C_Spell.IsCurrentSpell with the spell name (use_exact_spellName = false), so every rank matches and the
-  -- icon clears when the swing fires. Sits at layout.nextSwing (default 8), just above the priority lane,
-  -- without overlapping the lane icons Below the rage bar.
-  local nextSwing = Group("Next Swing", "dynamicgroup", Y("nextSwing", 8))
-  for _, entry in ipairs(spec.nextSwing or {}) do
-    local label = Text("NEXT SWING", "OUTER_BOTTOM", 9)
-    label.text_color = {1, 0.82, 0, 1}
-    Icon(nextSwing, entry.name, Generic({ type = "spell", event = "Queued Action", spellName = entry.queued,
-      use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.queued,
-      subRegions = { GLOW, label } }))
   end
 
   -- Target debuffs and the stance share one row, your own buffs get the row above it. Each row is capped
