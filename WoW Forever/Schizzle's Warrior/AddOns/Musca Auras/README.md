@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.19` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.20` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.11 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.12 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -106,6 +106,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.20 | Effects Battle Shout: drop Own-Only filter + keybind so icon shows while buff is up |
 | 1.19 | Missing Battle Shout Label: no subtext keybind (Musca rejects subtext on text auras) |
 | 1.18 | Utility tray keybinds INNER_TOPLEFT (match Main); was OUTER sitting in gap above icons |
 | 1.17 | Level-10 Arms keeps HS/TC; rage bar default Y 20; Utility tray keybinds OUTER_TOPLEFT + baked names |

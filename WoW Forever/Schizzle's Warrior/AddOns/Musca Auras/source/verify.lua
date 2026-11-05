@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.19$") ~= nil, "pack version is v1.19 (" .. root.id .. ")")
+check(root.id:find(" v1%.20$") ~= nil, "pack version is v1.20 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -331,6 +331,27 @@ for _, sub in ipairs(battleShout.subRegions or {}) do
   check(not (sub.type == "subtext" and sub.text_text == "NEXT SWING"), "no NEXT SWING text anywhere")
 end
 check(hasRemaining, "Battle Shout shows remaining-time text (%p timed)")
+if battleShout then
+  local t1 = battleShout.triggers[1] and battleShout.triggers[1].trigger
+  check(t1 and t1.type == "secretAura" and t1.secretShowOn == "showOnActive",
+    "Effects Battle Shout uses secretAura showOnActive")
+  check(t1 and t1.unit == "player" and t1.debuffType == "HELPFUL",
+    "Effects Battle Shout watches HELPFUL on player")
+  local nf = t1 and t1.nativeFilters
+  check(nf == nil or (type(nf) == "table" and nf.PLAYER == nil),
+    "Effects Battle Shout has no PLAYER/Own-Only nativeFilter (Forever raid-buff tag)")
+  local hasC
+  for _, sub in ipairs(battleShout.subRegions or {}) do
+    if sub.type == "subtext" and sub.text_text == "%c" then hasC = true end
+  end
+  check(not hasC, "Effects Battle Shout has no keybind %c subtext")
+  local ct = battleShout.customText
+  check(ct == nil or ct == "", "Effects Battle Shout has no hotkey customText")
+  local ids = t1 and t1.auraspellids or {}
+  local has6673
+  for _, id in ipairs(ids) do if tonumber(id) == 6673 then has6673 = true end end
+  check(has6673, "Effects Battle Shout auraspellids include 6673")
+end
 
 -- Main HS / Cleave icons only: Queued Action for THAT spell + Swing Timer, Pixel glow + swirl
 -- when IsCurrentSpell matches. Other Main icons must not inherit the queue border.
@@ -442,9 +463,8 @@ local trayNames = { Bloodrage = true, Charge = true, ["Blood Fury"] = true }
 for _, child in ipairs(transmit.c) do
   local id = child.id or ""
   local short = id:match(" %- ([^%-]+)$") or id
-  -- Missing Battle Shout is a text Label — no %c subtext (Musca rejects it).
+  -- Missing / Effects Battle Shout: no keybind subtext. Utility/Procs/tray keep %c.
   local want = id:find(" %- Utility %- ") or id:find(" %- Procs %- ")
-    or id:find(" %- Battle Shout$")
     or id:find(" %- Bloodrage$") or id:find(" %- Charge$") or id:find(" %- Blood Fury$")
     or id:find("Track Minerals")
   if want and child.regionType == "icon" then
@@ -466,7 +486,7 @@ for _, child in ipairs(transmit.c) do
     end
   end
 end
-check(#badExtraHotkey == 0, "Utility/Procs/Battle Shout/Bloodrage icons label keybinds"
+check(#badExtraHotkey == 0, "Utility/Procs/Bloodrage/tray icons label keybinds"
   .. (#badExtraHotkey > 0 and (": " .. table.concat(badExtraHotkey, ", ")) or ""))
 check(#badTrayAnchor == 0, "Utility tray keybinds use INNER_TOPLEFT (match Main priority row)"
   .. (#badTrayAnchor > 0 and (": " .. table.concat(badTrayAnchor, ", ")) or ""))

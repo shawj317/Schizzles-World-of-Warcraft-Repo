@@ -479,7 +479,14 @@ function Pack.Build(spec)
       return data
     end
     local trigger = AuraTrigger(entry.aura, entry.missing and "showAlways" or "showOnActive", unit, kind)
-    if kind == "HARMFUL" and (unit or "player") == "player" then trigger.nativeFilters = nil end
+    -- Forever secretAura "Own Only" (PLAYER) often fails to tag raid buffs like Battle Shout;
+    -- Missing Battle Shout already clears filters and sees the buff. HELPFUL on player: match
+    -- any caster so the Effects icon shows whenever the buff is on you.
+    if (unit or "player") == "player" and (kind or "HELPFUL") == "HELPFUL" then
+      trigger.nativeFilters = nil
+    elseif kind == "HARMFUL" and (unit or "player") == "player" then
+      trigger.nativeFilters = nil
+    end
     local data = Icon(holder, label, trigger, options)
     if keySpell then ApplyHotkeyLabel(data, keySpell, entry.name or label) end
     return data

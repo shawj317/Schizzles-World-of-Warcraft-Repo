@@ -7,7 +7,8 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.19"
+local VERSION = "1.20"
+-- Forever SkillLineAbility currently trains only 6673; classic ranks kept for Musca SecretAuraRanks.
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -114,7 +115,9 @@ return Pack.Build({
 
   -- Your buffs while they are up; the last 3 seconds blink red.
   buffs = {
-    { name = "Battle Shout", aura = battleShout, remaining = true, spell = 6673 },
+    -- No spell=/keybind on Effects Battle Shout: customText+%c was unique among buffs and
+    -- Own-Only filter already hid the icon; remaining time stays. Keys still show on Main/Utility.
+    { name = "Battle Shout", aura = battleShout, remaining = true },
     { name = "Enrage", aura = { 12880 }, known = 12317 },
     { name = "Flurry", aura = { 12966 }, known = 12319 },
     { name = "Blood Craze", aura = { 16488 }, known = 16487 },
