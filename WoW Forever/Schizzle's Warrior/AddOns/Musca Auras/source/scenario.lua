@@ -40,6 +40,15 @@ return function(test)
     if type(id) == "number" then return "Spell" .. id end
     return id
   end
+  _G.C_Spell = _G.C_Spell or {}
+  _G.C_Spell.GetSpellName = _G.C_Spell.GetSpellName or function(id)
+    if type(id) == "number" then return "Spell" .. id end
+    return id
+  end
+  _G.C_Spell.GetSpellInfo = _G.C_Spell.GetSpellInfo or function(id)
+    if type(id) == "number" then return { name = "Spell" .. id, spellID = id } end
+    if type(id) == "string" then return { name = id } end
+  end
 
   -- Full VerificationPack Validate rejects %c on secretAura (Main Sunder/Demo/Thunder Clap hotkey labels).
   -- Those labels are intentional for the kit; load the pack the same way, then skip only the secretAura
@@ -161,7 +170,8 @@ return function(test)
   end
   Units.SetCombat(false)
 
-  -- Main Rend v1.11: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
+  -- Main Rend v1.12: always visible (CD primary); greys via Spell Cast Succeeded companion while
+  -- the self-timer runs for the current target (Forever-safe; aura2 cannot see target debuffs in combat).
   for id in pairs(signature) do known[id] = nil end
   known[12294] = true
   Units.Get("player").level = 60
@@ -171,35 +181,33 @@ return function(test)
   local rendData = WeakAuras.GetData(armsRend)
   assert(rendData, "Arms Rend aura missing: " .. armsRend)
   assert(rendData.desaturate == false, "Main Rend default desaturate must be false")
-  local auraTrig
+  local t1 = rendData.triggers[1] and rendData.triggers[1].trigger
+  local t2 = rendData.triggers[2] and rendData.triggers[2].trigger
+  assert(t1 and t1.event == "Cooldown Progress (Spell)", "Main Rend primary must be Cooldown Progress")
+  assert(t2 and t2.event == "Spell Cast Succeeded", "Main Rend companion must be Spell Cast Succeeded")
+  assert(t2.use_hideOnTargetDeath and t2.use_hideOnTargetChange, "Main Rend cast trigger hides on target death/change")
+  assert(rendData.triggers.triggerExpression == "1", "Main Rend visibility stays on trigger 1")
   for i, entry in ipairs(rendData.triggers) do
     local tr = entry.trigger
-    if tr and tr.type == "aura2" and tr.auranames and tr.auranames[1] == "Rend" then auraTrig = i end
+    assert(not (tr and tr.type == "aura2" and tr.unit == "target"),
+      "Main Rend must not use aura2 on target (secret in combat on Forever)")
   end
-  assert(auraTrig, "Main Rend needs aura2 by name Rend")
-  assert(auraTrig == 1, "Main Rend aura2 must be primary trigger")
-  for i, entry in ipairs(rendData.triggers) do
-    local tr = entry.trigger
-    assert(not (tr and tr.event == "Cooldown Progress (Spell)"),
-      "Main Rend must not use Cooldown Progress (Forever secret desat)")
-  end
-  local target = Units.Get("target")
-  assert(target, "harness needs a target unit")
-  target.auras = {}
-  Frames.Fire("UNIT_AURA", "target", { isFullUpdate = true })
-  test.Environment.Advance(0.3)
   local region = WeakAuras.GetRegion(armsRend)
   assert(region, "Arms Rend region missing")
-  assert(region.desaturateWanted ~= true, "Main Rend must be saturated when Rend is missing")
-  local applied = Units.ApplyAura("target", {
-    name = "Rend", spellId = 772, duration = 21, isHarmful = true,
-    sourceUnit = "player", canApplyAura = true,
-  })
+  assert(region.desaturateWanted ~= true, "Main Rend must be saturated before cast")
+  -- Forever recipe: cast succeeded starts the fixed timer → desaturate.
+  Frames.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "castguid-rend", 772)
   test.Environment.Advance(0.3)
-  assert(region.desaturateWanted == true, "Main Rend must desaturate when own Rend is on the target")
-  Units.RemoveAura("target", applied)
-  Frames.Fire("UNIT_AURA", "target", { isFullUpdate = true })
+  assert(region.desaturateWanted == true, "Main Rend must desaturate after Rend cast succeeded")
+  -- Clearing / changing target ends the companion timer → saturate again.
+  Frames.Fire("PLAYER_TARGET_CHANGED")
   test.Environment.Advance(0.3)
-  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when Rend drops")
-  print("ok   Main Rend desaturates only while own Rend is on the target")
+  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when target changes")
+  -- Cast again, then let the Hide After duration expire.
+  Frames.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "castguid-rend2", 772)
+  test.Environment.Advance(0.3)
+  assert(region.desaturateWanted == true, "Main Rend greys again after recast")
+  test.Environment.Advance(21.5)
+  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when the cast timer expires")
+  print("ok   Main Rend always shows; greys via Spell Cast Succeeded self-timer")
 end

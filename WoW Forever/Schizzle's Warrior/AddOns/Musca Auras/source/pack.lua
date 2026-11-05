@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.11"
+local VERSION = "1.12"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -121,8 +121,9 @@ return Pack.Build({
     { name = "Retaliation (active)", aura = { 20230 } },
   },
 
-  -- Your debuffs on the target, with their time left. Main Rend desaturates while your Rend is on the target
-  -- (v1.11); the Target-row Rend tracker stays removed. Pack unloads in the six classic capitals.
+  -- Your debuffs on the target, with their time left. Main Rend (v1.12) always shows; greys via Spell Cast
+  -- Succeeded self-timer while your Rend is up on the current target (Forever-safe; aura2 cannot see
+  -- target debuffs in combat). Target-row Rend tracker stays removed. Pack unloads in classic capitals.
   debuffs = {
     { name = "Sunder Armor", aura = sunder, stacks = true },
     { name = "Thunder Clap", aura = thunderClap },

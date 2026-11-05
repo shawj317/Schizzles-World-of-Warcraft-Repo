@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.11` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.12` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.3 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.4 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -46,7 +46,7 @@ The lane loads from the talent tree with the most points spent, from level 10. B
 | Fury | Bloodthirst, Whirlwind, Execute, Victory Rush, Slam, Rend | Whirlwind in Berserker; Rend in Battle or Defensive |
 | Protection | Shield Slam, Revenge, Sunder Armor, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush | Revenge and Shield Block in Defensive, Thunder Clap in Battle |
 
-Rend, Sunder Armor, Demoralizing Shout and Thunder Clap in a lane show time left on the target and glow while they're missing (or, for Rend, while it's due a refresh).
+Sunder Armor, Demoralizing Shout and Thunder Clap in a lane track the target debuff. Main Rend always shows; it greys while your Rend self-timer is running on the current target (Spell Cast Succeeded — Forever cannot read target debuffs in combat).
 
 ## Rage colours
 | Rage | Colour | Meaning |
@@ -66,7 +66,8 @@ The grey mark is a condition on the bar. The bronze and ember steps are copies o
 | Execute lights up | robot blip | target under 20%: Execute is your top button |
 | Victory Rush lights up | water drop | you got a killing blow: free heal and damage |
 | Priority icons glow + swing swirl | none | Heroic Strike or Cleave is queued on your next swing; press it again to cancel if you need the rage |
-| A lane icon glows | none | that debuff is missing from the target (or Rend is due a refresh) |
+| A lane icon glows | none | that debuff is missing from the target |
+| Main Rend is grey | none | you recently landed Rend on the current target (self-timer) |
 | A buff blinks red | none | it runs out in 3 seconds |
 | Missing Battle Shout | none | out of combat: shout before the pull |
 | Not in melee range | none | in combat: close the gap (Charge, Intercept) |
@@ -95,7 +96,7 @@ A few couldn't be confirmed beyond the game data and will be checked in game at 
 |---|---|
 | `pack.lua` | the pack: lanes, procs, buffs, debuffs, cooldowns, rage colours, layout |
 | `PackBuilder.lua` | turns `pack.lua` into Musca auras. A modified copy of Musca's own pack builder (GPL-2.0, see below) |
-| `build.lua` | `MUSCA=<Musca Auras 1.14.0 folder> lua build.lua` writes the import string with Musca's own LibSerialize and LibDeflate, compiles every custom-code string with the same `LoadFunction` wraps Musca uses (fails the build on errors), and checks it decodes back; `--check` fails if the file is out of date |
+| `build.lua` | `MUSCA=<Musca Auras 1.14.0 folder> lua build.lua` writes the import string with Musca's own LibSerialize and LibDeflate, compiles every custom-code string with the same `LoadFunction` wraps Musca uses (fails the build on errors), scans custom code for Musca's Forever `removedFunctions`, triage remaining Power/Health trigger warnings, and checks it decodes back; `--check` fails if the file is out of date |
 | `scenario.lua` | a scenario for Musca's own test harness (`Tests/run.lua`): Musca's pack checks (every aura loads, triggers compile, secret auras pass Musca's validator, anchors resolve, combat runs clean), then the right lane for each tree and level, then the rage colours at 5 to 100 rage in and out of combat |
 | `verify.lua` | runs all of it: `MUSCA=... WOW_UI_SOURCE=<Forever UI source> DB2=<DB2 CSV folder> LUACHECK=<luacheck> PRIVATE_WORDS=... lua verify.lua`. Also checks the HUD box, the font and the version in the group name. Any part without its variable is skipped |
 
@@ -105,6 +106,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.12 | Forever compat: customText uses C_Spell.GetSpellName/GetSpellInfo; Main Rend always shows (CD primary) and greys via Spell Cast Succeeded self-timer (target aura2 cannot see debuffs in combat); Musca scanner in build gate |
 | 1.11 | Unload the whole pack in the six classic capitals (Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff, Undercity) via negated zone + uiMapIDs; keep v1.10 init fix and v1.9 Rend/queue behaviour
 | 1.10 | Fix Main icons: actions.init.custom is a body (Musca wraps function()); build compiles every custom-code string as Musca LoadFunction does
 | 1.9 | Main Rend: aura2 primary (no Cooldown Progress) so Forever no longer greys it always; desaturate only while own Rend is up. HS/Cleave queue Pixel only on the queued ability's own icon

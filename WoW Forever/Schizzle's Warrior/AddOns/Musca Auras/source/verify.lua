@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.11$") ~= nil, "pack version is v1.11 (" .. root.id .. ")")
+check(root.id:find(" v1%.12$") ~= nil, "pack version is v1.12 (" .. root.id .. ")")
 
 -- Every leaf aura unloads in Forever 1.60.1 classic capitals (zone name + uiMapID child-maps).
 local CAPITAL_NAMES = {
@@ -383,7 +383,10 @@ for _, child in ipairs(mainIcons) do
   end
   local ct = child.customText or ""
   local init = child.actions and child.actions.init and child.actions.init.custom or ""
+  local bareGetSpellInfo = ct:find("[^%w_%.]GetSpellInfo%s*%(", 1) or ct:find("^GetSpellInfo%s*%(", 1)
   if not hasC or not ct:find("GetActionInfo", 1, true) or not ct:find("GetBindingKey", 1, true)
+    or not ct:find("C_Spell", 1, true)
+    or bareGetSpellInfo
     or child.customTextUpdate ~= "update"
     or not (child.actions and child.actions.init and child.actions.init.do_custom)
     or not init:find("UPDATE_BINDINGS", 1, true)
@@ -444,9 +447,9 @@ end
 check(#targetRend == 0, "Target row has no Rend (target) duplicate"
   .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
 
--- Main Rend v1.10: aura2 primary (showAlways); default desaturate false; buffed→desaturate true.
--- No Cooldown Progress (avoids Forever secret SetDesaturation grey). No remaining timer,
--- buttonOverlay, Rend-queued Pixel, ACShine, faAuraMissing grey-while-up, or any other desaturate.
+-- Main Rend v1.12: Cooldown Progress primary (always visible) + Spell Cast Succeeded companion
+-- (Forever tutorial §5 self-timer). Desaturate only while trigger 2 is showing. No aura2 target
+-- scan (secret in combat). No onCooldown→desaturate on the CD primary. No remaining timer / Proc flash.
 local badDot = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
@@ -465,28 +468,33 @@ for _, child in ipairs(mainIcons) do
       end
     end
 
-    local cdIdx, auraIdx, rendQ, otherDesat
+    local cdIdx, castIdx, aura2Target, rendQ, otherDesat
     for i, entry in ipairs(child.triggers) do
       local tr = entry.trigger
       if tr and tr.event == "Cooldown Progress (Spell)" then cdIdx = i end
-      if tr and tr.type == "aura2" and tr.useName and tr.ownOnly
-        and tr.matchesShowOn == "showAlways" and tr.unit == "target"
-        and tr.debuffType == "HARMFUL"
-        and type(tr.auranames) == "table" and tr.auranames[1] == "Rend" then
-        auraIdx = i
+      if tr and tr.event == "Spell Cast Succeeded" and tr.use_spellId
+        and tr.use_hideOnTargetDeath and tr.use_hideOnTargetChange then
+        castIdx = i
       end
+      if tr and tr.type == "aura2" and tr.unit == "target" then aura2Target = i end
       if tr and tr.event == "Queued Action" and tr.spellName == 772 then rendQ = i end
     end
-    if cdIdx then reasons[#reasons + 1] = "no-cooldown-trigger" end
-    if auraIdx ~= 1 then reasons[#reasons + 1] = "aura2-rend-primary" end
+    if cdIdx ~= 1 then reasons[#reasons + 1] = "cd-primary" end
+    if castIdx ~= 2 then reasons[#reasons + 1] = "cast-succeeded-companion" end
+    if aura2Target then reasons[#reasons + 1] = "no-aura2-target" end
     if rendQ then reasons[#reasons + 1] = "rend-queued-trigger-removed" end
+    local expr = child.triggers.triggerExpression or ""
+    -- Visibility must include trigger 1 and must NOT require companion trigger 2.
+    if not expr:find("1", 1, true) or expr:find("2", 1, true) then
+      reasons[#reasons + 1] = "visibility-excludes-companion"
+    end
 
-    local hasBuffedDesat, greyWhileUp, rageDesat, onCdDesat
+    local hasCastDesat, greyWhileUp, rageDesat, onCdDesat
     for _, cond in ipairs(child.conditions or {}) do
       local c = cond.check
-      if c and c.variable == "buffed" and c.value == 1 and c.trigger == 1 then
+      if c and c.variable == "show" and c.value == 1 and c.trigger == 2 then
         for _, ch in ipairs(cond.changes or {}) do
-          if ch.property == "desaturate" and ch.value == true then hasBuffedDesat = true end
+          if ch.property == "desaturate" and ch.value == true then hasCastDesat = true end
         end
       end
       if c and c.variable == "faAuraMissing" then
@@ -507,20 +515,18 @@ for _, child in ipairs(mainIcons) do
       if c and c.variable == "show" and c.value == 1 and c.trigger == rendQ then
         reasons[#reasons + 1] = "rend-queue-border-removed"
       end
-      -- Any desaturate change that is not buffed→true is forbidden.
       for _, ch in ipairs(cond.changes or {}) do
         if ch.property == "desaturate" then
-          local ok = c and c.variable == "buffed" and c.value == 1 and c.trigger == 1 and ch.value == true
+          local ok = c and c.variable == "show" and c.value == 1 and c.trigger == 2 and ch.value == true
           if not ok then otherDesat = tostring(c and c.variable) end
         end
       end
     end
-    if not hasBuffedDesat then reasons[#reasons + 1] = "buffed-desaturate" end
+    if not hasCastDesat then reasons[#reasons + 1] = "cast-show-desaturate" end
     if greyWhileUp then reasons[#reasons + 1] = "old-grey-while-up" end
     if rageDesat then reasons[#reasons + 1] = "rage-desaturate-removed" end
     if onCdDesat then reasons[#reasons + 1] = "onCooldown-desaturate-removed" end
     if otherDesat then reasons[#reasons + 1] = "extra-desaturate:" .. otherDesat end
-    -- Primary cooldown trigger must not carry Forever-unsafe desaturateOnCooldown either.
     local t1 = child.triggers[1] and child.triggers[1].trigger
     if t1 and t1.use_desaturateOnCooldown then reasons[#reasons + 1] = "desaturateOnCooldown-off" end
     if #reasons > 0 then
@@ -528,7 +534,7 @@ for _, child in ipairs(mainIcons) do
     end
   end
 end
-check(#badDot == 0, "Main Rend: aura2 primary, only buffed→desaturate, no Cooldown Progress"
+check(#badDot == 0, "Main Rend: CD primary + Spell Cast Succeeded companion, only show→desaturate"
   .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).

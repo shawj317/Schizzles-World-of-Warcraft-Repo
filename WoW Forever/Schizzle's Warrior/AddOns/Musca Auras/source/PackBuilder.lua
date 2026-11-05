@@ -140,7 +140,14 @@ function()
       local text = firstKey(cmdsForSlot(slot))
       if not text then return end
       map[spell] = text
-      local name = GetSpellInfo(spell)
+      local name
+      if C_Spell and C_Spell.GetSpellName then
+        name = C_Spell.GetSpellName(spell)
+      end
+      if (not name or name == "") and C_Spell and C_Spell.GetSpellInfo then
+        local info = C_Spell.GetSpellInfo(spell)
+        if type(info) == "table" then name = info.name end
+      end
       if name and not (issecretvalue and issecretvalue(name)) then map[name] = text end
     end
     for slot = 1, 120 do
@@ -162,7 +169,14 @@ function()
   end
   local hit = cache.map and cache.map[want]
   if hit then return hit end
-  local name = GetSpellInfo(want)
+  local name
+  if C_Spell and C_Spell.GetSpellName then
+    name = C_Spell.GetSpellName(want)
+  end
+  if (not name or name == "") and C_Spell and C_Spell.GetSpellInfo then
+    local info = C_Spell.GetSpellInfo(want)
+    if type(info) == "table" then name = info.name end
+  end
   if name and cache.map then return cache.map[name] or "" end
   return ""
 end
@@ -342,6 +356,23 @@ function Pack.Build(spec)
       triggers.disjunctive, triggers.activeTriggerMode = "expression", 1
       triggers.triggerExpression = "1"
     end
+    -- Companion trigger: always slot 2 for conditions (Main Rend DoT timer → desaturate).
+    -- Visibility stays on trigger 1 (+ any gate/form/pet requirements); companion is omitted
+    -- from the expression so the icon still shows with no target / before the first cast.
+    if options.companionTrigger then
+      assert(not options.fallback and not options.progressTrigger,
+        id .. ": companionTrigger cannot combine with fallback or progressTrigger")
+      triggers[2] = { trigger = options.companionTrigger, untrigger = {} }
+      local terms = { "1" }
+      for index, extra in ipairs(required) do
+        local idx = index + 2
+        triggers[idx] = { trigger = extra, untrigger = {} }
+        terms[#terms + 1] = tostring(idx)
+      end
+      triggers.disjunctive, triggers.activeTriggerMode = "expression", 1
+      triggers.triggerExpression = table.concat(terms, " and ")
+      required = {}
+    end
     for index, extra in ipairs(required) do triggers[index + 1] = { trigger = extra, untrigger = {} } end
     if #required > 0 then triggers.disjunctive, triggers.activeTriggerMode = "all", 1 end
     if trigger.type == "secretAura" and #required > 0 then triggers.secretFallback = "none" end
@@ -460,7 +491,8 @@ function Pack.Build(spec)
     end
     if options.idle then conditions[#conditions + 1] = idle end
     -- Forever-safe CD greying: condition-driven, never SetDesaturation(secret) via desaturateOnCooldown.
-    if trigger.event == "Cooldown Progress (Spell)" then
+    -- Main Rend skips this: greying is owned by the Spell Cast Succeeded companion (DoT up), not GCD/CD.
+    if trigger.event == "Cooldown Progress (Spell)" and not options.skipCooldownDesat then
       conditions[#conditions + 1] = Condition("onCooldown", 1, "desaturate", true)
     end
     options.subRegions, options.conditions = subRegions, conditions
@@ -762,28 +794,27 @@ function Pack.Build(spec)
     return data
   end
 
-  -- Main-lane DoT (Rend): primary = target debuff aura2 (showAlways). Saturated by default;
-  -- desaturate only while own Rend is present (buffed→desaturate). No Cooldown Progress for color —
-  -- its desaturateOnCooldown / SetDesaturation(secret) was greying the icon unconditionally on Forever.
-  -- If UnitAura presence is secret, name-filtered aura2 skips the match and buffed stays false
-  -- → icon stays saturated (fail open toward "reapply").
-  local function AuraNameTrigger(spellName, unit, kind)
-    return {
-      type = "aura2",
-      unit = unit or "target",
-      debuffType = kind or "HARMFUL",
-      ownOnly = true,
-      useName = true,
-      auranames = { spellName },
-      matchesShowOn = "showAlways",
-      unitExists = false,
-    }
+  -- Main-lane DoT (Rend) on Forever: target debuffs are secret to addons in combat (C_UnitAuras
+  -- refuses them; aura2 name/ownOnly fails closed — icon stayed saturated even with Rend up on
+  -- the nameplate). Musca's Forever tutorial §5: deduce from UNIT_SPELLCAST_SUCCEEDED + fixed timer.
+  -- Primary = Cooldown Progress showAlways (always visible, including no target); skip onCooldown
+  -- greying. Companion = Spell Cast Succeeded (all ranks, Hide After max duration, hide on target
+  -- death/change) → desaturate while that timer is showing for the current target.
+  local function DotCastTrigger(spellIds, duration)
+    return Generic({
+      type = "event", event = "Spell Cast Succeeded",
+      unit = "player", use_unit = true,
+      use_spellId = true, spellId = Ids(spellIds),
+      duration = tostring(duration or 21),
+      use_hideOnTargetDeath = true,
+      use_hideOnTargetChange = true,
+    })
   end
 
   local function ApplyMainDotDesaturate(data)
     data.desaturate = false
     data.conditions[#data.conditions + 1] = {
-      check = { trigger = 1, variable = "buffed", value = 1 },
+      check = { trigger = 2, variable = "show", value = 1 },
       changes = { { property = "desaturate", value = true } },
     }
     return data
@@ -807,12 +838,15 @@ function Pack.Build(spec)
       local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
       if entry.dot then
-        -- Aura2 primary (showAlways): color from buffed only. Fallback texture when aura missing.
-        data = Icon(main, label, AuraNameTrigger(entry.name), Requirements(e, {
+        -- CD primary (always show) + Spell Cast Succeeded companion for Forever-safe DoT greying.
+        data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, {
           size = SIZES.main,
           texture = entry.texture or "Interface\\Icons\\Ability_Gouge",
           subRegions = { number },
-          idle = true }))
+          idle = true,
+          skipCooldownDesat = true,
+          companionTrigger = DotCastTrigger(entry.aura, entry.dotDuration or 21),
+        }))
       elseif entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"
         data = Icon(main, label, AuraTrigger(entry.aura, "showAlways", unit, kind),
