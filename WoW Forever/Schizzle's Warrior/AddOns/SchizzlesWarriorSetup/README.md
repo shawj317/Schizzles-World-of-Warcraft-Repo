@@ -98,7 +98,7 @@ Other characters can still type `/schizzle all`.
 ## Checks
 Run from `source/` with Lua 5.1 (the game's Lua):
 - `lua build.lua --check` makes sure `Data.lua` matches the per-addon source files in the MoP kit, `source/CVars.lua` and the Musca pack's import file. `lua build.lua` rebuilds it.
-- `lua sim.lua` runs the helper, the first-login prompt, every piece and the tray against a stand-in for the Forever API: the console variables (including one Forever doesn't have), the Details! import (no auto-run code), a missing addon, the tray's three bars at level 20 and at the cap, completed-quest and rested XP, a hidden (secret) value, guild reputation on, off and already watched, the tray toggle, `/schizzle auras` (no Musca Auras, plain WeakAuras, in combat, the exact pack string, left out of `all`), `/schizzle cdm` on and off and on a client without it, the local settings for another character, and a non-Warrior (keybinds and the pack skipped, still asked for the general UI). 35 checks.
+- `lua sim.lua` runs the helper, the first-login prompt, every piece and the tray against a stand-in for the Forever API: the console variables (including one Forever doesn't have), the Details! import (no auto-run code), a missing addon, the tray's three bars at level 20 and at the cap, completed-quest and rested XP, a hidden (secret) value, guild reputation on, off and already watched, the tray toggle, `/schizzle auras` (no Musca Auras, plain WeakAuras, in combat, the exact pack string, left out of `all`), `/schizzle cdm` on and off and on a client without it, the local settings for another character, and a non-Warrior (keybinds and the pack skipped, still asked for the general UI). 37 checks.
 - `lua verify.lua <folder with the WoW Forever addon downloads>` is the MoP check, run on the Forever downloads: keybinds against the stock binds, Bartender4, Prat, SexyMap, Questie, GatherMate2 and TomTom profiles through each addon's own AceDB-3.0, and every setting key found in that addon's own code. It passed on Bartender4 4.18.4, Prat 3.9.115, SexyMap v12.1.4, Questie 12.5.0, GatherMate2 1.52.4 and TomTom v4.4.0 (Nov 3 2026).
 
 Every Blizzard function and event the addon calls is in the `forever` branch of Gethe's wow-ui-source (build 70755).
@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F1.3** (Nov 4 2026): Schizzle's Warrior Essentials v1.1 (glow + NEXT SWING on queued Heroic Strike / Cleave); SexyMap regional unique-name key writes plain "First Last" as well as "First Last-PvE".
 - **F1.2** (Nov 4 2026): class-aware. Keybinds, Bartender4 bars and the aura pack only run on a Warrior; other classes get the general UI. `/schizzle cdm` waits for combat to end.
 - **F1.1** (Nov 3 2026): `/schizzle auras` imports Schizzle's Warrior Essentials into Musca Auras; `/schizzle cdm` toggles the Cooldown Manager.
 - **F1** (Nov 3 2026): first Forever edition. Console variables, Cooldown Manager on, Details! import, the built-in XP & Rep Tray, local settings file.

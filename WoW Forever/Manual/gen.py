@@ -63,7 +63,8 @@ def hud(x0, x1, y0, y1, label, style=""):
 hudsketch = "<div class='hud'><div class='ctr'></div>" + "".join([
     hud(-90, 90, 90, 110, "Not in melee range (combat)", "color:#ff6b6b"),
     hud(-126, 126, 72, 89, "Missing Battle Shout (out of combat)", "color:#FFD100;border-style:dotted"),
-    hud(-97, 97, 41, 63, "Procs: Overpower, Revenge, Execute, Victory Rush, HS/Cleave queued", "border-color:#FF7800"),
+    hud(-97, 97, 41, 63, "Procs: Overpower, Revenge, Execute, Victory Rush", "border-color:#FF7800"),
+    hud(-31, 31, -43, -21, "Next Swing: HS/Cleave + NEXT SWING", "border-color:#FFD100;color:#FFD100"),
     hud(-163, 163, 15, 37, "Your buffs (time left, red blink at 3 s)"),
     hud(-97, 97, -11, 11, "Target debuffs + stance"),
     hud(-167, 167, -28, -14, "Rage: grey / red / bronze 30 / ember 60", "background:linear-gradient(90deg,#737373 0 15%,#c74040 15% 30%,#b87333 30% 60%,#ff7800 60%);color:#111"),
@@ -75,12 +76,12 @@ parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1.2</span><span class='tag'>Warrior Essentials v1.0 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<span class='tag'>Schizzle's Warrior Setup F1.3</span><span class='tag'>Warrior Essentials v1.1 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
 <div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
 parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
 parts.append(table(["Job", "Forever-ready addons"], [
-    ["Bars, frames, chat, map", "Bartender4 4.18.4 &middot; BetterBlizzFrames v2.2.0e &middot; Prat 3.9.115 &middot; SexyMap v12.1.4 &middot; MinimapButtonButton &middot; MoveAny (Forever)"],
+    ["Bars, frames, chat, map", "Bartender4 4.18.4 &middot; BetterBlizzFrames v2.2.0e &middot; Prat 3.9.115 &middot; SexyMap v12.1.5 &middot; MinimapButtonButton &middot; MoveAny (Forever)"],
     ["Questing", "Questie 12.5.0 &middot; RXPGuides v4.11.30 &middot; TomTom v4.4.0 &middot; GatherMate2 &middot; HandyNotes &middot; RareScanner (Forever)"],
     ["Combat", "Details! (Camelot) &middot; BigWigs v427.8 &middot; GTFO 6.12.2 &middot; BetterPersonalResourceDisplay &middot; BetterBlizzMarkers &middot; Platynator"],
     ["Bags, gold, alts", "Baganator 839 + Syndicator &middot; Auctionator 341 &middot; Altoholic + DataStore &middot; Pawn (Forever)"],
@@ -106,7 +107,7 @@ parts.append("<h2>3. Where everything sits</h2>")
 parts.append(screen)
 parts.append("<p>The orange box in the middle belongs to the visual helper (page 4); nothing else goes there. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
 parts.append("<h2>4. The visual helper: Schizzle's Warrior Essentials</h2>")
-parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
+parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. v1.1 lights Heroic Strike or Cleave with a glow and gold <b>NEXT SWING</b> text while queued (clears when the swing fires). Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
 parts.append("<div class='hudwrap'>" + hudsketch + "<div class='hudkey'>" + table(["Lane", "Order (press the lowest lit number)"], [
     ["Starter (below 10)", "Rend, Heroic Strike, Thunder Clap"],
     ["Arms", "Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind"],

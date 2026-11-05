@@ -2,7 +2,7 @@
 ## Title: Schizzle's Warrior Setup (Forever)
 ## Notes: Applies Schizzle's Warrior settings on WoW Forever (console variables, keybinds, Bartender4, Prat, SexyMap, Questie, GatherMate2, TomTom, Details!) and draws the XP & Rep Tray. Type /schizzle.
 ## Author: Jon Shaw (Schizzle)
-## Version: F1.2
+## Version: F1.3
 ## OptionalDeps: Bartender4, Prat-3.0, SexyMap, Questie, GatherMate2, TomTom, Details, SchizzlesWarriorSetup_Local
 ## SavedVariables: SchizzlesWarriorSetupDB
 ## SavedVariablesPerCharacter: SchizzlesWarriorSetupCharDB

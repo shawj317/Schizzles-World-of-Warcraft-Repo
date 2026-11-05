@@ -218,6 +218,32 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
+
+check(root.id:find(" v1%.1$") ~= nil, "pack version is v1.1 (" .. root.id .. ")")
+-- Next-swing dump: Queued Action by name (all ranks), glow, and NEXT SWING label near the priority lane.
+local queued = {}
+for _, child in ipairs(transmit.c) do
+  if child.parent and child.parent:find(" %- Next Swing$") and child.regionType == "icon" then
+    queued[#queued + 1] = child
+    local trigger = child.triggers[1] and child.triggers[1].trigger
+    check(trigger and trigger.event == "Queued Action" and trigger.use_exact_spellName == false,
+      child.id .. ": Queued Action by spell name (every rank)")
+    -- The hidden test Musca builds is C_Spell.IsCurrentSpell(spellname); keep that contract.
+    local hasGlow, hasLabel = false, false
+    for _, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subglow" and sub.glow then hasGlow = true end
+      if sub.type == "subtext" and sub.text_text == "NEXT SWING" then hasLabel = true end
+    end
+    check(hasGlow and hasLabel, child.id .. ": pixel glow and NEXT SWING label")
+  end
+end
+check(#queued == 2, "Next Swing holds Heroic Strike and Cleave (" .. #queued .. ")")
+local nextGroup
+for _, child in ipairs(transmit.c) do
+  if child.id:find(" %- Next Swing$") then nextGroup = child end
+end
+check(nextGroup and nextGroup.yOffset == 8, "Next Swing sits at group-relative y=8 (near the priority lane at 0,-40)")
+
 local badFont = {}
 for _, child in ipairs(transmit.c) do
   local function scan(t)

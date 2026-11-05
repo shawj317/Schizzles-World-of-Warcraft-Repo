@@ -5,7 +5,7 @@
 local _, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "F1.2"
+local VERSION = "F1.3"
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
 
@@ -68,7 +68,13 @@ local function charKeys()
 		local rk = (rule(Enum.GameRule.HardcoreRuleset) and "Hardcore") or (rule(Enum.GameRule.RPRuleset) and "RP")
 			or (rule(Enum.GameRule.PvPRuleset) and "PvP") or "PvE"
 		ace[#ace + 1] = surname and (unmod .. " " .. tostring(surname)) or unmod
-		if surname then sm[#sm + 1] = unmod .. " " .. surname .. "-" .. rk end
+		if surname then
+			-- SexyMap 12.1.5 uses plain "First Last" when regional unique names are on; older builds used
+			-- "First Last-PvE". Write both so either build picks up the global profile.
+			local full = unmod .. " " .. surname
+			sm[#sm + 1] = full
+			sm[#sm + 1] = full .. "-" .. rk
+		end
 	end
 	return ace, sm
 end

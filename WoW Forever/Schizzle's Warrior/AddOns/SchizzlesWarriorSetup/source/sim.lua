@@ -108,7 +108,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F1.2", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F1.3", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -209,6 +209,19 @@ _G.SchizzlesWarriorSetupCharDB = nil
 frames[1].scripts.OnEvent(frames[1], "PLAYER_LOGIN")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_FIRST", "a non-Warrior is still asked once for the general UI")
 playerClass = "WARRIOR"
+
+
+-- SexyMap 12.1.5 regional unique names: plain "First Last" key, plus the older "First Last-PvE" form.
+_G.SexyMap2DB = {}
+_G.RegionalUniqueNamesEnabled = function() return true end
+_G.C_GameRules = { IsGameRuleActive = function() return false end }
+_G.Enum = { GameRule = { HardcoreRuleset = 1, RPRuleset = 2, PvPRuleset = 3 } }
+_G.UnitNameUnmodified = function() return "First", "Last" end
+_G.UnitName = function() return "First" end
+ns.pieces.map.run()
+check(_G.SexyMap2DB["First Last"] == "global", "SexyMap regional: plain First Last key points at global")
+check(_G.SexyMap2DB["First Last-PvE"] == "global", "SexyMap regional: First Last-PvE key kept for older SexyMap")
+_G.RegionalUniqueNamesEnabled = function() return false end
 
 print(fails == 0 and "all checks passed" or (fails .. " check(s) failed"))
 os.exit(fails == 0 and 0 or 1)

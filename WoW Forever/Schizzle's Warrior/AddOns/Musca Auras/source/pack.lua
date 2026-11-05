@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.0"
+local VERSION = "1.1"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -29,7 +29,7 @@ return Pack.Build({
   -- The group's centre sits at 0,-40 from the middle of the screen. Every row below is measured from there and stays
   -- inside the HUD box (170 px either side, 180 px below to 160 px above the group's centre).
   x = 0, y = -40,
-  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26 },
+  layout = { range = 140, reminders = 112, procs = 92, effects = 66, target = 40, resourceTop = 26, nextSwing = 8 },
   -- At most 10 icons per aura row: 10 x 30 px with 3 px gaps is 327 px, inside the 340 px box.
   rowLimit = 10,
   reminderSize = 24,
@@ -78,6 +78,12 @@ return Pack.Build({
     { name = "Revenge", usable = 6572, form = 2, sound = SOUND .. "WaterDrop.ogg" },
     { name = "Execute", usable = 5308, sound = SOUND .. "RobotBlip.ogg" },
     { name = "Victory Rush", usable = 402927, sound = SOUND .. "WaterDrop.ogg" },
+  },
+
+  -- On-next-swing dump: lights with a glow and "NEXT SWING" while Heroic Strike or Cleave is queued.
+  -- Spell IDs are the rank-1 IDs; Queued Action resolves the name so every rank matches.
+  -- Confirmed on Forever build 1.60.1.70755: Heroic Strike 78..25286, Cleave 845..20569.
+  nextSwing = {
     { name = "Heroic Strike", queued = 78 },
     { name = "Cleave", queued = 845 },
   },
