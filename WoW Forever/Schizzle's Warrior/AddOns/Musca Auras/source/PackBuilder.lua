@@ -483,13 +483,6 @@ function Pack.Build(spec)
       if entry.sound then
         data.actions.start = { do_sound = true, sound = entry.sound, sound_channel = "Master" }
       end
-    elseif entry.queued then
-      -- Queued Action by name (all ranks) for visibility; Swing Timer (main hand) as trigger 2 for the
-      -- radial cooldown swirl. Pixel GLOW matches Battle Shout's moving border. No extra text.
-      local swing = { type = "unit", event = "Swing Timer", hand = "main", use_hand = true }
-      Icon(procs, entry.name, Generic({ type = "spell", event = "Queued Action", spellName = entry.queued,
-        use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.queued,
-        subRegions = { GLOW }, progressTrigger = Generic(swing) }))
     end
   end
 
@@ -582,9 +575,73 @@ function Pack.Build(spec)
       end
     end
   end
+  -- While Heroic Strike or Cleave is queued: Pixel glow (Battle Shout settings) + a circular main-hand
+  -- swing overlay on every Main priority icon. Extra triggers do not affect visibility (expression stays
+  -- on the original triggers). The overlay is separate from the icon's own cooldown swipe so spell/aura
+  -- progress is unchanged; the swirl only appears under the queued condition.
+  local function ApplyQueuedNextSwing(data)
+    local spells = spec.queuedSwing or { 78, 845 }
+    local triggers = data.triggers
+    local n = #triggers
+    local hs, cleave, swing = n + 1, n + 2, n + 3
+    triggers[hs] = { trigger = Generic({ type = "spell", event = "Queued Action", spellName = spells[1],
+      use_exact_spellName = false }), untrigger = {} }
+    triggers[cleave] = { trigger = Generic({ type = "spell", event = "Queued Action", spellName = spells[2],
+      use_exact_spellName = false }), untrigger = {} }
+    triggers[swing] = { trigger = Generic({ type = "unit", event = "Swing Timer", hand = "main",
+      use_hand = true }), untrigger = {} }
+    if not triggers.disjunctive then
+      triggers.disjunctive, triggers.triggerExpression, triggers.activeTriggerMode = "expression", "1", 1
+    elseif triggers.disjunctive == "all" then
+      local terms = {}
+      for i = 1, n do terms[i] = tostring(i) end
+      triggers.disjunctive, triggers.triggerExpression, triggers.activeTriggerMode =
+        "expression", table.concat(terms, " and "), 1
+    elseif triggers.disjunctive == "any" then
+      local terms = {}
+      for i = 1, n do terms[i] = tostring(i) end
+      triggers.disjunctive, triggers.triggerExpression =
+        "expression", table.concat(terms, " or ")
+      triggers.activeTriggerMode = triggers.activeTriggerMode or 1
+    else
+      triggers.activeTriggerMode = triggers.activeTriggerMode or 1
+    end
+    local glow = {}
+    for key, value in pairs(GLOW) do glow[key] = value end
+    glow.glow = false
+    data.subRegions[#data.subRegions + 1] = glow
+    local glowIdx = #data.subRegions
+    data.subRegions[#data.subRegions + 1] = {
+      type = "subcirculartexture",
+      circularTextureVisible = false,
+      circularTextureTexture = "Interface\\AddOns\\WeakAuras\\Media\\Textures\\Circle_AlphaGradient_Out.tga",
+      circularTextureDesaturate = false,
+      circularTextureColor = {1, 1, 1, 0.9},
+      circularTextureBlendMode = "BLEND",
+      circularTextureStartAngle = 0, circularTextureEndAngle = 360,
+      circularTextureClockwise = true,
+      circularTextureCrop_x = 0.41, circularTextureCrop_y = 0.41,
+      circularTextureRotation = 0, circularTextureAuraRotation = 0, circularTextureMirror = false,
+      anchor_mode = "area", self_point = "CENTER", anchor_point = "CENTER", anchor_area = "ALL",
+      width = 0, height = 0, scale = 1,
+      progressSource = { swing, "expirationTime" },
+    }
+    local swirlIdx = #data.subRegions
+    data.conditions[#data.conditions + 1] = {
+      check = { trigger = -2, variable = "OR", checks = {
+        { trigger = hs, variable = "show", value = 1 },
+        { trigger = cleave, variable = "show", value = 1 },
+      } },
+      changes = {
+        { property = "sub." .. glowIdx .. ".glow", value = true },
+        { property = "sub." .. swirlIdx .. ".circularTextureVisible", value = true },
+      },
+    }
+  end
+
   local main = Group("Main", "dynamicgroup", Y("main", 4), "GRID", 8)
   for _, entry in ipairs(spec.rotation or {}) do
-    SpellIcon(main, entry, SIZES.main)
+    ApplyQueuedNextSwing(SpellIcon(main, entry, SIZES.main))
   end
   -- Priority lanes: one row per talent tree (or level range), in the order to press them. Only the lane that matches
   -- the character loads. A number in the corner gives the priority; the icon dims while the spell can't be used
@@ -597,15 +654,17 @@ function Pack.Build(spec)
       e.spec, e.level, e.levelBelow = lane.spec, lane.level, lane.levelBelow
       local label = lane.name .. " " .. index .. " " .. entry.name
       local number = Text(tostring(index), "INNER_TOPLEFT", 11)
+      local data
       if entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"
-        Icon(main, label, AuraTrigger(entry.aura, "showAlways", unit, kind),
+        data = Icon(main, label, AuraTrigger(entry.aura, "showAlways", unit, kind),
           Requirements(e, { size = SIZES.main, fallback = CooldownTrigger(entry.spell), idle = true,
             subRegions = { number }, missingGlow = kind == "HARMFUL", pandemic = entry.dot }))
       else
-        Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, { size = SIZES.main, subRegions = { number },
+        data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, { size = SIZES.main, subRegions = { number },
           conditions = { usableDim, noMana, outOfRange }, idle = true }))
       end
+      ApplyQueuedNextSwing(data)
     end
   end
 

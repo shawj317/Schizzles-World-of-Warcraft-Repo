@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.3"
+local VERSION = "1.4"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -72,17 +72,16 @@ return Pack.Build({
     } },
   },
 
-  -- Lights up the moment it can be used, with a glow and a sound. Queued Heroic Strike / Cleave sit here too:
-  -- Pixel glow (same as Battle Shout) plus a radial main-hand swing timer on the icon while queued.
-  -- Spell IDs are rank-1; Queued Action resolves the name so every rank matches (HS 78..25286, Cleave 845..20569).
+  -- Lights up the moment it can be used, with a glow and a sound (v1.0 set). Queued Heroic Strike / Cleave
+  -- do not sit here: they put a Pixel glow + main-hand swing swirl on the Main priority icons instead.
   procs = {
     { name = "Overpower", usable = 7384, form = 1, sound = SOUND .. "WaterDrop.ogg" },
     { name = "Revenge", usable = 6572, form = 2, sound = SOUND .. "WaterDrop.ogg" },
     { name = "Execute", usable = 5308, sound = SOUND .. "RobotBlip.ogg" },
     { name = "Victory Rush", usable = 402927, sound = SOUND .. "WaterDrop.ogg" },
-    { name = "Heroic Strike", queued = 78 },
-    { name = "Cleave", queued = 845 },
   },
+  -- Rank-1 IDs; Queued Action matches every rank by name (HS 78..25286, Cleave 845..20569).
+  queuedSwing = { 78, 845 },
 
   -- Major cooldowns and utility, each only in the stance that can use it.
   cooldowns = {

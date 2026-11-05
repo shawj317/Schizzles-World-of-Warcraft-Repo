@@ -14,7 +14,7 @@ The MoP kit's All-in-One Rotation WeakAura can't run on Forever. Normal WeakAura
 
 What you get, all in the HUD box around x 0, y -40, in Fira Sans Condensed Medium:
 
-- **Proc alerts** with a glow and a sound: Overpower, Revenge, Execute and Victory Rush the moment they can be used. Heroic Strike or Cleave show in that row while queued (Pixel glow + main-hand swing swirl on the icon). Battle Shout shows time left.
+- **Proc alerts** with a glow and a sound: Overpower, Revenge, Execute and Victory Rush the moment they can be used. While Heroic Strike or Cleave is queued, the Main priority icons get a Pixel glow and a main-hand swing swirl. Battle Shout shows time left.
 - **A priority lane** for your talent tree (Starter below level 10), numbered left to right. A lit icon is ready; a dim one isn't. When two are lit, press the lower number. An alert always beats the lane: when Execute lights up, Execute.
 - **The rage bar**: grey under 15, red to 29, bronze from 30 (room for Heroic Strike), ember from 60 (spend it).
 - **Your buffs** and **your debuffs on the target** with time left; Rend, Sunder Armor, Thunder Clap and Demoralizing Shout glow in the lane while they're missing.

@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.3` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.4` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F1.5 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F1.6 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -26,11 +26,11 @@ Everything sits in the HUD box around the middle of the screen. The group's cent
 |---|---|---|
 | Not in melee range | +90 to +110 | red text while you're in combat with a target that Sunder Armor can't reach |
 | Reminders | +72 and up | gold text out of combat: **Missing Battle Shout** |
-| Procs | +41 to +63 | Overpower, Revenge, Execute, Victory Rush (glow and sound); Heroic Strike or Cleave while queued (same Pixel glow as Battle Shout, plus a radial main-hand swing timer on the icon) |
+| Procs | +41 to +63 | Overpower, Revenge, Execute, Victory Rush (glow and sound) |
 | Your buffs | +15 to +37 | buffs while they're up; Battle Shout shows remaining time; the last 3 seconds blink red. At most 10 icons |
 | Target and stance | -11 to +11 | your debuffs on the target with time left, then your stance |
 | Rage bar | -28 to -14 | rage, 100 px wide, coloured by how much you have |
-| Priority lane | from -38 | what to press, in order, numbered 1 to 8 |
+| Priority lane | from -38 | what to press, in order, numbered 1 to 8; while Heroic Strike or Cleave is queued, every icon here gets Battle Shout's Pixel glow and a main-hand swing swirl (does not replace the spell's own cooldown swipe) |
 | Cooldowns | below the lane | major cooldowns, interrupts, taunts, trinkets and your racial; each only in the stance that can use it |
 | Swing timers | bottom, above -220 | main hand and off hand |
 
@@ -65,7 +65,7 @@ The grey mark is a condition on the bar. The bronze and ember steps are copies o
 | Revenge lights up | water drop | you blocked, dodged or parried: Revenge now (Defensive Stance) |
 | Execute lights up | robot blip | target under 20%: Execute is your top button |
 | Victory Rush lights up | water drop | you got a killing blow: free heal and damage |
-| Heroic Strike or Cleave shows (glow + swing swirl) | none | it's queued on your next swing; press it again to cancel if you need the rage |
+| Priority icons glow + swing swirl | none | Heroic Strike or Cleave is queued on your next swing; press it again to cancel if you need the rage |
 | A lane icon glows | none | that debuff is missing from the target (or Rend is due a refresh) |
 | A buff blinks red | none | it runs out in 3 seconds |
 | Missing Battle Shout | none | out of combat: shout before the pull |
@@ -105,6 +105,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.4 | queued HS/Cleave: Pixel glow + MH swing swirl on Main priority icons; Procs back to v1.0 set (no standalone HS/Cleave) |
 | 1.3 | remove Next Swing row; Heroic Strike/Cleave in Procs with Battle Shout Pixel glow + main-hand swing radial; Battle Shout remaining-time text; keep group 0,-55 and 100 px rage |
 | 1.2 | group default 0,-55; rage bar 100 px wide |
 | 1.1 | glow + NEXT SWING on queued Heroic Strike / Cleave |

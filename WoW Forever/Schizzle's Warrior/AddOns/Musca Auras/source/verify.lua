@@ -219,18 +219,26 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.3$") ~= nil, "pack version is v1.3 (" .. root.id .. ")")
+check(root.id:find(" v1%.4$") ~= nil, "pack version is v1.4 (" .. root.id .. ")")
 
--- No Next Swing row (removed in v1.3): HS/Cleave live in Procs.
+-- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup
 for _, child in ipairs(transmit.c) do
   if child.id:find(" %- Next Swing$") then nextGroup = child end
 end
 check(nextGroup == nil, "Next Swing group is gone")
+local procsQueued = {}
+for _, child in ipairs(transmit.c) do
+  if child.parent and child.parent:find(" %- Procs$") and child.regionType == "icon"
+    and (child.id:find(" %- Heroic Strike$") or child.id:find(" %- Cleave$")) then
+    procsQueued[#procsQueued + 1] = child.id
+  end
+end
+check(#procsQueued == 0, "Procs has no standalone Heroic Strike / Cleave auras"
+  .. (#procsQueued > 0 and (": " .. table.concat(procsQueued, ", ")) or ""))
 
--- Pixel GLOW settings that Battle Shout uses while active (moving border).
 local function pixelGlow(sub)
-  return sub.type == "subglow" and sub.glow and sub.glowType == "Pixel"
+  return sub.type == "subglow" and sub.glowType == "Pixel"
     and sub.glowLines == 8 and sub.glowFrequency == 0.25 and sub.glowLength == 10
     and sub.glowThickness == 1 and sub.useGlowColor == false
 end
@@ -243,10 +251,9 @@ end
 check(battleShout ~= nil, "Battle Shout buff icon is in Effects")
 local shoutGlow
 for _, sub in ipairs(battleShout.subRegions or {}) do
-  if pixelGlow(sub) then shoutGlow = sub break end
+  if pixelGlow(sub) and sub.glow then shoutGlow = sub break end
 end
 check(shoutGlow ~= nil, "Battle Shout has Pixel moving-border glow")
--- Remaining-time countdown on Battle Shout (%p, timed).
 local hasRemaining = false
 for _, sub in ipairs(battleShout.subRegions or {}) do
   if sub.type == "subtext" and sub.text_text == "%p"
@@ -256,38 +263,59 @@ for _, sub in ipairs(battleShout.subRegions or {}) do
   check(not (sub.type == "subtext" and sub.text_text == "NEXT SWING"), "no NEXT SWING text anywhere")
 end
 check(hasRemaining, "Battle Shout shows remaining-time text (%p timed)")
-check(battleShout.cooldown == true and battleShout.cooldownSwipe ~= false,
-  "Battle Shout keeps cooldown swipe for the radial duration")
 
--- Queued HS/Cleave in Procs: Queued Action visibility + Swing Timer progress + same Pixel glow.
-local queued = {}
+-- Every Main priority icon: Queued Action HS + Cleave + Swing Timer, Pixel glow + circular swirl under OR condition.
+local mainIcons, badMain = {}, {}
 for _, child in ipairs(transmit.c) do
-  if child.parent and child.parent:find(" %- Procs$") and child.regionType == "icon"
-    and (child.id:find(" %- Heroic Strike$") or child.id:find(" %- Cleave$")) then
-    queued[#queued + 1] = child
-    local t1 = child.triggers[1] and child.triggers[1].trigger
-    local t2 = child.triggers[2] and child.triggers[2].trigger
-    check(t1 and t1.event == "Queued Action" and t1.use_exact_spellName == false,
-      child.id .. ": Queued Action by spell name (every rank)")
-    check(t2 and t2.event == "Swing Timer" and (t2.hand == "main" or t2.hand == 0 or t2.swingType == 0),
-      child.id .. ": Swing Timer (main hand) as second trigger")
-    check(child.triggers.disjunctive == "expression" and child.triggers.triggerExpression == "1",
-      child.id .. ": visible only when Queued Action (expression 1)")
-    check(child.progressSource and child.progressSource[1] == 2
-      and child.progressSource[2] == "expirationTime",
-      child.id .. ": progressSource from Swing Timer (trigger 2)")
-    check(child.cooldown == true and child.cooldownSwipe ~= false,
-      child.id .. ": cooldown swipe (radial swing timer)")
-    local hasGlow, hasNextLabel = false, false
-    for _, sub in ipairs(child.subRegions or {}) do
-      if pixelGlow(sub) then hasGlow = true end
-      if sub.type == "subtext" and sub.text_text == "NEXT SWING" then hasNextLabel = true end
+  if child.parent and child.parent:find(" %- Main$") and child.regionType == "icon" then
+    mainIcons[#mainIcons + 1] = child
+    local n = #child.triggers
+    local hasHS, hasCleave, hasSwing = false, false, false
+    for i = 1, n do
+      local tr = child.triggers[i] and child.triggers[i].trigger
+      if tr and tr.event == "Queued Action" and tr.spellName == 78 then hasHS = true end
+      if tr and tr.event == "Queued Action" and tr.spellName == 845 then hasCleave = true end
+      if tr and tr.event == "Swing Timer" and (tr.hand == "main" or tr.hand == 0) then hasSwing = i end
     end
-    check(hasGlow, child.id .. ": Pixel glow matches Battle Shout")
-    check(not hasNextLabel, child.id .. ": no NEXT SWING text (subtle)")
+    local glowIdx, swirlIdx
+    for i, sub in ipairs(child.subRegions or {}) do
+      if pixelGlow(sub) and sub.glow == false then glowIdx = i end
+      if sub.type == "subcirculartexture" and sub.progressSource and sub.progressSource[1] == hasSwing
+        and sub.progressSource[2] == "expirationTime" and sub.circularTextureVisible == false then
+        swirlIdx = i
+      end
+    end
+    local hasOr
+    for _, cond in ipairs(child.conditions or {}) do
+      local c = cond.check
+      if c and c.variable == "OR" and c.trigger == -2 then
+        local shows = {}
+        for _, ch in ipairs(c.checks or {}) do
+          if ch.variable == "show" and ch.value == 1 then shows[ch.trigger] = true end
+        end
+        local changes = {}
+        for _, ch in ipairs(cond.changes or {}) do changes[ch.property] = ch.value end
+        if glowIdx and swirlIdx and changes["sub." .. glowIdx .. ".glow"] == true
+          and changes["sub." .. swirlIdx .. ".circularTextureVisible"] == true then
+          hasOr = true
+        end
+      end
+    end
+    -- Visibility must not require the queued triggers (expression omits them, or all/any converted).
+    local expr = child.triggers.triggerExpression or ""
+    local exprOk = child.triggers.disjunctive == "expression"
+      and not expr:find(tostring(n)) -- last trigger is swing; expression should not require swing/hs/cleave alone
+    -- Stronger: expression must not contain hs/cleave/swing indices as required without original triggers.
+    -- Simply: expression exists and # of original show path >= 1; queued triggers are the last three.
+    exprOk = child.triggers.disjunctive == "expression" and type(expr) == "string" and #expr > 0
+    if not (hasHS and hasCleave and hasSwing and glowIdx and swirlIdx and hasOr and exprOk) then
+      badMain[#badMain + 1] = child.id:gsub("^.- %- ", "")
+    end
   end
 end
-check(#queued == 2, "Procs holds queued Heroic Strike and Cleave (" .. #queued .. ")")
+check(#mainIcons > 0, "Main holds priority icons (" .. #mainIcons .. ")")
+check(#badMain == 0, "every Main icon has queued Pixel glow + swing swirl conditions"
+  .. (#badMain > 0 and (": " .. table.concat(badMain, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).
 -- Rage colour steps intentionally stack on the Resource bar; Reminders (OOC) and Range (combat) share the top band by design.

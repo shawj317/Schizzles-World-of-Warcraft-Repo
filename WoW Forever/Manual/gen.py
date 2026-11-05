@@ -63,11 +63,11 @@ def hud(x0, x1, y0, y1, label, style=""):
 hudsketch = "<div class='hud'><div class='ctr'></div>" + "".join([
     hud(-90, 90, 90, 110, "Not in melee range (combat)", "color:#ff6b6b"),
     hud(-126, 126, 72, 89, "Missing Battle Shout (out of combat)", "color:#FFD100;border-style:dotted"),
-    hud(-130, 130, 41, 63, "Procs: OP/Revenge/Execute/VR + queued HS/Cleave (glow + swing swirl)", "border-color:#FF7800"),
+    hud(-97, 97, 41, 63, "Procs: Overpower, Revenge, Execute, Victory Rush", "border-color:#FF7800"),
     hud(-163, 163, 15, 37, "Your buffs (Battle Shout time left; red blink at 3 s)"),
     hud(-97, 97, -11, 11, "Target debuffs + stance"),
     hud(-167, 167, -28, -14, "Rage: grey / red / bronze 30 / ember 60", "background:linear-gradient(90deg,#737373 0 15%,#c74040 15% 30%,#b87333 30% 60%,#ff7800 60%);color:#111"),
-    hud(-167, 167, -100, -38, "Priority lane 1 2 3 4 5 6 7 8<br>(lit = ready, dim = not yet, glow = debuff missing)", "border-color:#FFD100"),
+    hud(-167, 167, -100, -38, "Priority lane 1 2 3 4 5 6 7 8<br>(queued HS/Cleave: Pixel glow + swing swirl on these)", "border-color:#FFD100"),
     hud(-161, 161, -158, -104, "Cooldowns for this stance, trinkets, racial"),
     hud(-167, 167, -187, -164, "Swing timers (main, off hand)"),
 ]) + "</div>"
@@ -75,7 +75,7 @@ parts = []
 parts.append(f"""<div class='cover'><h1>Schizzle's Warrior &mdash; WoW Forever launch manual</h1>
 <p class='sub'>By Jon Shaw (Schizzle) &middot; for WoW Forever 1.60.1 (build 70755, Interface 16001) &middot; written Nov 3 2026</p>
 <p><b>WoW Forever opens Wednesday Nov 4 at 6 PM EST</b> (3 PM PST), after maintenance from about 1 PM EST. Raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) open Dec 9.</p>
-<span class='tag'>Schizzle's Warrior Setup F1.5</span><span class='tag'>Warrior Essentials v1.3 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
+<span class='tag'>Schizzle's Warrior Setup F1.6</span><span class='tag'>Warrior Essentials v1.4 (Musca Auras)</span><span class='tag'>XP &amp; Rep Tray</span><span class='tag'>Auctionator list</span><span class='tag'>TSM plan</span>
 <div class='note'><b>Why a manual and not one big import:</b> WeakAuras and TradeSkillMaster have no WoW Forever build yet, so the MoP rotation aura and TSM imports can't be used on day one. Musca Auras, a WeakAuras fork for Forever, runs a new visual helper instead (page 4). The helper addon does everything that can be automated; this sheet covers the rest, in order.</div></div>""")
 parts.append("<h2>1. Put the addons in the Forever folder</h2>")
 parts.append("<ol><li>Close WoW and Battle.net.</li><li>Open <code>C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\</code>. Copy it somewhere safe first.</li><li>Copy in the Forever-ready addons (table below) and the <code>SchizzlesWarriorSetup</code> folder from the repo's <b>WoW Forever</b> folder.</li><li>Add <b>Musca Auras 1.14.0</b> for the visual helper. Its folder is called <code>WeakAuras</code>.</li><li>Leave <b>TradeSkillMaster</b>, <b>TSM AppHelper</b>, the original <b>WeakAuras</b> and <b>WagoAppCompanion</b> off on Forever.</li></ol>")
@@ -106,7 +106,7 @@ parts.append("<h2>3. Where everything sits</h2>")
 parts.append(screen)
 parts.append("<p>The orange box in the middle belongs to the visual helper (page 4); nothing else goes there. Unit frames stay at Blizzard's spots. The tray is 500 x 34 px, 4 px from the right and bottom edges; the two Details! windows sit right on top of it.</p>")
 parts.append("<h2>4. The visual helper: Schizzle's Warrior Essentials</h2>")
-parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Group default is <b>0,-55</b> with a <b>100 px</b> rage bar. Queued Heroic Strike or Cleave sit in Procs with the Battle Shout Pixel glow and a radial main-hand swing timer; Battle Shout shows remaining time. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
+parts.append("<p>A Musca Auras pack that shows what's ready, what's missing and what to press next. <b>It never presses anything for you</b>: it's a visual helper, not a rotation bot. Group default is <b>0,-55</b> with a <b>100 px</b> rage bar. While Heroic Strike or Cleave is queued, Main priority icons get the Battle Shout Pixel glow and a main-hand swing swirl; Battle Shout shows remaining time. Install: Musca Auras 1.14.0, then <code>/schizzle auras</code> &gt; <b>Import</b> &gt; <code>/reload</code>, then <code>/schizzle cdm</code> to turn off Blizzard's Cooldown Manager, which would sit in the same spot.</p>")
 parts.append("<div class='hudwrap'>" + hudsketch + "<div class='hudkey'>" + table(["Lane", "Order (press the lowest lit number)"], [
     ["Starter (below 10)", "Rend, Heroic Strike, Thunder Clap"],
     ["Arms", "Rend, Overpower, Mortal Strike, Slam, Execute, Victory Rush, Sweeping Strikes, Whirlwind"],
@@ -118,7 +118,7 @@ parts.append(table(["You see", "Sound", "It means", "Do"], [
     ["Revenge lights up", "water drop", "you blocked, dodged or parried", "Revenge now (Defensive Stance)"],
     ["Execute lights up", "robot blip", "target under 20%", "Execute beats everything in the lane"],
     ["Victory Rush lights up", "water drop", "you got a killing blow", "free heal and damage"],
-    ["Heroic Strike / Cleave shows (glow + swirl)", "&mdash;", "queued on your next swing", "press again to cancel if you need the rage"],
+    ["Priority icons glow + swirl", "&mdash;", "HS or Cleave queued on next swing", "press again to cancel if you need the rage"],
     ["Lane icon glows", "&mdash;", "Rend, Sunder, Thunder Clap or Demo Shout missing (Rend: due a refresh)", "put it back up"],
     ["Lane icon dim / red / blue", "&mdash;", "not usable yet / out of range / short of rage", "press the next lit number"],
     ["Rage grey / red / bronze / ember", "&mdash;", "under 15 / 15-29 / 30-59 / 60+", "bronze: room for HS or Cleave; ember: spend it"],
@@ -197,7 +197,7 @@ parts.append(checks([
     "BugSack stays quiet through a fight, a quest turn-in and a level-up",
     "Visual helper: <i>Missing Battle Shout</i> out of combat; Starter lane below 10, your tree's lane from 10",
     "Rage bar: grey under 15, red, bronze at 30, ember at 60; lane icons dim and light up",
-    "Overpower (dodge), Execute (&lt;20%) and Victory Rush (kill) light up with their sounds; HS/Cleave glow + swing swirl while queued; Battle Shout shows time left",
+    "Overpower (dodge), Execute (&lt;20%) and Victory Rush (kill) light up with their sounds; Main icons glow + swing swirl while HS/Cleave queued; Battle Shout shows time left",
     "Rend timer on the target; the lane's Rend glows when it drops. Sunder stacks, Thunder Clap and Demo Shout show",
     "Cooldown row changes with each stance; <i>Not in melee range</i> when you back off; swing bars fill",
     "Auctionator list imports and searches",

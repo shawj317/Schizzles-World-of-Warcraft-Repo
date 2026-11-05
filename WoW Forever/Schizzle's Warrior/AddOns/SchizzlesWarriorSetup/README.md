@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F1.6** (Nov 4 2026): Schizzle's Warrior Essentials v1.4 — queued HS/Cleave Pixel glow + MH swing swirl on Main priority icons (no standalone Procs auras).
 - **F1.5** (Nov 4 2026): Schizzle's Warrior Essentials v1.3 — remove Next Swing row; Heroic Strike/Cleave in Procs with Battle Shout Pixel glow + main-hand swing radial; Battle Shout remaining-time text.
 - **F1.4** (Nov 4 2026): Schizzle's Warrior Essentials v1.2 — group default 0,-55; rage bar 100 px wide.
 - **F1.3** (Nov 4 2026): Schizzle's Warrior Essentials v1.1 (glow + NEXT SWING on queued Heroic Strike / Cleave); SexyMap regional unique-name key writes plain "First Last" as well as "First Last-PvE".
