@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.10` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.11` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.2 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.3 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -105,6 +105,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.11 | Unload the whole pack in the six classic capitals (Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff, Undercity) via negated zone + uiMapIDs; keep v1.10 init fix and v1.9 Rend/queue behaviour
 | 1.10 | Fix Main icons: actions.init.custom is a body (Musca wraps function()); build compiles every custom-code string as Musca LoadFunction does
 | 1.9 | Main Rend: aura2 primary (no Cooldown Progress) so Forever no longer greys it always; desaturate only while own Rend is up. HS/Cleave queue Pixel only on the queued ability's own icon
 | 1.8 | Main Rend: saturated when Rend is missing from the target, desaturated when your Rend is on it (aura2 by name); removed rage desat / usable glow / queue border / timer / <4s flash

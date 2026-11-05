@@ -219,7 +219,45 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.10$") ~= nil, "pack version is v1.10 (" .. root.id .. ")")
+check(root.id:find(" v1%.11$") ~= nil, "pack version is v1.11 (" .. root.id .. ")")
+
+-- Every leaf aura unloads in Forever 1.60.1 classic capitals (zone name + uiMapID child-maps).
+local CAPITAL_NAMES = {
+  "Stormwind City", "Ironforge", "Darnassus", "Orgrimmar", "Thunder Bluff", "Undercity",
+}
+local CAPITAL_MAPS = { "1453", "1455", "1457", "1454", "1456", "1458" }
+local badCapital = {}
+for _, child in ipairs(transmit.c) do
+  if child.regionType ~= "group" and child.regionType ~= "dynamicgroup" then
+    local load = child.load or {}
+    local reasons = {}
+    if not load.use_zone or type(load.zone) ~= "string" then
+      reasons[#reasons + 1] = "use_zone"
+    else
+      for _, name in ipairs(CAPITAL_NAMES) do
+        if not load.zone:find("-" .. name, 1, true) then
+          reasons[#reasons + 1] = "zone-missing-" .. name
+        end
+      end
+    end
+    if not load.use_zoneIds or type(load.zoneIds) ~= "string" then
+      reasons[#reasons + 1] = "use_zoneIds"
+    else
+      for _, id in ipairs(CAPITAL_MAPS) do
+        if not load.zoneIds:find("-c" .. id, 1, true) then
+          reasons[#reasons + 1] = "map-missing-" .. id
+        end
+      end
+    end
+    if load.use_resting ~= nil then reasons[#reasons + 1] = "no-resting-load" end
+    if #reasons > 0 then
+      badCapital[#badCapital + 1] = child.id:gsub("^.- %- ", "") .. "[" .. table.concat(reasons, ",") .. "]"
+    end
+  end
+end
+check(#badCapital == 0, "every leaf aura hides in classic capitals (zone + zoneIds, not resting)"
+  .. (#badCapital > 0 and (": " .. table.concat(badCapital, ", ")) or ""))
+
 
 -- No Next Swing row; no standalone HS/Cleave in Procs (those grew above Battle Shout).
 local nextGroup

@@ -107,6 +107,7 @@ Every Blizzard function and event the addon calls is in the `forever` branch of 
 Fira Sans Condensed Medium is copyright The Mozilla Foundation and Telefonica S.A., under the SIL Open Font License 1.1 (`Media/FiraSansCondensed-OFL.txt`).
 
 ## Version history
+- **F2.3** (Nov 4 2026): Schizzle's Warrior Essentials v1.11 — pack unloads in classic capitals; keeps v1.10 init fix.
 - **F2.2** (Nov 4 2026): Schizzle's Warrior Essentials v1.10 — fix Main init custom double-function() import errors; keep v1.9 Rend/queue behaviour.
 - **F2.1** (Nov 4 2026): Schizzle's Warrior Essentials v1.9 — Main Rend aura2-primary (fix Forever always-grey); HS/Cleave queue glow only on the queued ability.
 - **F2.0** (Nov 4 2026): Schizzle's Warrior Essentials v1.8 — Main Rend only desaturates while your Rend is on the target.

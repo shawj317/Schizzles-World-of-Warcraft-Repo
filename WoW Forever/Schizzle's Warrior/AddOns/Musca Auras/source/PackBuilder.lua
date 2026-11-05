@@ -277,6 +277,12 @@ function Pack.Build(spec)
     return uid
   end
 
+  -- Forever 1.60.1 / Classic Era capitals only (no Exodar, Silvermoon, Shattrath, Dalaran).
+  -- Leaf auras own load checks (groups follow children), so every aura gets this. Negated zone
+  -- names (GetRealZoneText) plus uiMapIDs with child maps (districts). Not IsResting — inns rest too.
+  local CAPITAL_ZONE_NAMES = "-Stormwind City,-Ironforge,-Darnassus,-Orgrimmar,-Thunder Bluff,-Undercity"
+  local CAPITAL_ZONE_IDS = "-c1453,-c1455,-c1457,-c1454,-c1456,-c1458" -- SW, IF, Darn, Org, TB, UC
+
   local function Load(options)
     local load = { use_class = true, class = { single = spec.class, multi = {} },
       size = { multi = {} }, spec = { multi = {} }, talent = { multi = {} } }
@@ -293,6 +299,12 @@ function Pack.Build(spec)
     end
     -- The ForeverAuras format of the specialization option is not verified: it loads in every specialization.
     if options.spec and not FOREVER_AURAS then load.use_forever_spec, load.forever_spec = true, { single = options.spec } end
+    if options.allowCapitals then
+      -- rare escape hatch; default is hide in capitals
+    else
+      load.use_zone, load.zone = true, CAPITAL_ZONE_NAMES
+      load.use_zoneIds, load.zoneIds = true, CAPITAL_ZONE_IDS
+    end
     return load
   end
 

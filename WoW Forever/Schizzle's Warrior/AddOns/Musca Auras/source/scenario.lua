@@ -161,7 +161,7 @@ return function(test)
   end
   Units.SetCombat(false)
 
-  -- Main Rend v1.10: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
+  -- Main Rend v1.11: saturated without Rend on target; desaturated when own Rend is present (aura2 primary).
   for id in pairs(signature) do known[id] = nil end
   known[12294] = true
   Units.Get("player").level = 60
