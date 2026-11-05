@@ -432,23 +432,29 @@ function Pack.Build(spec)
   local function SpellIcon(holder, entry, size)
     -- ForeverAuras cannot combine a requirement with the fallback: its buff stays a separate icon (foreverAurasOnly).
     local required = entry.gate or entry.form or entry.needsPet or entry.offhand
+    local data
     if entry.aura and not (FOREVER_AURAS and required) then
       local unit = entry.unit or "player"
       assert(({ player = 1, target = 1, focus = 1, pet = 1, targettarget = 1, focustarget = 1 })[unit],
         entry.name .. ": unit without fallback")
       assert(not (entry.kind == "HARMFUL" and (unit == "player" or unit == "pet")), entry.name .. ": debuff on self")
-      return Icon(holder, entry.name, AuraTrigger(entry.aura, "showAlways", entry.unit, entry.kind),
+      data = Icon(holder, entry.name, AuraTrigger(entry.aura, "showAlways", entry.unit, entry.kind),
         Requirements(entry, { size = size, fallback = CooldownTrigger(entry.spell),
-        idle = true }))
+        idle = true, subRegions = { Text("%c", "INNER_TOPLEFT", 11) } }))
+    else
+      data = Icon(holder, entry.name, CooldownTrigger(entry.spell),
+        Requirements(entry, { size = size, conditions = { noMana, outOfRange }, idle = true,
+          subRegions = { Text("%c", "INNER_TOPLEFT", 11) } }))
     end
-    return Icon(holder, entry.name, CooldownTrigger(entry.spell),
-      Requirements(entry, { size = size, conditions = { noMana, outOfRange }, idle = true }))
+    return ApplyHotkeyLabel(data, entry.spell)
   end
 
   local function AuraIcon(holder, label, entry, unit, kind, noGlow)
     local subRegions = {}
     if entry.stacks then subRegions[#subRegions + 1] = Text("%s", "INNER_BOTTOMRIGHT", 12) end
     if entry.remaining then subRegions[#subRegions + 1] = RemainingText("INNER_BOTTOM", 11) end
+    local keySpell = entry.spell or entry.keybind
+    if keySpell then subRegions[#subRegions + 1] = Text("%c", "INNER_TOPLEFT", 11) end
     local options = Requirements(entry, { size = SIZES.aura, subRegions = subRegions, missing = entry.missing,
       glow = not noGlow and entry.glow })
     -- A flash aura (a proc) blinks only when asked: it is spent before it expires.
@@ -469,7 +475,9 @@ function Pack.Build(spec)
     end
     local trigger = AuraTrigger(entry.aura, entry.missing and "showAlways" or "showOnActive", unit, kind)
     if kind == "HARMFUL" and (unit or "player") == "player" then trigger.nativeFilters = nil end
-    return Icon(holder, label, trigger, options)
+    local data = Icon(holder, label, trigger, options)
+    if keySpell then ApplyHotkeyLabel(data, keySpell) end
+    return data
   end
 
   local function TotemIcon(holder, slot)
@@ -541,7 +549,12 @@ function Pack.Build(spec)
       end
     end
     assert(trigger, entry.name .. ": reminder has no trigger")
+    if entry.known then
+      options.subRegions = options.subRegions or {}
+      options.subRegions[#options.subRegions + 1] = Text("%c", "INNER_TOPLEFT", 11)
+    end
     local data = entry.icon and Icon(reminders, label, trigger, options) or Label(reminders, label, trigger, text, color, options)
+    if entry.known then ApplyHotkeyLabel(data, entry.known) end
     -- Display.Validate rejects any animation on a secretAura, and a pulse on the alpha would override the native
     -- threshold of a low power reminder: only the other reminders pulse. A text has no scale, it flashes.
     if not entry.aura and not entry.lowPower then
@@ -564,7 +577,9 @@ function Pack.Build(spec)
   for _, entry in ipairs(spec.procs or {}) do
     if entry.usable then
       local data = Icon(procs, entry.name, Generic({ type = "spell", event = "Action Usable", spellName = entry.usable,
-        use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.usable, subRegions = { GLOW } }))
+        use_exact_spellName = false }), Requirements(entry, { size = SIZES.proc, known = entry.usable,
+          subRegions = { GLOW, Text("%c", "INNER_TOPLEFT", 11) } }))
+      ApplyHotkeyLabel(data, entry.usable)
       if entry.sound then
         data.actions.start = { do_sound = true, sound = entry.sound, sound_channel = "Master" }
       end
@@ -728,21 +743,38 @@ function Pack.Build(spec)
     return data
   end
 
-  -- Main-lane DoT (Rend) on Forever: target debuffs are secret to addons in combat (C_UnitAuras
-  -- refuses them; aura2 name/ownOnly fails closed — icon stayed saturated even with Rend up on
-  -- the nameplate). Musca's Forever tutorial §5: deduce from UNIT_SPELLCAST_SUCCEEDED + fixed timer.
-  -- Primary = Cooldown Progress showAlways (always visible, including no target); skip onCooldown
-  -- greying. Companion = Spell Cast Succeeded (all ranks, Hide After max duration, hide on target
-  -- death/change) → desaturate while that timer is showing for the current target.
-  local function DotCastTrigger(spellIds, duration)
-    return Generic({
-      type = "event", event = "Spell Cast Succeeded",
-      unit = "player", use_unit = true,
-      use_spellId = true, spellId = Ids(spellIds),
-      duration = tostring(duration or 21),
-      use_hideOnTargetDeath = true,
-      use_hideOnTargetChange = true,
-    })
+  -- Main-lane DoT (Rend) on Forever: target debuffs are secret in combat; CLEU is closed.
+  -- Setup (unsandboxed Rend.lua) tracks land + rank duration and publishes SchizzlesWarriorSetup_Rend
+  -- via WeakAuras.ScanEvents("SCHIZZLE_REND"). Companion is a custom status that greys while active.
+  -- Primary = Cooldown Progress showAlways; skip onCooldown greying.
+  local function DotLandedTrigger()
+    return {
+      type = "custom",
+      custom_type = "status",
+      check = "event",
+      events = "SCHIZZLE_REND",
+      custom = [=[
+function()
+  local r = SchizzlesWarriorSetup_Rend
+  if type(r) ~= "table" or not r.active then return false end
+  local exp = r.expires
+  if type(exp) ~= "number" then return false end
+  if issecretvalue and issecretvalue(exp) then return false end
+  return GetTime() < exp
+end
+]=],
+      customDuration = [=[
+function()
+  local r = SchizzlesWarriorSetup_Rend
+  if type(r) ~= "table" or not r.active or type(r.expires) ~= "number" then
+    return 0, GetTime()
+  end
+  local rem = r.expires - GetTime()
+  if rem < 0 then rem = 0 end
+  return rem, r.expires
+end
+]=],
+    }
   end
 
   local function ApplyMainDotDesaturate(data)
@@ -772,14 +804,14 @@ function Pack.Build(spec)
       local number = Text("%c", "INNER_TOPLEFT", 11)
       local data
       if entry.dot then
-        -- CD primary (always show) + Spell Cast Succeeded companion for Forever-safe DoT greying.
+        -- CD primary (always show) + Setup Rend-land companion for Forever-safe DoT greying.
         data = Icon(main, label, CooldownTrigger(entry.spell), Requirements(e, {
           size = SIZES.main,
           texture = entry.texture or "Interface\\Icons\\Ability_Gouge",
           subRegions = { number },
           idle = true,
           skipCooldownDesat = true,
-          companionTrigger = DotCastTrigger(entry.aura, entry.dotDuration or 21),
+          companionTrigger = DotLandedTrigger(),
         }))
       elseif entry.aura then
         local unit, kind = entry.unit or "target", entry.kind or "HARMFUL"

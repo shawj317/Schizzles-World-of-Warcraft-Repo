@@ -5,7 +5,7 @@
 local _, ns = ...
 local D = ns.data
 local PROFILE = "Schizzle's Warrior"
-local VERSION = "F2.7"
+local VERSION = "F2.8"
 ns.VERSION = VERSION
 
 local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded

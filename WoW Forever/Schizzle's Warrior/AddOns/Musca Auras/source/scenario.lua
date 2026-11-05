@@ -170,8 +170,8 @@ return function(test)
   end
   Units.SetCombat(false)
 
-  -- Main Rend v1.12: always visible (CD primary); greys via Spell Cast Succeeded companion while
-  -- the self-timer runs for the current target (Forever-safe; aura2 cannot see target debuffs in combat).
+  -- Main Rend v1.16: always visible (CD primary); greys via Setup SchizzlesWarriorSetup_Rend
+  -- (SCHIZZLE_REND custom status). Rank duration + miss handling live in Setup (CLEU closed on Forever).
   for id in pairs(signature) do known[id] = nil end
   known[12294] = true
   Units.Get("player").level = 60
@@ -184,8 +184,8 @@ return function(test)
   local t1 = rendData.triggers[1] and rendData.triggers[1].trigger
   local t2 = rendData.triggers[2] and rendData.triggers[2].trigger
   assert(t1 and t1.event == "Cooldown Progress (Spell)", "Main Rend primary must be Cooldown Progress")
-  assert(t2 and t2.event == "Spell Cast Succeeded", "Main Rend companion must be Spell Cast Succeeded")
-  assert(t2.use_hideOnTargetDeath and t2.use_hideOnTargetChange, "Main Rend cast trigger hides on target death/change")
+  assert(t2 and t2.type == "custom" and tostring(t2.events or ""):find("SCHIZZLE_REND", 1, true),
+    "Main Rend companion must be Setup SCHIZZLE_REND custom status")
   assert(rendData.triggers.triggerExpression == "1", "Main Rend visibility stays on trigger 1")
   for i, entry in ipairs(rendData.triggers) do
     local tr = entry.trigger
@@ -194,20 +194,34 @@ return function(test)
   end
   local region = WeakAuras.GetRegion(armsRend)
   assert(region, "Arms Rend region missing")
-  assert(region.desaturateWanted ~= true, "Main Rend must be saturated before cast")
-  -- Forever recipe: cast succeeded starts the fixed timer → desaturate.
-  Frames.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "castguid-rend", 772)
+  assert(region.desaturateWanted ~= true, "Main Rend must be saturated before land")
+  local function setRend(active, duration)
+    local expires = active and (GetTime() + (duration or 15)) or nil
+    _G.SchizzlesWarriorSetup_Rend = {
+      active = active and true or false,
+      expires = expires,
+      duration = duration,
+      spellId = 6547,
+      source = "scenario",
+    }
+    WeakAuras.ScanEvents("SCHIZZLE_REND")
+    test.Environment.Advance(0.3)
+  end
+  -- R3 land → grey for 15s
+  setRend(true, 15)
+  assert(region.desaturateWanted == true, "Main Rend must desaturate after Rend land")
+  -- Clear (target change / miss / remove)
+  setRend(false)
+  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when Setup clears")
+  -- Land again then expire via time
+  setRend(true, 9)
+  assert(region.desaturateWanted == true, "Main Rend greys again after R1 land")
+  test.Environment.Advance(9.5)
+  -- Force expire in the Setup table the custom trigger reads
+  _G.SchizzlesWarriorSetup_Rend.active = false
+  _G.SchizzlesWarriorSetup_Rend.expires = GetTime() - 1
+  WeakAuras.ScanEvents("SCHIZZLE_REND")
   test.Environment.Advance(0.3)
-  assert(region.desaturateWanted == true, "Main Rend must desaturate after Rend cast succeeded")
-  -- Clearing / changing target ends the companion timer → saturate again.
-  Frames.Fire("PLAYER_TARGET_CHANGED")
-  test.Environment.Advance(0.3)
-  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when target changes")
-  -- Cast again, then let the Hide After duration expire.
-  Frames.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "castguid-rend2", 772)
-  test.Environment.Advance(0.3)
-  assert(region.desaturateWanted == true, "Main Rend greys again after recast")
-  test.Environment.Advance(21.5)
-  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when the cast timer expires")
-  print("ok   Main Rend always shows; greys via Spell Cast Succeeded self-timer")
+  assert(region.desaturateWanted ~= true, "Main Rend re-saturates when Setup timer expires")
+  print("ok   Main Rend always shows; greys via Setup SCHIZZLE_REND land tracker")
 end

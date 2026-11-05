@@ -7,7 +7,7 @@
 local here = (debug.getinfo(1, "S").source:match("^@(.*[/\\])") or "./")
 local Pack = dofile(here .. "PackBuilder.lua")
 
-local VERSION = "1.15"
+local VERSION = "1.16"
 local battleShout = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local rend = { 772, 6546, 6547, 6548, 11572, 11573, 11574 }
 local sunder = { 7386, 7405, 8380, 11596, 11597 }
@@ -106,7 +106,7 @@ return Pack.Build({
 
   -- Your buffs while they are up; the last 3 seconds blink red.
   buffs = {
-    { name = "Battle Shout", aura = battleShout, remaining = true },
+    { name = "Battle Shout", aura = battleShout, remaining = true, spell = 6673 },
     { name = "Enrage", aura = { 12880 }, known = 12317 },
     { name = "Flurry", aura = { 12966 }, known = 12319 },
     { name = "Blood Craze", aura = { 16488 }, known = 16487 },

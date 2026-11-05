@@ -219,7 +219,7 @@ check(#outside == 0, "every row stays inside the HUD box" ..
 -- 5. -------------------------------------------------------------------------------------------------------------
 check(root.id:find(" v%d+%.%d+$") ~= nil, "the group's name carries the version (" .. root.id .. ")")
 
-check(root.id:find(" v1%.15$") ~= nil, "pack version is v1.15 (" .. root.id .. ")")
+check(root.id:find(" v1%.16$") ~= nil, "pack version is v1.16 (" .. root.id .. ")")
 
 -- Find Minerals reminder: Tracking inverse (spell 2580), icon + Track Minerals text, OOC + alive.
 do
@@ -436,6 +436,29 @@ check(#badInit == 0, "Main has no hotkey actions.init (Setup owns SchizzlesWarri
 check(#badHotkey == 0, "every Main icon labels the real keybind (%c + SchizzlesWarriorSetup_Keys)"
   .. (#badHotkey > 0 and (": " .. table.concat(badHotkey, ", ")) or ""))
 
+-- Utility / Procs / Battle Shout also carry Setup keybind labels.
+local badExtraHotkey = {}
+for _, child in ipairs(transmit.c) do
+  local id = child.id or ""
+  local want = id:find(" %- Utility %- ") or id:find(" %- Procs %- ")
+    or id:find(" %- Battle Shout$") or id:find("Missing Battle Shout")
+    or id:find(" %- Bloodrage$")
+  if want and child.regionType == "icon" then
+    local hasC, hasKeys
+    for _, sub in ipairs(child.subRegions or {}) do
+      if sub.type == "subtext" and sub.text_text == "%c" then hasC = true end
+    end
+    local ct = child.customText or ""
+    hasKeys = ct:find("SchizzlesWarriorSetup_Keys", 1, true) ~= nil
+    if not hasC or not hasKeys then
+      badExtraHotkey[#badExtraHotkey + 1] = id:gsub("^.- %- ", "")
+    end
+  end
+end
+check(#badExtraHotkey == 0, "Utility/Procs/Battle Shout/Bloodrage icons label keybinds"
+  .. (#badExtraHotkey > 0 and (": " .. table.concat(badExtraHotkey, ", ")) or ""))
+
+
 -- Harness: customText reads Setup global; mocked BT4-style map (spell id + name + cross-rank).
 do
   local sample
@@ -516,9 +539,9 @@ end
 check(#targetRend == 0, "Target row has no Rend (target) duplicate"
   .. (#targetRend > 0 and (": " .. table.concat(targetRend, ", ")) or ""))
 
--- Main Rend v1.12: Cooldown Progress primary (always visible) + Spell Cast Succeeded companion
--- (Forever tutorial §5 self-timer). Desaturate only while trigger 2 is showing. No aura2 target
--- scan (secret in combat). No onCooldown→desaturate on the CD primary. No remaining timer / Proc flash.
+-- Main Rend v1.16: Cooldown Progress primary + Setup Rend-land companion (custom SCHIZZLE_REND).
+-- Rank duration + miss handling live in Setup Rend.lua (CLEU closed on Forever).
+-- Desaturate only while trigger 2 is showing. No aura2 target scan. No onCooldown desat.
 local badDot = {}
 for _, child in ipairs(mainIcons) do
   if child.id:find(" Rend$") then
@@ -537,19 +560,21 @@ for _, child in ipairs(mainIcons) do
       end
     end
 
-    local cdIdx, castIdx, aura2Target, rendQ, otherDesat
+    local cdIdx, landIdx, aura2Target, rendQ, otherDesat
     for i, entry in ipairs(child.triggers) do
       local tr = entry.trigger
       if tr and tr.event == "Cooldown Progress (Spell)" then cdIdx = i end
-      if tr and tr.event == "Spell Cast Succeeded" and tr.use_spellId
-        and tr.use_hideOnTargetDeath and tr.use_hideOnTargetChange then
-        castIdx = i
+      if tr and tr.type == "custom" and tr.custom_type == "status"
+        and type(tr.events) == "string" and tr.events:find("SCHIZZLE_REND", 1, true)
+        and type(tr.custom) == "string" and tr.custom:find("SchizzlesWarriorSetup_Rend", 1, true) then
+        landIdx = i
       end
       if tr and tr.type == "aura2" and tr.unit == "target" then aura2Target = i end
       if tr and tr.event == "Queued Action" and tr.spellName == 772 then rendQ = i end
+      if tr and tr.event == "Spell Cast Succeeded" then reasons[#reasons + 1] = "old-cast-succeeded" end
     end
     if cdIdx ~= 1 then reasons[#reasons + 1] = "cd-primary" end
-    if castIdx ~= 2 then reasons[#reasons + 1] = "cast-succeeded-companion" end
+    if landIdx ~= 2 then reasons[#reasons + 1] = "setup-rend-companion" end
     if aura2Target then reasons[#reasons + 1] = "no-aura2-target" end
     if rendQ then reasons[#reasons + 1] = "rend-queued-trigger-removed" end
     local expr = child.triggers.triggerExpression or ""
@@ -603,7 +628,7 @@ for _, child in ipairs(mainIcons) do
     end
   end
 end
-check(#badDot == 0, "Main Rend: CD primary + Spell Cast Succeeded companion, only show→desaturate"
+check(#badDot == 0, "Main Rend: CD primary + Setup SCHIZZLE_REND companion, only show→desaturate"
   .. (#badDot > 0 and (": " .. table.concat(badDot, ", ")) or ""))
 
 -- Sibling content rows must not overlap (the old Next Swing row sat on Rage / Main).

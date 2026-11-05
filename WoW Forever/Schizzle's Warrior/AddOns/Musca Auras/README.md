@@ -6,13 +6,13 @@ A Musca Auras pack for a Warrior on WoW Forever, made by Jon Shaw (Schizzle). It
 
 | File | Imports as | Needs |
 |---|---|---|
-| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.15` | Musca Auras 1.14.0 |
+| [Schizzle's Warrior Essentials.txt](Schizzle's%20Warrior%20Essentials.txt) | one group: `Schizzle's Warrior Essentials v1.16` | Musca Auras 1.14.0 |
 
 Musca Auras is a WeakAuras fork for Forever that understands Forever's "secret values" (auras, cooldowns and power hidden from addons in combat). Get it from its [GitHub releases](https://github.com/dldvlpr-addons-wow/Musca-Auras/releases) (1.14.0, Interface 16001). Normal WeakAuras doesn't load on Forever. ForeverAuras is a different fork and can't import this pack.
 
 ## Install
 1. Install Musca Auras 1.14.0. The addon folder is still called `WeakAuras`, so turn off any other WeakAuras copy first.
-2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.7 or later). The import window opens with the pack already in it. Click **Import**.
+2. Log in on your Warrior and type `/schizzle auras` (needs Schizzle's Warrior Setup F2.8 or later). The import window opens with the pack already in it. Click **Import**.
    Or open the file, copy all of it, type `/wa`, click **Import** and paste it in.
 3. Type `/reload`.
 4. The pack and Blizzard's Cooldown Manager both use the middle of the screen. Type `/schizzle cdm` to turn the Cooldown Manager off, or keep it for buffs only and drag its bars out of the HUD box (see the [Warrior Guide](../../Warrior%20Guide.md#the-cooldown-manager-alongside-the-pack)).
@@ -46,7 +46,7 @@ The lane loads from the talent tree with the most points spent, from level 10. B
 | Fury | Bloodthirst, Whirlwind, Execute, Victory Rush, Slam, Rend | Whirlwind in Berserker; Rend in Battle or Defensive |
 | Protection | Shield Slam, Revenge, Sunder Armor, Shield Block, Demoralizing Shout, Thunder Clap, Victory Rush | Revenge and Shield Block in Defensive, Thunder Clap in Battle |
 
-Sunder Armor, Demoralizing Shout and Thunder Clap in a lane track the target debuff. Main Rend always shows; it greys while your Rend self-timer is running on the current target (Spell Cast Succeeded — Forever cannot read target debuffs in combat).
+Sunder Armor, Demoralizing Shout and Thunder Clap in a lane track the target debuff. Main Rend always shows; it greys while Setup reports your Rend landed on the current target (rank duration; Forever cannot read target debuffs or CLEU in combat).
 
 ## Rage colours
 | Rage | Colour | Meaning |
@@ -106,6 +106,7 @@ Last run (Nov 3, 2026) on Musca Auras 1.14.0 with the Forever UI source for buil
 ## Version history
 | Version | Changes |
 |---|---|
+| 1.16 | All BT4 bars + castable Essentials keybind labels; Main Rend rank duration + miss-safe land via Setup (CLEU closed on Forever) |
 | 1.15 | Main hotkeys via Setup SchizzlesWarriorSetup_Keys (Bartender4 BT4Button primary) |
 | 1.14 | Main hotkeys: Bartender4 CLICK BT4ButtonN:Keybind/LeftButton + skip-secret scan; Blizzard/BT4 harness |
 | 1.13 | Reminders: Find Minerals (spell 2580) icon + "Track Minerals" via Musca Tracking inverse; OOC/alive/capitals |

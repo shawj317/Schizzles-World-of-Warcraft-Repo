@@ -44,7 +44,27 @@ _G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) chat[#chat + 1] = m end }
 _G.StaticPopupDialogs = {}
 _G.StaticPopup_Show = function(n) popups[#popups + 1] = n end
 _G.SlashCmdList = {}
-_G.C_Timer = { After = function(_, fn) fn() end }
+local simTime = 0
+_G.GetTime = function() return simTime end
+_G.C_Timer = {
+	After = function(delay, fn)
+		-- run immediately in most tests; NewTimer path advances explicitly
+		fn()
+	end,
+	NewTimer = function(delay, fn)
+		local cancelled = false
+		local t = { Cancel = function() cancelled = true end, _fire = function() if not cancelled then fn() end end, _at = simTime + delay }
+		_G.__simTimers = _G.__simTimers or {}
+		_G.__simTimers[#_G.__simTimers + 1] = t
+		return t
+	end,
+}
+_G.__simAdvance = function(dt)
+	simTime = simTime + dt
+	for _, t in ipairs(_G.__simTimers or {}) do
+		if t._at and simTime >= t._at then t._at = nil; t._fire() end
+	end
+end
 _G.GameTooltip = widget()
 _G.InCombatLockdown = function() return false end
 _G.ReloadUI = function() end
@@ -102,7 +122,7 @@ _G.Details = { ImportProfile = function(_, s, name, autorun, prompt, over) impor
 _G.Prat3DB, _G.QuestieConfig, _G.GatherMate2DB, _G.SexyMap2DB = {}, {}, {}, {}
 
 local ns = {}
-for _, file in ipairs({ "Data.lua", "Core.lua", "Keys.lua", "Tray.lua" }) do
+for _, file in ipairs({ "Data.lua", "Core.lua", "Keys.lua", "Rend.lua", "Tray.lua" }) do
 	assert(loadfile("../SchizzlesWarriorSetup/" .. file))("SchizzlesWarriorSetup", ns)
 end
 
@@ -120,7 +140,7 @@ check(skippedMsg and cvars.cooldownViewerEnabled == nil, "a console variable the
 check(imported and imported.name == "Schizzle's Warrior" and imported.autorun == false and imported.over == true and #imported.s > 1000, "Details! profile imported, no auto-run code")
 check(_G.Prat3DB.profileKeys["Tester - Realm"] == "Schizzle's Warrior", "Prat profile assigned")
 check(_G.SexyMap2DB["Tester-Realm"] == "global", "SexyMap profile assigned")
-check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.7", "version recorded")
+check(_G.SchizzlesWarriorSetupCharDB.applied == "F2.8", "version recorded")
 check(popups[#popups] == "SCHIZZLES_WARRIOR_RELOAD", "reload offered")
 local tomtomSkipped = false
 for _, m in ipairs(chat) do if m:find("TomTom: not installed") then tomtomSkipped = true end end
@@ -235,7 +255,7 @@ check(_G.SexyMap2DB["First Last"] == "global", "SexyMap regional: plain First La
 check(_G.SexyMap2DB["First Last-PvE"] == "global", "SexyMap regional: First Last-PvE key kept for older SexyMap")
 _G.RegionalUniqueNamesEnabled = function() return false end
 
--- Key map: Bartender4 BT4Button primary (action + HotKey / CLICK binds).
+-- Key map: Bartender4 bars 1-6 Blizzard-binding mode + CLICK binds + Warrior stance pages 73-108.
 do
 	local actions, bindings = {}, {}
 	_G.GetActionInfo = function(slot)
@@ -243,9 +263,14 @@ do
 		if a then return a[1], a[2] end
 	end
 	_G.GetBindingKey = function(cmd) return bindings[cmd] end
+	_G.GetMacroSpell = function() end
 	_G.C_Spell = {
 		GetSpellName = function(id)
-			local names = { [78] = "Heroic Strike", [772] = "Rend", [6343] = "Thunder Clap", [100] = "Charge" }
+			local names = {
+				[78] = "Heroic Strike", [772] = "Rend", [6343] = "Thunder Clap", [100] = "Charge",
+				[6673] = "Battle Shout", [2687] = "Bloodrage", [5308] = "Execute", [7384] = "Overpower",
+				[6572] = "Revenge", [845] = "Cleave",
+			}
 			return names[id]
 		end,
 		GetSpellInfo = function(id)
@@ -253,8 +278,6 @@ do
 			if n then return { name = n, spellID = id } end
 		end,
 	}
-	-- Mock BT4 buttons: bar1 slot2 = HS (ACTIONBUTTON2=2), bar3 slot25 = Rend (CLICK + HotKey),
-	-- bar3 slot26 = Thunder Clap via MULTIACTIONBAR3, bar1 no Charge — Charge on BT4Button27 HotKey only.
 	local function mkbtn(i, action, hot)
 		local b = widget()
 		b._state_action = action
@@ -265,36 +288,174 @@ do
 		_G["BT4Button" .. i] = b
 		return b
 	end
-	mkbtn(2, 2, "2")
-	actions[2] = { "spell", 78 }
-	bindings["ACTIONBUTTON2"] = "2"
-	mkbtn(25, 25, "Q")
-	actions[25] = { "spell", 772 }
-	bindings["CLICK BT4Button25:Keybind"] = "Q"
-	mkbtn(26, 26, "●")  -- range indicator must be ignored; bind supplies E
-	actions[26] = { "spell", 6343 }
-	bindings["MULTIACTIONBAR3BUTTON2"] = "E"
-	mkbtn(27, 27, "R")  -- HotKey-only (no GetBindingKey)
-	actions[27] = { "spell", 100 }
+	-- Bars 1-6 frames (BT4 only creates enabled bars).
+	for i = 1, 72 do mkbtn(i, i, nil) end
+	-- Bar 1 ACTIONBUTTON / HotKey
+	mkbtn(2, 2, "2"); actions[2] = { "spell", 78 }; bindings["ACTIONBUTTON2"] = "2"
+	-- Bar 2 CLICK Keybind (no Blizzard mapping)
+	mkbtn(13, 13, "s-Q"); actions[13] = { "spell", 6673 }; bindings["CLICK BT4Button13:Keybind"] = "SHIFT-Q"
+	-- Bar 3 MULTIACTIONBAR3 + CLICK
+	mkbtn(25, 25, "Q"); actions[25] = { "spell", 772 }; bindings["CLICK BT4Button25:Keybind"] = "Q"
+	mkbtn(26, 26, "●"); actions[26] = { "spell", 6343 }; bindings["MULTIACTIONBAR3BUTTON2"] = "E"
+	-- Bar 4 MULTIACTIONBAR4
+	mkbtn(37, 37, nil); actions[37] = { "spell", 2687 }; bindings["MULTIACTIONBAR4BUTTON1"] = "F"
+	-- Bar 5 MULTIACTIONBAR2 (BT4 mapping)
+	mkbtn(49, 49, nil); actions[49] = { "spell", 5308 }; bindings["MULTIACTIONBAR2BUTTON1"] = "T"
+	-- Bar 6 MULTIACTIONBAR1
+	mkbtn(61, 61, nil); actions[61] = { "spell", 845 }; bindings["MULTIACTIONBAR1BUTTON1"] = "C"
+	-- HotKey-only on bar 3
+	mkbtn(27, 27, "R"); actions[27] = { "spell", 100 }
+	-- Warrior Battle stance page: BT4Button1 shows action 73 (Charge page), bind still ACTIONBUTTON1
+	mkbtn(1, 73, "1"); actions[73] = { "spell", 7384 }; bindings["ACTIONBUTTON1"] = "1"
+	-- Raw stance slot without button still maps ACTIONBUTTON
+	actions[85] = { "spell", 6572 } -- Defensive page slot → ACTIONBUTTON1 remap ((85-1)%12+1=1) — wait idx for 85: ((85-1)%12)+1 = 1
+	-- Use slot 86 → idx 2 so it does not collide with Overpower on ACTIONBUTTON1
+	actions[86] = { "spell", 6572 }; bindings["ACTIONBUTTON2"] = "2"
 
 	local map = ns.rebuildKeys()
-	check(_G.SchizzlesWarriorSetup_Keys[78] == "2", "keys: Heroic Strike from BT4Button2/ACTIONBUTTON2")
-	check(_G.SchizzlesWarriorSetup_Keys["Heroic Strike"] == "2", "keys: Heroic Strike by name")
+	check(_G.SchizzlesWarriorSetup_Keys[78] == "2", "keys: Heroic Strike bar1 ACTIONBUTTON2")
+	check(_G.SchizzlesWarriorSetup_Keys["Battle Shout"] == "s-Q" or _G.SchizzlesWarriorSetup_Keys[6673] == "s-Q",
+		"keys: Battle Shout bar2 CLICK Keybind")
 	check(_G.SchizzlesWarriorSetup_Keys[772] == "Q" or _G.SchizzlesWarriorSetup_Keys["Rend"] == "Q",
-		"keys: Rend from BT4 CLICK Keybind (got " .. tostring(_G.SchizzlesWarriorSetup_Keys[772] or _G.SchizzlesWarriorSetup_Keys["Rend"]) .. ")")
+		"keys: Rend bar3 CLICK Keybind")
 	check(_G.SchizzlesWarriorSetup_Keys[6343] == "E" or _G.SchizzlesWarriorSetup_Keys["Thunder Clap"] == "E",
-		"keys: Thunder Clap from MULTIACTIONBAR3 (ignore HotKey ●)")
+		"keys: Thunder Clap MULTIACTIONBAR3 (ignore HotKey ●)")
+	check(_G.SchizzlesWarriorSetup_Keys[2687] == "F" or _G.SchizzlesWarriorSetup_Keys["Bloodrage"] == "F",
+		"keys: Bloodrage bar4 MULTIACTIONBAR4")
+	check(_G.SchizzlesWarriorSetup_Keys[5308] == "T" or _G.SchizzlesWarriorSetup_Keys["Execute"] == "T",
+		"keys: Execute bar5 MULTIACTIONBAR2")
+	check(_G.SchizzlesWarriorSetup_Keys[845] == "C" or _G.SchizzlesWarriorSetup_Keys["Cleave"] == "C",
+		"keys: Cleave bar6 MULTIACTIONBAR1")
 	check(_G.SchizzlesWarriorSetup_Keys[100] == "R" or _G.SchizzlesWarriorSetup_Keys["Charge"] == "R",
-		"keys: Charge from BT4 HotKey text when bind empty")
-	-- Shorten helper
+		"keys: Charge HotKey-only")
+	check(_G.SchizzlesWarriorSetup_Keys[7384] == "1" or _G.SchizzlesWarriorSetup_Keys["Overpower"] == "1",
+		"keys: stance-paged bar1 action 73 → ACTIONBUTTON1")
+	check(_G.SchizzlesWarriorSetup_Keys[6572] == "2" or _G.SchizzlesWarriorSetup_Keys["Revenge"] == "2",
+		"keys: raw stance slot 86 → ACTIONBUTTON2")
 	check(ns.keysShorten("SHIFT-Q") == "s-Q", "keys: shorten SHIFT-Q")
 	check(ns.keysShorten("CTRL-BUTTON4") == "c-M4", "keys: shorten CTRL-BUTTON4")
-	-- /schizzle keys runs diagnose without error
+	check(ns.keysBindingByBar[3] == "MULTIACTIONBAR3BUTTON%d", "keys: BT4 BINDING_MAPPINGS bar3")
+	check(ns.keysBindingByBar[6] == "MULTIACTIONBAR1BUTTON%d", "keys: BT4 BINDING_MAPPINGS bar6")
+	chat = {}
+	ns.diagnoseKeys()
+	local keyed, listed = false, false
+	for _, m in ipairs(chat) do
+		if m:find("keybind diagnose", 1, true) then keyed = true end
+		if m:find("BT4Button25", 1, true) and m:find("Rend", 1, true) then listed = true end
+	end
+	check(keyed, "/schizzle keys prints diagnose header")
+	check(listed, "/schizzle keys lists BT4Button25 Rend with spell/bind")
+	-- Slash command routes to the same diagnose.
 	chat = {}
 	_G.SlashCmdList.SCHIZZLE("keys")
-	local keyed = false
-	for _, m in ipairs(chat) do if m:find("keybind diagnose", 1, true) then keyed = true end end
-	check(keyed, "/schizzle keys prints diagnose header")
+	local viaSlash = false
+	for _, m in ipairs(chat) do if m:find("keybind diagnose", 1, true) then viaSlash = true end end
+	check(viaSlash, "/schizzle keys routes to diagnose")
+end
+
+-- Rend land tracker: rank duration, recast reset, miss does not grey, target clear, CLEU remove.
+do
+	_G.UnitGUID = function(u)
+		if u == "player" then return "player-guid" end
+		if u == "target" then return "target-guid-a" end
+	end
+	_G.UnitExists = function() return true end
+	_G.UnitIsDeadOrGhost = function() return false end
+	local scan = {}
+	_G.WeakAuras = { ScanEvents = function(ev) scan[#scan + 1] = ev end }
+	-- Prefer CLEU path when available.
+	local cleu
+	_G.CombatLogGetCurrentEventInfo = function()
+		if not cleu then return end
+		return unpack(cleu)
+	end
+	local function fireCLEU(sub, spellId, dest)
+		cleu = { 0, sub, false, "player-guid", "Me", 0, 0, dest or "target-guid-a", "Mob", 0, 0, spellId, "Rend", 1, "DEBUFF" }
+		-- Find Rend frame and fire
+		for _, fr in ipairs(frames) do
+			if fr.events["COMBAT_LOG_EVENT_UNFILTERED"] and fr.scripts.OnEvent then
+				fr.scripts.OnEvent(fr, "COMBAT_LOG_EVENT_UNFILTERED")
+			end
+		end
+		cleu = nil
+	end
+	local function fireCast(spellId)
+		for _, fr in ipairs(frames) do
+			if fr.events["UNIT_SPELLCAST_SUCCEEDED"] and fr.scripts.OnEvent then
+				fr.scripts.OnEvent(fr, "UNIT_SPELLCAST_SUCCEEDED", "player", "cg", spellId)
+			end
+		end
+	end
+	local function fireTargetChanged()
+		for _, fr in ipairs(frames) do
+			if fr.events["PLAYER_TARGET_CHANGED"] and fr.scripts.OnEvent then
+				fr.scripts.OnEvent(fr, "PLAYER_TARGET_CHANGED")
+			end
+		end
+	end
+	local function fireError(msg)
+		for _, fr in ipairs(frames) do
+			if fr.events["UI_ERROR_MESSAGE"] and fr.scripts.OnEvent then
+				fr.scripts.OnEvent(fr, "UI_ERROR_MESSAGE", 0, msg)
+			end
+		end
+	end
+
+	ns.rendClear("test-start")
+	-- R3 lands via CLEU → grey 15s
+	fireCLEU("SPELL_AURA_APPLIED", 6547)
+	check(_G.SchizzlesWarriorSetup_Rend.active == true, "rend: CLEU APPLIED activates")
+	check(_G.SchizzlesWarriorSetup_Rend.duration == 15, "rend: R3 duration 15s")
+	check(_G.SchizzlesWarriorSetup_Rend.source:find("cleu", 1, true) ~= nil, "rend: source is CLEU")
+	check(_G.SchizzlesWarriorSetup_Rend.cleuAvailable == true, "rend: CLEU marked available")
+	local exp1 = _G.SchizzlesWarriorSetup_Rend.expires
+	-- Recast/refresh at ~10s remaining resets timer
+	_G.__simAdvance(5)
+	fireCLEU("SPELL_AURA_REFRESH", 6547)
+	check(_G.SchizzlesWarriorSetup_Rend.expires > exp1, "rend: refresh resets expires")
+	check((_G.SchizzlesWarriorSetup_Rend.expires - GetTime()) >= 14.9, "rend: refresh restores ~15s")
+	-- Aura removed early → clear
+	fireCLEU("SPELL_AURA_REMOVED", 6547)
+	check(_G.SchizzlesWarriorSetup_Rend.active ~= true, "rend: CLEU REMOVED clears")
+
+	-- Miss path: cast succeeded then SPELL_MISSED → stays colour (inactive)
+	ns.rendClear("pre-miss")
+	-- Override C_Timer.After to NOT auto-confirm so CLEU miss can win the race
+	local afterFns = {}
+	_G.C_Timer.After = function(delay, fn) afterFns[#afterFns + 1] = fn end
+	fireCast(6547)
+	check(_G.SchizzlesWarriorSetup_Rend.active ~= true, "rend: pending cast does not grey yet")
+	fireCLEU("SPELL_MISSED", 6547)
+	for _, fn in ipairs(afterFns) do fn() end -- timeout must not land after miss
+	check(_G.SchizzlesWarriorSetup_Rend.active ~= true, "rend: SPELL_MISSED does not grey")
+
+	-- Forever fallback: cast succeeded + no CLEU miss → land with rank duration
+	afterFns = {}
+	_G.C_Timer.After = function(delay, fn) afterFns[#afterFns + 1] = fn end
+	-- Reset cleuAvailable by clearing without CLEU; module keeps cleuSeen sticky — ok for Forever report
+	fireCast(772) -- R1 = 9s
+	for _, fn in ipairs(afterFns) do fn() end
+	check(_G.SchizzlesWarriorSetup_Rend.active == true, "rend: cast-succeeded fallback lands")
+	check(_G.SchizzlesWarriorSetup_Rend.duration == 9, "rend: R1 duration 9s")
+
+	-- UI_ERROR miss cancels pending
+	afterFns = {}
+	_G.C_Timer.After = function(delay, fn) afterFns[#afterFns + 1] = fn end
+	ns.rendClear("pre-ui-miss")
+	fireCast(6548) -- R4 18s
+	fireError("Your Rend was dodged by Mob")
+	for _, fn in ipairs(afterFns) do fn() end
+	check(_G.SchizzlesWarriorSetup_Rend.active ~= true, "rend: UI_ERROR dodge cancels pending")
+
+	-- Target swap clears
+	afterFns = {}
+	_G.C_Timer.After = function(_, fn) fn() end -- immediate confirm again
+	fireCast(11572) -- R5 21s
+	check(_G.SchizzlesWarriorSetup_Rend.active == true and _G.SchizzlesWarriorSetup_Rend.duration == 21, "rend: R5 duration 21s")
+	fireTargetChanged()
+	check(_G.SchizzlesWarriorSetup_Rend.active ~= true, "rend: target change clears")
+
+	check(ns.rendDurations[6547] == 15 and ns.rendDurations[772] == 9, "rend: duration table Forever ranks")
 end
 
 print(fails == 0 and "all checks passed" or (fails .. " check(s) failed"))
