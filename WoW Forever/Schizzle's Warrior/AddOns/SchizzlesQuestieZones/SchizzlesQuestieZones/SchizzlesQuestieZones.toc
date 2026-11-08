@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: Schizzle's Questie Zones
+## Notes: Keeps each Questie tracker group's collapsed or expanded choice across reload and relog for this character. WoW Forever.
+## Author: Jon Shaw (Schizzle)
+## Version: 1.0.0
+## SavedVariablesPerCharacter: SchizzlesQuestieZonesCharDB
+## OptionalDeps: Questie
+## DefaultState: Enabled
+
+Logic.lua
+Core.lua
