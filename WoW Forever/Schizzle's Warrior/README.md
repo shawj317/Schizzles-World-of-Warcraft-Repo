@@ -7,6 +7,7 @@ Jon Shaw (Schizzle)'s Warrior interface for WoW Forever. It's the MoP Classic [n
 | Folder / file | What it is | Format |
 |---|---|---|
 | [AddOns/SchizzlesWarriorSetup](AddOns/SchizzlesWarriorSetup/) | **Schizzle's Warrior Setup F2.3**: click **Yes** once (or `/schizzle all`) for the console variables, Warrior keybinds, Bartender4, Prat 3.0, SexyMap, Questie, GatherMate2, TomTom and Details!, plus the built-in **XP & Rep Tray**; `/schizzle auras` imports the Musca pack | helper addon |
+| [AddOns/SchizzlesQuestieZones](AddOns/SchizzlesQuestieZones/) | **Schizzle's Questie Zones**: a collapsed Questie tracker zone stays collapsed across `/reload` and relog on that character. Needs Questie 12.5.x or 12.6.x | companion addon |
 | [AddOns/Musca Auras](AddOns/Musca%20Auras/) | **Schizzle's Warrior Essentials v1.0**: a visual helper for Musca Auras with proc alerts and sounds, a numbered priority lane per talent tree, rage colours, buffs, target debuffs, stance cooldowns and swing timers | Musca Auras import |
 | [AddOns/Auctionator](AddOns/Auctionator/) | a leveling Warrior shopping list: potions, elixirs, sharpening stones, bandages, bags | Auctionator list import |
 | [Warrior Guide.md](Warrior%20Guide.md) | the visual helper and how it sits with the Cooldown Manager, priorities per spec, Forever's talent changes, key levels and class quests, spells by level, macros | guide |
