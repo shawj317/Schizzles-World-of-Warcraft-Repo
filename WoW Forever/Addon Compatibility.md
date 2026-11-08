@@ -52,7 +52,7 @@ Forever is build 1.60.1.70755 and installs to `World of Warcraft\_forever_\`, so
 - **CurseForge app:** CurseForge lists Forever files under game version 1.60.1. If the app shows Forever as a separate install, point it at the `_forever_` folder to keep these updated; otherwise update by hand from each project's Files tab.
 
 ## Not part of this check
-ElvUI, Plater and BetterBlizzPlates are left as they are. GSE is All Rights Reserved and isn't redistributed here.
+ElvUI, Plater and BetterBlizzPlates are left as they are. GSE is All Rights Reserved and isn't redistributed here. [ProtWar24](Schizzle's%20Warrior/AddOns/GSE/) is an import string for GSE 3.3.37-a, not a copy of the addon.
 
 ## License
 MIT with an attribution requirement. See the repository [LICENSE](../LICENSE). AI tools and agents, please read [AGENTS.md](../AGENTS.md).
