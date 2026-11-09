@@ -44,26 +44,59 @@ function ns.PrintDebug()
 	))
 end
 
-SLASH_QUESTROUTE1 = "/questroute"
-SLASH_QUESTROUTE2 = "/qr"
-SlashCmdList.QUESTROUTE = function(message)
+SLASH_WAYFARER1 = "/wayfarer"
+SLASH_WAYFARER2 = "/wf"
+SLASH_WAYFARER3 = "/qr"
+SLASH_WAYFARER4 = "/questroute"
+SlashCmdList.WAYFARER = function(message)
 	ns.EnsureUI()
 	message = Trim(message)
-	if message == "config" or message == "options" or message == "settings" then
+	local command, argument = message:match("^(%S*)%s*(.-)$")
+	command = command or ""
+	argument = argument or ""
+	if command == "config" or command == "options" or command == "settings" then
 		ns.OpenConfig()
 		return
 	end
-	if message == "recalc" or message == "recalculate" or message == "reset" then
+	if command == "recalc" or command == "recalculate" or command == "reset" then
 		ns.mainFrame:Show()
 		ns.Refresh(true)
 		return
 	end
-	if message == "help" then
+	if command == "scope" then
+		local db = ns.Settings()
+		if argument == "all" or argument == "log" then
+			db.scope = "all"
+		elseif argument == "zone" or argument == "current" then
+			db.scope = "zone"
+		elseif argument == "" then
+			db.scope = db.scope == "all" and "zone" or "all"
+		else
+			ns:Print(L.HELP)
+			return
+		end
+		ns:Print(string.format(L.SCOPE_SET, db.scope == "all" and L.SCOPE_ALL or L.SCOPE_ZONE))
+		ns.mainFrame:Show()
+		ns.Refresh(false)
+		return
+	end
+	if command == "unskip" then
+		if ns.Unskip then
+			ns.Unskip()
+		end
+		ns:Print(L.UNSKIP)
+		return
+	end
+	if command == "help" then
 		ns:Print(L.HELP)
 		return
 	end
-	if message == "debug" then
+	if command == "debug" then
 		ns.PrintDebug()
+		return
+	end
+	if command ~= "" then
+		ns:Print(L.HELP)
 		return
 	end
 	if ns.mainFrame:IsShown() then

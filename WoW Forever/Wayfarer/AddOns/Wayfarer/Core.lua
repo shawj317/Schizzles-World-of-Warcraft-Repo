@@ -20,10 +20,10 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.1.0"
+ns.version = Metadata("Version") or "1.2.0"
 
 function ns:Print(message)
-	print("|cffffd36aQuest Route:|r " .. tostring(message))
+	print("|cffffd36aWayfarer:|r " .. tostring(message))
 end
 
 function ns.EnsureUI()
@@ -38,6 +38,9 @@ end
 
 -- Automatic refreshes wait out combat. A click on Recalculate still runs immediately.
 function ns.NoteChange(event)
+	if event == "TAXIMAP_OPENED" and ns.ForgetFlights then
+		ns.ForgetFlights()
+	end
 	if event == "QUEST_TURNED_IN" and ns.InvalidateCompleted then
 		ns.InvalidateCompleted()
 	end
@@ -96,7 +99,8 @@ ns.driver:RegisterEvent("QUEST_REMOVED")
 ns.driver:RegisterEvent("QUEST_TURNED_IN")
 ns.driver:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 ns.driver:RegisterEvent("PLAYER_LEVEL_UP")
-ns.driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+	ns.driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+	ns.driver:RegisterEvent("TAXIMAP_OPENED")
 ns.driver:SetScript("OnEvent", function(_, event, name)
 	if event == "ADDON_LOADED" and name == addonName then
 		ns.EnsureUI()

@@ -37,7 +37,7 @@ local FONT_CHOICES = {
 	{ "Arial Narrow", "Fonts\\ARIALN.TTF" },
 	{ "Morpheus", "Fonts\\MORPHEUS.TTF" },
 	{ "Skurri", "Fonts\\SKURRI.TTF" },
-	{ "PT Sans Narrow Bold", "Interface\\AddOns\\QuestRoute\\Fonts\\PTSansNarrow-Bold.ttf" },
+	{ "PT Sans Narrow Bold", "Interface\\AddOns\\Wayfarer\\Fonts\\PTSansNarrow-Bold.ttf" },
 }
 ns.FONT_CHOICES = FONT_CHOICES
 
@@ -98,18 +98,75 @@ function ns.ApplyTypography()
 			PaintString(fs, info)
 		end
 	end
-	if ns.mainFrame and ns.mainFrame:IsShown() and ns.mainFrame.plan and ns.Render then
-		ns.Render(ns.mainFrame.plan)
+	if ns.mainFrame and ns.mainFrame:IsShown() and ns.mainFrame.plan then
+		if ns.Redisplay then
+			ns.Redisplay()
+		elseif ns.Render then
+			ns.Render(ns.mainFrame.plan)
+		end
 	end
 end
 
 function ns.Paint(frame)
-	if not frame.SetBackdrop then
+	if not frame or not frame.SetBackdrop or not ns.BackdropSpec then
 		return
 	end
-	frame:SetBackdrop(BACKDROP)
-	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.96)
-	frame:SetBackdropBorderColor(0.72, 0.45, 0.2, 1)
+	local db = ns.Settings()
+	local theme = ns.ResolveTheme(db.theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil)
+	local spec = ns.BackdropSpec(theme, db.backdropAlpha, db.showBorder ~= false)
+	local backdrop = {
+		bgFile = spec.bgFile,
+		tile = true,
+		tileSize = spec.tileSize,
+		insets = spec.insets,
+	}
+	if spec.edgeFile then
+		backdrop.edgeFile = spec.edgeFile
+		backdrop.edgeSize = spec.edgeSize
+	end
+	frame:SetBackdrop(backdrop)
+	frame:SetBackdropColor(spec.bg[1], spec.bg[2], spec.bg[3], spec.bgAlpha)
+	if spec.border and frame.SetBackdropBorderColor then
+		frame:SetBackdropBorderColor(spec.border[1], spec.border[2], spec.border[3], 1)
+	end
+	if frame.headerBar then
+		local pad = spec.pad or 2
+		frame.headerBar:ClearAllPoints()
+		frame.headerBar:SetPoint("TOPLEFT", pad, -pad)
+		frame.headerBar:SetPoint("TOPRIGHT", -pad, -pad)
+		frame.headerBar:SetHeight(22)
+		frame.headerBar:SetVertexColor(theme.header[1], theme.header[2], theme.header[3], 0.96)
+	end
+	if frame.closeButton then
+		local pad = spec.pad or 2
+		frame.closeButton:ClearAllPoints()
+		frame.closeButton:SetPoint("TOPRIGHT", -(pad - 1), -(pad - 1))
+	end
+	return theme
+end
+
+local function paintColor(dest, src)
+	dest[1], dest[2], dest[3] = src[1], src[2], src[3]
+end
+
+function ns.ApplyAppearance()
+	local db = ns.Settings()
+	local theme = ns.ResolveTheme(db.theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil)
+	paintColor(ns.colors.GOLD, theme.title)
+	paintColor(ns.colors.WHITE, theme.text)
+	paintColor(ns.colors.CREAM, theme.cream)
+	paintColor(ns.colors.MUTED, theme.muted)
+	paintColor(ns.colors.TAN, theme.tan)
+	paintColor(ns.colors.EMBER, theme.ember)
+	if ns.mainFrame then
+		ns.Paint(ns.mainFrame)
+	end
+	if ns.configFrame then
+		ns.Paint(ns.configFrame)
+	end
+	if ns.ApplyTypography then
+		ns.ApplyTypography()
+	end
 end
 
 function ns.Frame(kind, name, parent, template)

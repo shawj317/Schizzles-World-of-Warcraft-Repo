@@ -906,6 +906,118 @@ local function AttachQuestie(quest, db, playerLevel, playerMap, zoneIds, inLog)
 	end
 end
 
+local nodeCache
+
+local function WorldPoint(uiMap, x, y)
+	if not uiMap or not x or not y or not C_Map or not C_Map.GetWorldPosFromMapPos then
+		return nil
+	end
+	if ns.IsSecret(x) or ns.IsSecret(y) or ns.IsSecret(uiMap) then
+		return nil
+	end
+	local ok, first, second = pcall(C_Map.GetWorldPosFromMapPos, uiMap, { x = x / 100, y = y / 100 })
+	if not ok then
+		return nil
+	end
+	local continent, pos
+	if type(first) == "number" and type(second) == "table" then
+		continent, pos = first, second
+	elseif type(first) == "table" then
+		pos = first
+		continent = 0
+	end
+	if not pos or ns.IsSecret(pos) then
+		return nil
+	end
+	local wx, wy
+	if pos.GetXY then
+		local okPoint, a, b = pcall(pos.GetXY, pos)
+		if okPoint and not ns.IsSecret(a) and not ns.IsSecret(b) then
+			wx, wy = a, b
+		end
+	end
+	if wx == nil and not ns.IsSecret(pos.x) and not ns.IsSecret(pos.y) then
+		wx, wy = pos.x, pos.y
+	end
+	if type(wx) ~= "number" or type(wy) ~= "number" then
+		return nil
+	end
+	return { c = continent, x = wx, y = wy }
+end
+
+local function KnownNodes(faction)
+	if nodeCache then
+		return nodeCache
+	end
+	local nodes = {}
+	local factions = Enum and Enum.FlightPathFaction or {}
+	local enemy = faction == "Alliance" and (factions.Horde or 1) or (factions.Alliance or 2)
+	if C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap then
+		for _, continent in ipairs({ 1414, 1415 }) do
+			local ok, list = pcall(C_TaxiMap.GetTaxiNodesForMap, continent)
+			if ok and type(list) == "table" then
+				for i = 1, #list do
+					local info = list[i]
+					if type(info) == "table" and not ns.IsSecret(info.nodeID) and not ns.IsSecret(info.faction) and not ns.Flag(info.isUndiscovered) and info.faction ~= enemy and info.position and info.nodeID then
+						local px, py
+						if info.position.GetXY and not ns.IsSecret(info.position) then
+							local okPoint, a, b = pcall(info.position.GetXY, info.position)
+							if okPoint and not ns.IsSecret(a) and not ns.IsSecret(b) then
+								px, py = a, b
+							end
+						end
+						if px == nil and not ns.IsSecret(info.position.x) then
+							px, py = info.position.x, info.position.y
+						end
+						if type(px) == "number" and type(py) == "number" then
+							local world = WorldPoint(continent, px * 100, py * 100)
+							if world then
+								world.name = ns.Text(info.name, nil)
+								nodes[info.nodeID] = world
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	nodeCache = nodes
+	return nodes
+end
+
+function ns.ForgetFlights()
+	nodeCache = nil
+end
+
+function ns.TravelBetween(a, b)
+	if not a or not b or not a.uiMap or not b.uiMap or not a.x or not b.x or not ns.Travel then
+		return nil
+	end
+	local from = WorldPoint(a.uiMap, a.x, a.y)
+	local to = WorldPoint(b.uiMap, b.x, b.y)
+	if not from or not to then
+		return nil
+	end
+	local faction = "Horde"
+	if UnitFactionGroup then
+		local ok, value = pcall(UnitFactionGroup, "player")
+		if ok and not ns.IsSecret(value) and value == "Alliance" then
+			faction = "Alliance"
+		end
+	end
+	local key = faction == "Alliance" and "A" or "H"
+	local seconds, info = ns.Travel.Seconds(from, to, {
+		speed = PlayerSpeed(),
+		nodes = KnownNodes(faction),
+		times = ns.FlightTimes and ns.FlightTimes[key] or nil,
+		transports = ns.Travel.TRANSPORTS[key],
+	})
+	if not seconds or not info or not info.flew then
+		return nil
+	end
+	return { seconds = seconds, label = info.label }
+end
+
 local function ZoneName(reader)
 	if not reader then
 		return nil
@@ -1079,6 +1191,8 @@ local function ScanQuests()
 		maxLevelsAbove = dbSettings.maxLevelsAbove,
 		includeLowLevel = dbSettings.includeLowLevel,
 		omitDungeons = dbSettings.omitDungeons,
+		scope = dbSettings.scope,
+		useFlights = dbSettings.useFlights,
 		player = player,
 		speed = PlayerSpeed(),
 		zone = { ids = ids, names = names, parents = parents },
@@ -1087,6 +1201,7 @@ local function ScanQuests()
 		namesById = namesById,
 		quests = quests,
 		yards = MakeYards(),
+		travel = ns.TravelBetween,
 		questie = db and true or false,
 		questiePresent = QuestieLoaded(),
 		tomtom = TomTom and true or false,

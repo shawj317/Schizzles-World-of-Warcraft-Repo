@@ -9,8 +9,6 @@ local activePlan
 local arrowUID
 local miniPool = {}
 local worldPool = {}
-local mapLinePool = {}
-local miniLinePool = {}
 local mapHooked = false
 
 local function WorldOf(uiMap, x, y)
@@ -81,7 +79,7 @@ local function AddTomTom(step, index)
 				minimap = true,
 				world = true,
 				crazy = false,
-				from = "QuestRoute",
+				from = "Wayfarer",
 				silent = true,
 				cleardistance = 0,
 			})
@@ -150,44 +148,40 @@ local function PointAt(step, announce)
 	FocusArrow(step, announce)
 end
 
+local worldDots = {}
+local miniDots = {}
+local trailDistance = 0
+local TEX = "Interface\\AddOns\\Wayfarer\\Textures\\"
+
 local function HidePool(pool)
-	for i = 1, #pool do
-		pool[i]:Hide()
-	end
+	ns.ReleaseAll(pool)
 end
 
-local function TakeMapPin(pool, parent)
-	for i = 1, #pool do
-		if pool[i].free then
-			pool[i].free = false
-			pool[i]:SetParent(parent)
-			pool[i]:Show()
-			return pool[i]
-		end
-	end
+local function Tex(parent, layer, name, point, x, y)
+	local texture = parent:CreateTexture(nil, layer)
+	texture:SetTexture(TEX .. name)
+	texture:SetPoint("CENTER", parent, point or "CENTER", x or 0, y or 0)
+	return texture
+end
+
+local function MakePin(parent)
 	local pin = CreateFrame("Button", nil, parent)
-	pin:SetSize(18, 18)
+	pin:SetSize(20, 20)
 	if pin.SetClipsChildren then
 		pin:SetClipsChildren(false)
 	end
-	local ring = pin:CreateTexture(nil, "BACKGROUND")
-	ring:SetTexture("Interface\\Buttons\\WHITE8X8")
-	ring:SetPoint("TOPLEFT", -1, 1)
-	ring:SetPoint("BOTTOMRIGHT", 1, -1)
-	pin.ring = ring
-	local plate = pin:CreateTexture(nil, "BORDER")
-	plate:SetTexture("Interface\\Buttons\\WHITE8X8")
-	plate:SetPoint("TOPLEFT", 1, -1)
-	plate:SetPoint("BOTTOMRIGHT", -1, 1)
-	pin.plate = plate
+	pin.shadow = Tex(pin, "BACKGROUND", "disc", "CENTER", 1, -2)
+	pin.glow = Tex(pin, "BACKGROUND", "glow", "CENTER", 0, 0)
+	pin.ring = Tex(pin, "BORDER", "ring", "CENTER", 0, 0)
+	pin.disc = Tex(pin, "ARTWORK", "disc", "CENTER", 0, 0)
 	local label = pin:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	label:SetPoint("CENTER", 0, 0)
+	label:SetPoint("CENTER", 0.5, 0)
 	label:SetJustifyH("CENTER")
 	label:SetJustifyV("MIDDLE")
 	label:SetWordWrap(false)
 	pin.label = label
 	pin:SetScript("OnEnter", function(self)
-		if not self.tip then
+		if not self.tip or not GameTooltip then
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -195,42 +189,79 @@ local function TakeMapPin(pool, parent)
 		GameTooltip:Show()
 	end)
 	pin:SetScript("OnLeave", function()
-		GameTooltip:Hide()
+		if GameTooltip then
+			GameTooltip:Hide()
+		end
 	end)
-	pool[#pool + 1] = pin
 	return pin
 end
 
-local function StylePin(pin, index, current)
+local function TakeMapPin(pool, parent)
+	local pin = ns.Claim(pool, function()
+		return MakePin(parent)
+	end)
+	pin:SetParent(parent)
+	pin:Show()
+	return pin
+end
+
+local function PinDisc(verb)
+	if verb == "pick up" then
+		return 1, 0.82, 0
+	end
+	if verb == "turn in" then
+		return 1, 0.47, 0
+	end
+	return 0.72, 0.45, 0.2
+end
+
+local function StylePin(pin, index, step, current)
+	local db = ns.Settings()
+	local size = db.pinSize or 20
 	local text = tostring(index)
 	local wide = string.len(text) > 1
-	local width = wide and 28 or 18
-	local height = 16
-	pin:SetSize(width, height)
-	pin.label:SetText(text)
-	pin.label:SetWordWrap(false)
-	pin.label:ClearAllPoints()
-	pin.label:SetPoint("CENTER", pin, "CENTER", 0.5, 0)
-	local face = GameFontHighlight and GameFontHighlight:GetFont()
-	if face then
-		pcall(pin.label.SetFont, pin.label, face, wide and 9 or 11, "OUTLINE")
+	pin:SetSize(size, size)
+	local function fit(texture, scale, dx, dy)
+		texture:SetSize(size * scale, size * scale)
+		texture:ClearAllPoints()
+		texture:SetPoint("CENTER", pin, "CENTER", dx or 0, dy or 0)
 	end
+	fit(pin.shadow, 0.92, 1, -2)
+	pin.shadow:SetVertexColor(0, 0, 0, 0.45)
+	fit(pin.glow, 1.55, 0, 0)
+	fit(pin.ring, 1, 0, 0)
+	fit(pin.disc, 0.72, 0, 0)
+	local dr, dg, dbc = PinDisc(step and step.verb)
+	pin.disc:SetVertexColor(dr, dg, dbc, 0.96)
 	if current then
-		if pin.ring then
-			pin.ring:SetVertexColor(1, 0.82, 0, 1)
+		local ar, ag, ab = 1, 0.82, 0
+		if ns.ResolveTheme then
+			local theme = ns.ResolveTheme(ns.Settings().theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil)
+			ar, ag, ab = theme.accent[1], theme.accent[2], theme.accent[3]
 		end
-		pin.plate:SetVertexColor(0.72, 0.45, 0.2, 0.96)
-		pin.label:SetTextColor(1, 0.98, 0.94)
+		pin.ring:SetVertexColor(ar, ag, ab, 1)
+		pin.glow:SetVertexColor(ar, ag, ab, 0.55)
+		pin.glow:Show()
 	else
-		if pin.ring then
-			pin.ring:SetVertexColor(0.72, 0.45, 0.2, 1)
+		local rr, rg, rb = 0.93, 0.88, 0.78
+		if ns.ResolveTheme then
+			local theme = ns.ResolveTheme(ns.Settings().theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil)
+			rr, rg, rb = theme.pinRing[1], theme.pinRing[2], theme.pinRing[3]
 		end
-		pin.plate:SetVertexColor(0.06, 0.06, 0.06, 0.94)
-		pin.label:SetTextColor(1, 0.82, 0)
+		pin.ring:SetVertexColor(rr, rg, rb, 0.95)
+		pin.glow:Hide()
 	end
+	pin.label:SetText(text)
+	local face = GameFontHighlight and GameFontHighlight:GetFont()
+	local pixels = wide and math.max(8, size * 0.38) or math.max(9, size * 0.46)
+	if face then
+		pcall(pin.label.SetFont, pin.label, face, pixels, "OUTLINE")
+	end
+	pin.label:SetTextColor(1, 0.98, 0.94)
 end
 
 local function NudgePins(placed)
+	local gap = (ns.Settings().pinSize or 20) + 4
 	local order = {}
 	for index, point in pairs(placed) do
 		if type(index) == "number" and point.x then
@@ -244,48 +275,83 @@ local function NudgePins(placed)
 			local other = placed[order[m]]
 			local dx = point.x - other.x
 			local dy = point.y - other.y
-			if dx * dx + dy * dy < 18 * 18 then
+			if dx * dx + dy * dy < gap * gap then
 				local angle = n * 1.2
-				point.x = other.x + math.cos(angle) * 20
-				point.y = other.y + math.sin(angle) * 16
+				point.x = other.x + math.cos(angle) * (gap + 2)
+				point.y = other.y + math.sin(angle) * (gap + 2)
 			end
 		end
 	end
 end
 
-local function TakeMapLine(pool)
-	for i = 1, #pool do
-		if pool[i].free then
-			pool[i].free = false
-			pool[i]:Show()
-			return pool[i]
-		end
-	end
-	local line = UIParent:CreateTexture(nil, "OVERLAY")
-	line:SetTexture("Interface\\Buttons\\WHITE8X8")
-	line:SetVertexColor(1, 0.82, 0, 0.85)
-	pool[#pool + 1] = line
-	return line
+local function MakeDot(parent)
+	local dot = parent:CreateTexture(nil, "ARTWORK")
+	dot:SetTexture(TEX .. "dot")
+	dot:SetSize(7, 7)
+	return dot
 end
 
-local function PlaceSegment(line, parent, anchor, x1, y1, x2, y2)
-	local dx = x2 - x1
-	local dy = y2 - y1
-	local length = math.sqrt(dx * dx + dy * dy)
-	if length < 4 then
-		line:Hide()
-		line.free = true
-		return
-	end
-	line:SetParent(parent)
-	line:ClearAllPoints()
-	line:SetSize(length, 2)
-	line:SetPoint("CENTER", parent, anchor, (x1 + x2) / 2, (y1 + y2) / 2)
-	if line.SetRotation then
-		line:SetRotation(math.atan2(dy, dx))
-	end
-	line:Show()
+local function TakeDot(pool, parent)
+	local dot = ns.Claim(pool, function()
+		return MakeDot(parent)
+	end)
+	dot:SetParent(parent)
+	dot:Show()
+	return dot
 end
+
+local function Polylines(steps, placed, origin)
+	local groups, current = {}, {}
+	local function flush()
+		if #current >= 2 then
+			groups[#groups + 1] = current
+		end
+		current = {}
+	end
+	local seen = false
+	if origin then
+		current[1] = origin
+	end
+	for i = 1, #steps do
+		local spot = placed[i]
+		if spot then
+			current[#current + 1] = { x = spot.x, y = spot.y }
+			seen = true
+		elseif origin and not seen then
+			current = {}
+		else
+			flush()
+		end
+	end
+	flush()
+	return groups
+end
+
+local function PaintTrail(pool, parent, anchor, groups, spacing, cap)
+	local db = ns.Settings()
+	local phase = db.trailAnimated and trailDistance or 0
+	local tr, tg, tb = db.trailR, db.trailG, db.trailB
+	if not db.trailCustom and ns.ResolveTheme then
+		local trail = ns.ResolveTheme(db.theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil).trail
+		tr, tg, tb = trail[1], trail[2], trail[3]
+	end
+	local budget = cap
+	for g = 1, #groups do
+		if budget < 1 then
+			break
+		end
+		local samples = ns.TrailSamples(groups[g], spacing, phase, budget)
+		for i = 1, #samples do
+			local dot = TakeDot(pool, parent)
+			dot:SetSize(7, 7)
+			dot:SetVertexColor(tr, tg, tb, db.trailAlpha)
+			dot:ClearAllPoints()
+			dot:SetPoint("CENTER", parent, anchor, samples[i].x, samples[i].y)
+		end
+		budget = budget - #samples
+	end
+end
+
 
 local function ShownWorldMap()
 	if not WorldMapFrame or not WorldMapFrame:IsShown() then
@@ -314,20 +380,15 @@ local function ShownWorldMap()
 end
 
 local function UpdateWorldPins(plan)
-	for i = 1, #worldPool do
-		worldPool[i].free = true
-		worldPool[i]:Hide()
-	end
-	for i = 1, #mapLinePool do
-		mapLinePool[i].free = true
-		mapLinePool[i]:Hide()
-	end
+	HidePool(worldPool)
+	HidePool(worldDots)
 	local canvas, mapID = ShownWorldMap()
-	if not canvas or not plan or not ns.Settings().showOnMap then
+	local db = ns.Settings()
+	if not canvas or not plan or (not db.showOnMap and not db.showTrail) then
 		return
 	end
 	local width, height = canvas:GetWidth(), canvas:GetHeight()
-	if not width or width < 20 then
+	if not width or width < 20 or ns.IsSecret(width) then
 		return
 	end
 	local baseLevel = 1
@@ -347,27 +408,31 @@ local function UpdateWorldPins(plan)
 		end
 	end
 	NudgePins(placed)
-	for i = 1, #steps do
-		local spot = placed[i]
-		if spot then
-			local pin = TakeMapPin(worldPool, canvas)
-			pin:SetFrameStrata("HIGH")
-			pin:SetFrameLevel(baseLevel + 20 + i)
-			StylePin(pin, i, i == 1)
-			pin:ClearAllPoints()
-			pin:SetPoint("CENTER", canvas, "TOPLEFT", spot.x, spot.y)
-			pin.tip = StepTitle(spot.step, i)
-			local captured = spot.step
-			pin:SetScript("OnClick", function()
-				PointAt(captured, true)
-			end)
+	if db.showOnMap then
+		for i = 1, #steps do
+			local spot = placed[i]
+			if spot then
+				local pin = TakeMapPin(worldPool, canvas)
+				pin:SetFrameStrata("HIGH")
+				pin:SetFrameLevel(baseLevel + 20 + i)
+				StylePin(pin, i, spot.step, i == 1)
+				pin:ClearAllPoints()
+				pin:SetPoint("CENTER", canvas, "TOPLEFT", spot.x, spot.y)
+				pin.tip = StepTitle(spot.step, i)
+				local captured = spot.step
+				pin:SetScript("OnClick", function()
+					PointAt(captured, true)
+				end)
+			end
 		end
 	end
-	for i = 1, #steps - 1 do
-		if placed[i] and placed[i + 1] then
-			local line = TakeMapLine(mapLinePool)
-			PlaceSegment(line, canvas, "TOPLEFT", placed[i].x, placed[i].y, placed[i + 1].x, placed[i + 1].y)
+	if db.showTrail then
+		local origin
+		local player, playerMap = ns.PlayerPosition()
+		if player and playerMap and (not mapID or playerMap == mapID) then
+			origin = { x = player.x / 100 * width, y = -player.y / 100 * height }
 		end
+		PaintTrail(worldDots, canvas, "TOPLEFT", Polylines(steps, placed, origin), 18, 64)
 	end
 end
 
@@ -381,11 +446,10 @@ local function MinimapYards()
 end
 
 local function UpdateMinimapPins(plan)
-	for i = 1, #miniPool do
-		miniPool[i].free = true
-		miniPool[i]:Hide()
-	end
-	if not Minimap or not plan or not ns.Settings().showOnMap then
+	HidePool(miniPool)
+	HidePool(miniDots)
+	local db = ns.Settings()
+	if not Minimap or not plan or (not db.showOnMap and not db.showTrail) then
 		return
 	end
 	local player, playerMap = ns.PlayerPosition()
@@ -416,10 +480,6 @@ local function UpdateMinimapPins(plan)
 	end
 	local sinF = math.sin(facing)
 	local cosF = math.cos(facing)
-	for i = 1, #miniLinePool do
-		miniLinePool[i].free = true
-		miniLinePool[i]:Hide()
-	end
 	local placed = {}
 	local steps = plan.steps or {}
 	local shown = 0
@@ -439,22 +499,25 @@ local function UpdateMinimapPins(plan)
 					end
 					local dist = math.sqrt(dx * dx + dy * dy)
 					local inside = dist <= radiusPx
-					if dist > radiusPx and dist > 0 then
-						dx = dx / dist * radiusPx
-						dy = dy / dist * radiusPx
+					if db.showOnMap then
+						local drawX, drawY = dx, dy
+						if dist > radiusPx and dist > 0 then
+							drawX = dx / dist * radiusPx
+							drawY = dy / dist * radiusPx
+						end
+						shown = shown + 1
+						local pin = TakeMapPin(miniPool, Minimap)
+						pin:SetFrameStrata("MEDIUM")
+						pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
+						StylePin(pin, i, step, i == 1)
+						pin:ClearAllPoints()
+						pin:SetPoint("CENTER", Minimap, "CENTER", drawX, drawY)
+						pin.tip = StepTitle(step, i)
+						local captured = step
+						pin:SetScript("OnClick", function()
+							PointAt(captured, true)
+						end)
 					end
-					shown = shown + 1
-					local pin = TakeMapPin(miniPool, Minimap)
-					pin:SetFrameStrata("MEDIUM")
-					pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
-					StylePin(pin, i, i == 1)
-					pin:ClearAllPoints()
-					pin:SetPoint("CENTER", Minimap, "CENTER", dx, dy)
-					pin.tip = StepTitle(step, i)
-					local captured = step
-					pin:SetScript("OnClick", function()
-						PointAt(captured, true)
-					end)
 					if inside then
 						placed[i] = { x = dx, y = dy }
 					end
@@ -462,11 +525,8 @@ local function UpdateMinimapPins(plan)
 			end
 		end
 	end
-	for i = 1, #steps - 1 do
-		if placed[i] and placed[i + 1] then
-			local line = TakeMapLine(miniLinePool)
-			PlaceSegment(line, Minimap, "CENTER", placed[i].x, placed[i].y, placed[i + 1].x, placed[i + 1].y)
-		end
+	if db.showTrail then
+		PaintTrail(miniDots, Minimap, "CENTER", Polylines(steps, placed, { x = 0, y = 0 }), 12, 28)
 	end
 end
 
@@ -482,7 +542,7 @@ local function EnsureMapHooks()
 	end)
 	WorldMapFrame:HookScript("OnHide", function()
 		HidePool(worldPool)
-		HidePool(mapLinePool)
+		HidePool(worldDots)
 	end)
 end
 
@@ -494,13 +554,23 @@ mapTicker:SetScript("OnUpdate", function(_, elapsed)
 		return
 	end
 	mapWait = mapWait + (elapsed or 0)
-	if mapWait < 0.2 then
+	local db = ns.Settings()
+	local waitFor = (db.showTrail and db.trailAnimated) and 0.05 or 0.2
+	if mapWait < waitFor then
 		return
 	end
+	local step = mapWait
 	mapWait = 0
+	if db.showTrail and db.trailAnimated and not ns.InCombat() then
+		trailDistance = trailDistance + 42 * step
+	end
 	local ok, err = pcall(function()
 		EnsureMapHooks()
-		if not ns.Settings().showOnMap then
+		if not db.showOnMap and not db.showTrail then
+			HidePool(miniPool)
+			HidePool(worldPool)
+			HidePool(miniDots)
+			HidePool(worldDots)
 			return
 		end
 		if ns.InCombat() or ns.Restriction("Map") then
@@ -509,6 +579,9 @@ mapTicker:SetScript("OnUpdate", function(_, elapsed)
 		UpdateMinimapPins(activePlan)
 		if WorldMapFrame and WorldMapFrame:IsShown() then
 			UpdateWorldPins(activePlan)
+		else
+			HidePool(worldPool)
+			HidePool(worldDots)
 		end
 	end)
 	if not ok and err ~= pinError then
@@ -552,11 +625,11 @@ local function SyncRoute(plan, focusStep, announce)
 	elseif focusStep then
 		FocusArrow(focusStep, announce and true or false)
 	end
-	if not db.showOnMap then
+	if not db.showOnMap and not db.showTrail then
 		HidePool(miniPool)
 		HidePool(worldPool)
-		HidePool(mapLinePool)
-		HidePool(miniLinePool)
+		HidePool(miniDots)
+		HidePool(worldDots)
 		return
 	end
 	UpdateMinimapPins(plan)

@@ -13,7 +13,7 @@ issecretvalue = function(value)
 end
 
 local ns = {}
-local chunk = assert(loadfile(script_dir() .. "/../AddOns/QuestRoute/Secrets.lua"))
+local chunk = assert(loadfile(script_dir() .. "/../AddOns/Wayfarer/Secrets.lua"))
 chunk("QuestRoute", ns)
 
 local fails = 0

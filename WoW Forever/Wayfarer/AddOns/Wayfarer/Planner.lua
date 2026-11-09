@@ -649,6 +649,9 @@ local function CopyStep(stop)
 		xp = stop.xp or 0,
 		xpEstimated = stop.xpEstimated and true or false,
 		dwell = stop.dwell,
+		travel = stop.travel,
+		routeZone = stop.routeZone,
+		crossZone = stop.crossZone and true or false,
 	}
 end
 
@@ -866,6 +869,13 @@ local function PlanZone(quests, zone, input)
 		if prev and prev.x and stop.x then
 			leg = LegYards(prev, stop, input.yards) / speed
 		end
+		if input.useFlights ~= false and type(input.travel) == "function" and prev and prev.x and stop.x and leg >= 180 then
+			local okHop, hop = pcall(input.travel, prev, stop)
+			if okHop and type(hop) == "table" and type(hop.seconds) == "number" and hop.seconds >= 0 and hop.seconds + 5 < leg then
+				leg = hop.seconds
+				stop.travel = hop.label
+			end
+		end
 		if i == 1 and fromPlayer then
 			arrive = leg
 		end
@@ -904,6 +914,8 @@ local function PlanZone(quests, zone, input)
 	}
 end
 
+local BuildAll
+
 function QuestRoute.Build(input)
 	input = input or {}
 	input.playerLevel = tonumber(input.playerLevel) or 1
@@ -911,6 +923,9 @@ function QuestRoute.Build(input)
 	input.maxLevelsAbove = QuestRoute.ClampAbove(input.maxLevelsAbove or 3)
 	input.includeLowLevel = input.includeLowLevel and true or false
 	input.omitDungeons = input.omitDungeons and true or false
+	if input.scope == "all" then
+		return BuildAll(input)
+	end
 	local zone = input.zone or { ids = {}, names = {}, parents = {} }
 	zone.parents = zone.parents or input.parents or {}
 	local plan = PlanZone(input.quests or {}, zone, input)
@@ -988,6 +1003,7 @@ function QuestRoute.Build(input)
 	plan.omittedDungeons = omitted
 	plan.bestZone = best
 	plan.zoneLabel = input.zoneLabel or "this zone"
+	plan.scope = "zone"
 
 	local notices = {}
 	if input.questie == false then
@@ -1018,6 +1034,312 @@ function QuestRoute.Build(input)
 		AddNotice(notices, plan.notices[i])
 	end
 	plan.notices = notices
+	return plan
+end
+
+-- Rough positions so a route finishes one continent before it starts the other.
+-- x/y are only for ordering zones. They are not map coordinates.
+local ZONE_LAYOUT = {
+	["Tirisfal Glades"] = { c = 0, x = 8, y = 8 },
+	["Undercity"] = { c = 0, x = 8, y = 6 },
+	["Silverpine Forest"] = { c = 0, x = 12, y = 16 },
+	["Alterac Mountains"] = { c = 0, x = 22, y = 14 },
+	["Hillsbrad Foothills"] = { c = 0, x = 20, y = 22 },
+	["Western Plaguelands"] = { c = 0, x = 28, y = 12 },
+	["Eastern Plaguelands"] = { c = 0, x = 36, y = 14 },
+	["The Hinterlands"] = { c = 0, x = 32, y = 22 },
+	["Arathi Highlands"] = { c = 0, x = 30, y = 30 },
+	["Wetlands"] = { c = 0, x = 24, y = 36 },
+	["Dun Morogh"] = { c = 0, x = 16, y = 42 },
+	["Ironforge"] = { c = 0, x = 16, y = 40 },
+	["Loch Modan"] = { c = 0, x = 26, y = 44 },
+	["Badlands"] = { c = 0, x = 30, y = 52 },
+	["Searing Gorge"] = { c = 0, x = 20, y = 52 },
+	["Burning Steppes"] = { c = 0, x = 24, y = 58 },
+	["Elwynn Forest"] = { c = 0, x = 18, y = 66 },
+	["Stormwind City"] = { c = 0, x = 18, y = 62 },
+	["Redridge Mountains"] = { c = 0, x = 28, y = 66 },
+	["Westfall"] = { c = 0, x = 12, y = 72 },
+	["Duskwood"] = { c = 0, x = 20, y = 76 },
+	["Deadwind Pass"] = { c = 0, x = 28, y = 74 },
+	["Swamp of Sorrows"] = { c = 0, x = 32, y = 80 },
+	["Blasted Lands"] = { c = 0, x = 30, y = 88 },
+	["Stranglethorn Vale"] = { c = 0, x = 16, y = 90 },
+	["Teldrassil"] = { c = 1, x = 70, y = 8 },
+	["Darnassus"] = { c = 1, x = 70, y = 6 },
+	["Darkshore"] = { c = 1, x = 68, y = 18 },
+	["Moonglade"] = { c = 1, x = 76, y = 16 },
+	["Winterspring"] = { c = 1, x = 80, y = 12 },
+	["Felwood"] = { c = 1, x = 72, y = 20 },
+	["Ashenvale"] = { c = 1, x = 74, y = 28 },
+	["Azshara"] = { c = 1, x = 90, y = 30 },
+	["Durotar"] = { c = 1, x = 88, y = 36 },
+	["Orgrimmar"] = { c = 1, x = 88, y = 32 },
+	["Stonetalon Mountains"] = { c = 1, x = 66, y = 36 },
+	["The Barrens"] = { c = 1, x = 78, y = 40 },
+	["Mulgore"] = { c = 1, x = 84, y = 48 },
+	["Thunder Bluff"] = { c = 1, x = 84, y = 46 },
+	["Desolace"] = { c = 1, x = 66, y = 48 },
+	["Dustwallow Marsh"] = { c = 1, x = 84, y = 58 },
+	["Thousand Needles"] = { c = 1, x = 78, y = 62 },
+	["Feralas"] = { c = 1, x = 68, y = 68 },
+	["Tanaris"] = { c = 1, x = 80, y = 78 },
+	["Un'Goro Crater"] = { c = 1, x = 74, y = 86 },
+	["Silithus"] = { c = 1, x = 66, y = 90 },
+}
+
+local function ZoneSpot(name)
+	return ZONE_LAYOUT[name] or { c = 9, x = 0, y = 0 }
+end
+
+function QuestRoute.OrderZones(names, anchor)
+	local remaining = {}
+	for i = 1, #(names or {}) do
+		remaining[#remaining + 1] = names[i]
+	end
+	table.sort(remaining)
+	local ordered = {}
+	local function take(name)
+		for i = 1, #remaining do
+			if remaining[i] == name then
+				table.remove(remaining, i)
+				ordered[#ordered + 1] = name
+				return
+			end
+		end
+	end
+	if anchor then
+		take(anchor)
+	end
+	while #remaining > 0 do
+		local fromName = ordered[#ordered] or anchor
+		local from = fromName and ZoneSpot(fromName) or nil
+		local best, bestD, bestI
+		for i = 1, #remaining do
+			local name = remaining[i]
+			local spot = ZoneSpot(name)
+			local penalty = 0
+			if from and spot.c ~= from.c then
+				penalty = 100000
+			end
+			local dx = from and (spot.x - from.x) or 0
+			local dy = from and (spot.y - from.y) or 0
+			local d = penalty + dx * dx + dy * dy
+			if not best or d < bestD - 0.001 or (math.abs(d - bestD) <= 0.001 and name < best) then
+				best, bestD, bestI = name, d, i
+			end
+		end
+		ordered[#ordered + 1] = best
+		table.remove(remaining, bestI)
+	end
+	return ordered
+end
+
+local function StampZone(steps, zoneName, current)
+	for i = 1, #steps do
+		steps[i].routeZone = zoneName
+		steps[i].crossZone = zoneName ~= current and true or false
+	end
+end
+
+local function SortAvoid(list)
+	table.sort(list, function(a, b)
+		if a.name == b.name then
+			return a.reason < b.reason
+		end
+		return a.name < b.name
+	end)
+end
+
+BuildAll = function(input)
+	local zone = input.zone or { ids = {}, names = {}, parents = {} }
+	zone.parents = zone.parents or input.parents or {}
+	local parents = input.parents or zone.parents or {}
+	local namesById = input.namesById or {}
+	local label = input.zoneLabel or "this zone"
+	local function routedInput(dropPlayer)
+		local copy = {}
+		for key, value in pairs(input) do
+			copy[key] = value
+		end
+		copy.omitDungeons = true
+		if dropPlayer then
+			copy.player = nil
+			copy.yards = nil
+		end
+		return copy
+	end
+	local open, avoid = {}, {}
+	local omitted = 0
+	for i = 1, #(input.quests or {}) do
+		local quest = input.quests[i]
+		if type(quest) == "table" and quest.dungeon then
+			omitted = omitted + 1
+			avoid[#avoid + 1] = { name = quest.name or "Quest", reason = "dungeon" }
+		else
+			open[#open + 1] = quest
+		end
+	end
+	local hereQuests = {}
+	local buckets, bucketId = {}, {}
+	for i = 1, #open do
+		local quest = open[i]
+		if QuestRoute.Touches(quest, zone) then
+			hereQuests[#hereQuests + 1] = quest
+		else
+			local name, id, hasPins = QuestRoute.PrimaryZone(quest, namesById, parents)
+			if hasPins and name and not CLASS_HEADERS[name] and string.sub(name, 1, 5) ~= "zone:" then
+				local list = buckets[name]
+				if not list then
+					list = {}
+					buckets[name] = list
+					bucketId[name] = id
+				end
+				list[#list + 1] = quest
+			end
+		end
+	end
+	local here = PlanZone(hereQuests, zone, routedInput(false))
+	StampZone(here.steps, label, label)
+	for i = 1, #here.avoid do
+		avoid[#avoid + 1] = here.avoid[i]
+	end
+	local names = {}
+	for name in pairs(buckets) do
+		names[#names + 1] = name
+	end
+	local order = QuestRoute.OrderZones(names, label)
+	local steps = {}
+	for i = 1, #here.steps do
+		steps[#steps + 1] = here.steps[i]
+	end
+	local notices = {}
+	for i = 1, #here.notices do
+		AddNotice(notices, here.notices[i])
+	end
+	local total = here.totalSec or 0
+	local xp = here.xp or 0
+	local estimated = here.xpEstimated and true or false
+	local otherZones = 0
+	local nextZone
+	local lastPoint
+	for i = #steps, 1, -1 do
+		if steps[i].x then
+			lastPoint = steps[i]
+			break
+		end
+	end
+	for i = 1, #order do
+		local name = order[i]
+		local other = {
+			ids = {},
+			names = { [name] = true },
+			parents = parents,
+		}
+		if bucketId[name] then
+			other.ids[bucketId[name]] = true
+		end
+		local sub = PlanZone(buckets[name], other, routedInput(true))
+		StampZone(sub.steps, name, label)
+		for j = 1, #sub.avoid do
+			avoid[#avoid + 1] = sub.avoid[j]
+		end
+		for j = 1, #sub.notices do
+			AddNotice(notices, sub.notices[j])
+		end
+		if sub.totalSteps > 0 then
+			otherZones = otherZones + 1
+			if not nextZone then
+				nextZone = {
+					name = name,
+					quests = #buckets[name],
+					xpPerHour = sub.xpPerHour,
+					xp = sub.xp,
+					steps = sub.totalSteps,
+					seconds = sub.totalSec,
+				}
+			end
+			local first
+			for j = 1, #sub.steps do
+				if sub.steps[j].x then
+					first = sub.steps[j]
+					break
+				end
+			end
+			if input.useFlights ~= false and type(input.travel) == "function" and lastPoint and first then
+				local okHop, hop = pcall(input.travel, lastPoint, first)
+				if okHop and type(hop) == "table" and type(hop.seconds) == "number" and hop.seconds >= 0 then
+					total = total + hop.seconds
+					sub.steps[1].travel = hop.label or sub.steps[1].travel
+				end
+			end
+			for j = 1, #sub.steps do
+				steps[#steps + 1] = sub.steps[j]
+				if sub.steps[j].x then
+					lastPoint = sub.steps[j]
+				end
+			end
+			total = total + (sub.totalSec or 0)
+			xp = xp + (sub.xp or 0)
+			if sub.xpEstimated then
+				estimated = true
+			end
+		end
+	end
+	if otherZones > 0 then
+		AddNotice(notices, "Times inside each zone are included. A flight or boat is added when it is faster than walking.")
+	end
+	SortAvoid(avoid)
+	local hours = math.max(total, 10) / 3600
+	local plan = {
+		steps = steps,
+		totalSteps = #steps,
+		totalSec = total,
+		arriveSec = here.arriveSec,
+		fromPlayer = here.fromPlayer,
+		xp = xp,
+		xpPerHour = xp / hours,
+		xpEstimated = estimated,
+		notices = notices,
+		avoid = avoid,
+		elsewhereCount = 0,
+		elsewherePlannable = 0,
+		omittedDungeons = omitted,
+		bestZone = nil,
+		nextZone = nextZone,
+		otherZoneCount = otherZones,
+		zoneLabel = label,
+		scope = "all",
+	}
+	local wrapped = {}
+	if input.questie == false then
+		if input.questiePresent then
+			AddNotice(wrapped, "Questie is loaded, but its database could not be read, so pins and follow-ups are missing.")
+		else
+			AddNotice(wrapped, "Questie is not installed, so pins and follow-ups are missing.")
+		end
+	end
+	if input.tomtom == false then
+		AddNotice(wrapped, "TomTom is not installed, so there is no arrow.")
+	end
+	local pinless = 0
+	for i = 1, #plan.steps do
+		if not plan.steps[i].x then
+			pinless = pinless + 1
+		end
+	end
+	if pinless == 1 then
+		AddNotice(wrapped, "1 step has no map pin.")
+	elseif pinless > 1 then
+		AddNotice(wrapped, pinless .. " steps have no map pin.")
+	end
+	if plan.xpEstimated and plan.xp > 0 then
+		AddNotice(wrapped, "Experience is estimated from quest level.")
+	end
+	for i = 1, #plan.notices do
+		AddNotice(wrapped, plan.notices[i])
+	end
+	plan.notices = wrapped
 	return plan
 end
 

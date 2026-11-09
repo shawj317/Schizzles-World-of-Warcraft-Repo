@@ -9,7 +9,7 @@ local function script_dir()
 end
 
 QUESTROUTE_TEST = true
-local QR = dofile(script_dir() .. "/../AddOns/QuestRoute/Planner.lua")
+local QR = dofile(script_dir() .. "/../AddOns/Wayfarer/Planner.lua")
 
 local fails = 0
 local function check(cond, msg)
@@ -329,6 +329,137 @@ for _, text in ipairs(unreadable.notices) do
 	end
 end
 check(sawUnreadable, "loaded questie with no database says so")
+
+local order = QR.OrderZones({ "The Barrens", "Redridge Mountains", "Westfall" }, "Westfall")
+check(order[1] == "Westfall" and order[2] == "Redridge Mountains" and order[3] == "The Barrens", "one continent is finished before the next")
+
+local westfall = { ids = { [40] = true }, names = { ["Westfall"] = true }, parents = {} }
+local function zpoint(x, y, id, name)
+	return { x = x, y = y, zone = id, zoneName = name }
+end
+local scopeQuests = {
+	{
+		name = "Westfall Work",
+		level = 18,
+		header = "Westfall",
+		xp = 500,
+		objectives = { { title = "Defias", verb = "kill", points = { zpoint(40, 40, 40, "Westfall") } } },
+		turnin = { title = "Gryan", points = { zpoint(56, 47, 40, "Westfall") } },
+	},
+	{
+		name = "Redridge Work",
+		level = 20,
+		header = "Redridge Mountains",
+		xp = 600,
+		objectives = { { title = "Gnoll", verb = "kill", points = { zpoint(30, 30, 44, "Redridge Mountains") } } },
+		turnin = { title = "Magistrate", points = { zpoint(32, 32, 44, "Redridge Mountains") } },
+	},
+	{
+		name = "Barrens Work",
+		level = 20,
+		header = "The Barrens",
+		xp = 700,
+		objectives = { { title = "Plainstrider", verb = "kill", points = { zpoint(50, 50, 17, "The Barrens") } } },
+		turnin = { title = "Sergra", points = { zpoint(52, 30, 17, "The Barrens") } },
+	},
+	{
+		name = "Gray Elsewhere",
+		level = 5,
+		header = "Duskwood",
+		xp = 50,
+		objectives = { { title = "Spider", verb = "kill", points = { zpoint(20, 20, 10, "Duskwood") } } },
+	},
+	dungeon,
+}
+local function scopeBuild(useFlights)
+	return QR.Build({
+		scope = "all",
+		useFlights = useFlights,
+		travel = function()
+			return { seconds = 120, label = "Fly Crossroads → Orgrimmar, ~2m" }
+		end,
+		playerLevel = 20,
+		greenRange = 8,
+		maxLevelsAbove = 3,
+		includeLowLevel = false,
+		omitDungeons = false,
+		player = { x = 56, y = 47 },
+		speed = 7,
+		zone = westfall,
+		zoneLabel = "Westfall",
+		quests = scopeQuests,
+	})
+end
+local flown = scopeBuild(true)
+local walked = scopeBuild(false)
+local zonesSeen = {}
+for _, step in ipairs(flown.steps) do
+	if #zonesSeen == 0 or zonesSeen[#zonesSeen] ~= step.routeZone then
+		zonesSeen[#zonesSeen + 1] = step.routeZone
+	end
+end
+check(zonesSeen[1] == "Westfall" and zonesSeen[2] == "Redridge Mountains" and zonesSeen[3] == "The Barrens", "all-log order is zone by zone")
+local sawDungeon, sawGray, sawFly = false, false, false
+for _, step in ipairs(flown.steps) do
+	if step.questName == "Leaders of the Fang" then sawDungeon = true end
+	if step.questName == "Gray Elsewhere" then sawGray = true end
+	if step.travel and string.find(step.travel, "Fly Crossroads", 1, true) then sawFly = true end
+end
+check(not sawDungeon, "all-log mode leaves dungeon quests out")
+check(not sawGray, "all-log mode still skips gray quests")
+check(sawFly, "a flight is shown on the cross-zone step")
+check(flown.totalSec > walked.totalSec + 100, "the flight time is added and beats leaving the trip out")
+check(flown.scope == "all" and walked.scope == "all", "scope is recorded")
+
+local zoneOnly = QR.Build({
+	scope = "zone",
+	playerLevel = 20,
+	greenRange = 8,
+	maxLevelsAbove = 3,
+	includeLowLevel = false,
+	player = { x = 56, y = 47 },
+	speed = 7,
+	zone = westfall,
+	zoneLabel = "Westfall",
+	quests = scopeQuests,
+})
+local leftTheZone = false
+for _, step in ipairs(zoneOnly.steps) do
+	if step.title == "Plainstrider" or step.title == "Gnoll" then leftTheZone = true end
+end
+check(not leftTheZone, "zone scope stays in the current zone")
+check(zoneOnly.scope == "zone", "default scope marker")
+
+local longRide = QR.Build({
+	useFlights = true,
+	travel = function()
+		return { seconds = 30, label = "Fly Crossroads → Ratchet, ~1m" }
+	end,
+	playerLevel = 20,
+	greenRange = 8,
+	maxLevelsAbove = 3,
+	includeLowLevel = false,
+	player = { x = 0, y = 0 },
+	speed = 7,
+	zone = zone,
+	quests = {
+		{
+			name = "Long Ride",
+			level = 20,
+			header = "The Barrens",
+			xp = 100,
+			objectives = {
+				{ title = "Near", verb = "kill", points = { point(1, 0) } },
+				{ title = "Far", verb = "kill", points = { point(50, 0) } },
+			},
+		},
+	},
+})
+local sawLongFly = false
+for _, step in ipairs(longRide.steps) do
+	if step.travel and string.find(step.travel, "Ratchet", 1, true) then sawLongFly = true end
+end
+check(sawLongFly, "a flight beats a long walk")
 
 if fails > 0 then
 	print(fails .. " failed")

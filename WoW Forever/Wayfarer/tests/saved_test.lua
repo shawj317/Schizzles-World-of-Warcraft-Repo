@@ -8,7 +8,7 @@ local function script_dir()
 	return source:match("^(.*)[/\\]") or "."
 end
 
-local root = script_dir() .. "/../AddOns/QuestRoute/"
+local root = script_dir() .. "/../AddOns/Wayfarer/"
 local ns = {}
 
 local function load(name)
@@ -43,7 +43,7 @@ local legacy = {
 	height = 320,
 }
 local kept = ns.HealSettings(ns.PrepareDB(legacy))
-check(kept.schema == 1, "legacy file is schema 1")
+check(kept.schema == 2, "legacy file migrates to schema 2")
 check(kept.includeLowLevel == true, "include low level stays")
 check(kept.omitDungeons == false, "omit dungeons stays off")
 check(kept.showOnMap == false, "map pins stay off")
@@ -54,6 +54,10 @@ check(kept.font == 3, "font index stays")
 check(kept.fontSize == 16, "font size stays")
 check(kept.point[1] == "TOPRIGHT" and kept.width == 400 and kept.userSized == true, "window position stays")
 check(kept.configPoint[3] == 40, "options position stays")
+check(kept.scope == "zone" and kept.useFlights == true and kept.showTrail == true, "new map defaults")
+check(kept.pinSize == 20 and math.abs(kept.trailAlpha - 0.9) < 0.001, "pin and trail defaults")
+check(kept.theme == "wayfarer" and kept.showBorder == true, "appearance defaults")
+check(math.abs(kept.backdropAlpha - 0.85) < 0.001, "background opacity default")
 
 local broken = ns.HealSettings(ns.PrepareDB({
 	font = 99,
@@ -69,13 +73,30 @@ check(broken.includeLowLevel == false, "missing low-level default")
 check(broken.omitDungeons == true, "missing dungeon default")
 
 local fresh = ns.HealSettings(ns.PrepareDB({}))
-check(fresh.schema == 1, "new file is schema 1")
+check(fresh.schema == 2, "new file is schema 2")
 check(fresh.stepsShown == 7 and fresh.maxLevelsAbove == 3 and fresh.font == 1, "1.0.5 defaults")
 
 local newer = ns.PrepareDB({ schema = 5, stepsShown = 4, future = true })
 check(newer.schema == 5, "a newer schema is not downgraded")
 check(newer.future == true, "unknown keys stay")
 check(newer.includeLowLevel == false, "missing keys are filled")
+
+local clamped = ns.HealSettings(ns.PrepareDB({ pinSize = 99, trailAlpha = 4, scope = "nope", showTrail = false, showBorder = false, theme = "class", backdropAlpha = 0 }))
+check(clamped.pinSize == 32, "pin size clamps")
+check(clamped.trailAlpha == 1, "trail opacity clamps")
+check(clamped.scope == "zone", "unknown scope becomes this zone")
+check(clamped.showTrail == false, "trail can stay off")
+check(clamped.showBorder == false and clamped.theme == "class" and clamped.backdropAlpha == 0, "border, theme, and opacity stay")
+
+QuestRouteDB = { font = 4, includeLowLevel = true, point = { "CENTER", "CENTER", 3, 4 } }
+WayfarerDB = {}
+local migrated = ns.Settings()
+check(migrated.migratedFrom == "QuestRoute", "old database is copied once")
+check(migrated.font == 4 and migrated.includeLowLevel == true and migrated.point[3] == 3, "copied settings stay")
+check(migrated.scope == "zone" and migrated.useFlights == true, "copied file gains new defaults")
+WayfarerDB.font = 2
+local again = ns.Settings()
+check(again.font == 2 and again.migratedFrom == "QuestRoute", "a second load does not copy again")
 
 if fails > 0 then
 	print(fails .. " failed")

@@ -8,7 +8,7 @@ Addon setups and guides for World of Warcraft: Forever by **Jon Shaw (Schizzle)*
 |---|---|
 | [Manual](Manual/) | **Start here:** a printable launch-day manual (PDF) |
 | [Ashen Trail](Ashen%20Trail/) | Horde 1–60 leveling tracker (`AddOns/AshenTrail`) plus an optional RestedXP pack |
-| [QuestRoute](QuestRoute/) | Zone quest route (`AddOns/QuestRoute`): turn-ins, Questie follow-ups, and an optional TomTom arrow. Inspired by RutaMisiones. Type `/qr` |
+| [Wayfarer](Wayfarer/) | Zone quest route (`AddOns/Wayfarer`): turn-ins, Questie follow-ups, flights, and an optional TomTom arrow. Type `/wayfarer` or `/wf`. |
 | [Schizzle's Warrior](Schizzle's%20Warrior/) | the Warrior kit: the one-click helper addon with the XP & Rep Tray, the Musca Auras visual helper (proc alerts, priority lanes, rage colours), an Auctionator list and the [Warrior Guide](Schizzle's%20Warrior/Warrior%20Guide.md) |
 | [Schizzle's TSM](Schizzle's%20TSM/) | Mining and Blacksmithing TSM import strings with operations, price sources for a brand-new economy, and the group tree for the rest (TSM v4.15 runs on Forever) |
 | [Addon Compatibility.md](Addon%20Compatibility.md) | which addons are Forever-ready, which aren't, and the desktop apps |

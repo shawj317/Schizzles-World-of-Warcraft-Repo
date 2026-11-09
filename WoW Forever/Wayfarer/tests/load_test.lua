@@ -8,7 +8,7 @@ local function script_dir()
 	return source:match("^(.*)[/\\]") or "."
 end
 
-local root = script_dir() .. "/../AddOns/QuestRoute/"
+local root = script_dir() .. "/../AddOns/Wayfarer/"
 
 local any
 any = setmetatable({}, {
@@ -41,11 +41,13 @@ function CreateFrame()
 end
 
 local allowed = {
-	SLASH_QUESTROUTE1 = true,
-	SLASH_QUESTROUTE2 = true,
-	QuestRoute_OnAddonCompartmentClick = true,
-	QuestRoute_OnAddonCompartmentEnter = true,
-	QuestRoute_OnAddonCompartmentLeave = true,
+	SLASH_WAYFARER1 = true,
+	SLASH_WAYFARER2 = true,
+	SLASH_WAYFARER3 = true,
+	SLASH_WAYFARER4 = true,
+	Wayfarer_OnAddonCompartmentClick = true,
+	Wayfarer_OnAddonCompartmentEnter = true,
+	Wayfarer_OnAddonCompartmentLeave = true,
 }
 
 local leaks = {}
@@ -66,7 +68,12 @@ local order = {
 	"Locales/enUS.lua",
 	"Secrets.lua",
 	"Detect.lua",
+	"Theme.lua",
+	"Skip.lua",
 	"Planner.lua",
+	"Trail.lua",
+	"Travel.lua",
+	"FlightData.lua",
 	"Saved.lua",
 	"Core.lua",
 	"QuestLog.lua",
