@@ -22,7 +22,7 @@ ns.SETTINGS = {
 			{ key = "includeLowLevel", kind = "check", label = "Low-level quests", tip = "Gray quests. Off, they are listed under Avoid and left out of the route." },
 			{ key = "omitDungeons", kind = "check", label = "Skip dungeons", tip = "Leave dungeon quests out of the route. They are listed under Avoid." },
 			{ key = "omitPvp", kind = "check", label = "Omit PvP quests", tip = "Leave battleground quests out of the route in this zone and in all quests. They are listed under Avoid as PvP." },
-			{ key = "showOnMap", kind = "check", label = "Numbered pins", tip = "Numbered round pins on the world map and the minimap." },
+			{ key = "showOnMap", kind = "check", label = "Numbered pins", tip = "Numbered round pins on the world map. The minimap uses the TomTom arrow for the current step." },
 			{ key = "useTomTom", kind = "check", needs = "TomTom", label = "Every step", tip = "Off: one TomTom arrow for the current step. On: a waypoint for every step. Wayfarer removes its own previous waypoints first, and leaves yours alone." },
 			{ key = "useFlights", kind = "check", label = "Flight paths", tip = "Compare a long leg with flight masters you know, and with boats and zeppelins." },
 			{ key = "scope", kind = "menu", label = "Route scope", tip = "This zone, or every non-dungeon quest in the log.", choices = { { "zone", "This zone" }, { "all", "All quests" } } },
@@ -115,21 +115,4 @@ function ns.ListedForEscape(frames)
 		end
 	end
 	return false
-end
-
-function ns.ClampRadius(x, y, radius)
-	x = tonumber(x) or 0
-	y = tonumber(y) or 0
-	radius = tonumber(radius) or 0
-	if radius < 0 then
-		radius = 0
-	end
-	local dist = math.sqrt(x * x + y * y)
-	if dist == 0 or dist <= radius then
-		return x, y, true
-	end
-	if radius == 0 then
-		return 0, 0, false
-	end
-	return x / dist * radius, y / dist * radius, false
 end

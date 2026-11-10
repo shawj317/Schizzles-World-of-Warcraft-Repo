@@ -76,11 +76,6 @@ check(not string.find(options, "UISpecialFrames", 1, true), "there is no options
 check(string.find(options, "OpenToCategory", 1, true) ~= nil, "settings open the blizzard panel")
 check(not string.find(options, "function ns.BuildConfig", 1, true), "the addon options window is gone")
 
-local dx, dy, inside = ns.ClampRadius(100, 0, 40)
-check(not inside and math.abs(dx - 40) < 0.001 and math.abs(dy) < 0.001, "offsets outside the minimap clamp to the radius")
-local ix, iy, stays = ns.ClampRadius(10, 10, 40)
-check(stays and ix == 10 and iy == 10, "offsets inside the minimap stay")
-
 if fails > 0 then
 	print(fails .. " failed")
 	os.exit(1)

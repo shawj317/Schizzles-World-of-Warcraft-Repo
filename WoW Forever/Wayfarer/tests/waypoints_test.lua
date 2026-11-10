@@ -27,7 +27,7 @@ local function Stub()
 		seq = seq + 1
 		self.adds = self.adds + 1
 		local uid = seq
-		local row = { uid = uid, from = opts.from, title = opts.title, crazy = opts.crazy, map = map, x = x, y = y }
+		local row = { uid = uid, from = opts.from, title = opts.title, crazy = opts.crazy, minimap = opts.minimap, map = map, x = x, y = y }
 		live[uid] = row
 		self.waypoints[map] = self.waypoints[map] or {}
 		self.waypoints[map][uid] = row
@@ -80,6 +80,15 @@ for _, set in pairs(tom.waypoints) do
 	end
 end
 check(wayfarer == 1, "only one Wayfarer waypoint remains")
+local mini = 0
+for _, set in pairs(tom.waypoints) do
+	for _, row in pairs(set) do
+		if row.from == "Wayfarer" and row.minimap then
+			mini = mini + 1
+		end
+	end
+end
+check(mini == 1, "only the current step gets a TomTom minimap icon")
 check(tom.arrow ~= nil and ns.WaypointValid(tom, tom.arrow), "the crazy arrow points at a live waypoint")
 local key = ns.WaypointPlanKey({ step }, false, 1)
 check(ns.CacheStillValid(tom, cache, key), "an unchanged step can keep its waypoint")
@@ -97,6 +106,15 @@ for _ = 1, 5 do
 	cache2 = ns.ReplaceWaypoints(many, cache2, { step, other }, true, 1)
 end
 check(many:count() == 2, "every-step mode replaces the set instead of stacking")
+local manyMini = 0
+for _, set in pairs(many.waypoints) do
+	for _, row in pairs(set) do
+		if row.minimap then
+			manyMini = manyMini + 1
+		end
+	end
+end
+check(manyMini == 1, "extra TomTom steps stay off the minimap")
 
 if fails > 0 then
 	print(fails .. " failed")

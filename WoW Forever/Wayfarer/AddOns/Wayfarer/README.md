@@ -27,7 +27,7 @@ Settings are in three pages: **General**, **Map**, and **Appearance**. A step wi
 - The gold line is the step count, the rough time, and experience per hour.
 - **Avoid** lists quests left out because they are failed, too low, too high, or a dungeon.
 
-Round pins sit on the world map and the minimap: gold for a pickup, bronze for an objective, ember for a turn-in. The current step has a gold ring. A pin past the minimap edge is pulled in so it stays on the minimap.
+Round pins sit on the world map: gold for a pickup, bronze for an objective, ember for a turn-in. The current step has a gold ring. The minimap uses the TomTom arrow for that step, not Wayfarer pins.
 
 ## Options
 
@@ -80,7 +80,7 @@ Flight times are the measured Forever times from RutaMisiones. Wayfarer asks `C_
 3. Drag, resize, `/reload`.
 4. `/wayfarer scope all` on a log that spans two zones. Zone headers appear, dungeon quests stay out, and gray quests stay out unless you include them.
 5. With a known flight path, a cross-zone step should name the flight or the boat and a minute count. Turn **Use flight paths** off and that line should go away.
-6. Open the world map: round pins, colored by pickup / objective / turn-in, gold ring on step 1. The same pins sit on the minimap and stay inside it.
+6. Open the world map: round pins, colored by pickup / objective / turn-in, gold ring on step 1. Wayfarer does not draw pins on the minimap.
 7. Click a pin. The tooltip and the TomTom arrow should still work.
 8. `/wayfarer scope zone` returns to the current zone only.
 

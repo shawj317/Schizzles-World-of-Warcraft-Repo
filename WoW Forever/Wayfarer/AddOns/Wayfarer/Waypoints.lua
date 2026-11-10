@@ -9,7 +9,7 @@ function ns.WaypointOptions(title, crazy)
 	return {
 		title = title or "Wayfarer",
 		persistent = false,
-		minimap = true,
+		minimap = crazy and true or false,
 		world = true,
 		crazy = crazy and true or false,
 		from = ns.WAYPOINT_FROM,

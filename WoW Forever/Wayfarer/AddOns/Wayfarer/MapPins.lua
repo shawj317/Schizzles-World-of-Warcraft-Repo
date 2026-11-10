@@ -1,4 +1,4 @@
--- TomTom waypoints and numbered pins on the world map and minimap.
+-- TomTom waypoints and numbered pins on the world map.
 -- QuestRoute by Jon Shaw (Schizzle).
 
 local _, ns = ...
@@ -8,21 +8,8 @@ local routeKey
 local waypointKey
 local activePlan
 local arrowUID
-local miniPool = {}
 local worldPool = {}
 local mapHooked = false
-
-local function WorldOf(uiMap, x, y)
-	if not uiMap or not x or not y or not C_Map or not C_Map.GetWorldPosFromMapPos then
-		return nil
-	end
-	local ok, first, second = pcall(C_Map.GetWorldPosFromMapPos, uiMap, { x = x / 100, y = y / 100 })
-	local pos = (type(first) == "table" and not ns.IsSecret(first.x) and first.x and first) or (type(second) == "table" and not ns.IsSecret(second.x) and second.x and second)
-	if ok and pos and not ns.IsSecret(pos.x) and not ns.IsSecret(pos.y) then
-		return pos.x, pos.y
-	end
-	return nil
-end
 
 local function RouteSignature(plan)
 	local parts = {}
@@ -112,7 +99,6 @@ local function PointAt(step, announce)
 	FocusArrow(step, announce)
 end
 
-local minimapHost
 local TEX = "Interface\\AddOns\\Wayfarer\\Textures\\"
 
 local function ReleaseAll(pool)
@@ -141,24 +127,6 @@ local function Claim(pool, create)
 	item.free = false
 	pool[#pool + 1] = item
 	return item
-end
-
-local function MinimapHost()
-	if not Minimap then
-		return nil
-	end
-	if minimapHost and minimapHost.GetParent and minimapHost:GetParent() == Minimap then
-		return minimapHost
-	end
-	minimapHost = CreateFrame("Frame", nil, Minimap)
-	minimapHost:SetAllPoints(Minimap)
-	if minimapHost.SetClipsChildren then
-		minimapHost:SetClipsChildren(true)
-	end
-	if minimapHost.EnableMouse then
-		minimapHost:EnableMouse(false)
-	end
-	return minimapHost
 end
 
 local function HidePool(pool)
@@ -364,95 +332,6 @@ local function UpdateWorldPins(plan)
 	end
 end
 
-local function MinimapYards()
-	local zoom = ns.Num(Minimap and Minimap.GetZoom and Minimap:GetZoom(), 0)
-	local indoor = (IsInInstance and IsInInstance()) and true or false
-	local outdoorRadius = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
-	local indoorRadius = { [0] = 300, 240, 180, 120, 80, 50 }
-	local list = indoor and indoorRadius or outdoorRadius
-	return list[zoom] or list[0] or 300
-end
-
-local function UpdateMinimapPins(plan)
-	HidePool(miniPool)
-	local db = ns.Settings()
-	if not Minimap or not plan or not db.showOnMap then
-		return
-	end
-	local player, playerMap = ns.PlayerPosition()
-	if not player or not playerMap then
-		return
-	end
-	local playerX, playerY = WorldOf(playerMap, player.x, player.y)
-	if not playerX then
-		return
-	end
-	local host = MinimapHost()
-	if not host then
-		return
-	end
-	local radiusYards = MinimapYards()
-	local radiusPx = (Minimap:GetWidth() / 2) - 8
-	if radiusPx < 20 then
-		radiusPx = 60
-	end
-	local scale = radiusPx / radiusYards
-	local facing = 0
-	local rotate = false
-	if GetCVar then
-		local ok, value = pcall(GetCVar, "rotateMinimap")
-		rotate = ok and not ns.IsSecret(value) and value == "1"
-	end
-	if rotate and GetPlayerFacing then
-		local ok, facingValue = pcall(GetPlayerFacing)
-		if ok and not ns.IsSecret(facingValue) and type(facingValue) == "number" then
-			facing = facingValue
-		end
-	end
-	local sinF = math.sin(facing)
-	local cosF = math.cos(facing)
-	local steps = plan.steps or {}
-	local shown = 0
-	for i = 1, #steps do
-		local step = steps[i]
-		if step.x and step.y and step.uiMap and shown < 40 then
-			local worldX, worldY = WorldOf(step.uiMap, step.x, step.y)
-			if worldX then
-				local dx = (worldX - playerX) * scale
-				local dy = (worldY - playerY) * scale
-				local spanX = worldX - playerX
-				local spanY = worldY - playerY
-				local yards = math.sqrt(spanX * spanX + spanY * spanY)
-				if yards < 4000 then
-					if rotate then
-						dx, dy = dx * cosF - dy * sinF, dx * sinF + dy * cosF
-					end
-					local pinLimit = radiusPx - ((db.pinSize or 20) / 2)
-					if pinLimit < 8 then
-						pinLimit = 8
-					end
-					local drawX, drawY = dx, dy
-					if ns.ClampRadius then
-						drawX, drawY = ns.ClampRadius(dx, dy, pinLimit)
-					end
-					shown = shown + 1
-					local pin = TakeMapPin(miniPool, host)
-					pin:SetFrameStrata("MEDIUM")
-					pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
-					StylePin(pin, i, step, i == 1)
-					pin:ClearAllPoints()
-					pin:SetPoint("CENTER", host, "CENTER", drawX, drawY)
-					pin.tip = StepTitle(step, i)
-					local captured = step
-					pin:SetScript("OnClick", function()
-						PointAt(captured, true)
-					end)
-				end
-			end
-		end
-	end
-end
-
 local function EnsureMapHooks()
 	if mapHooked or not WorldMapFrame or not WorldMapFrame.HookScript then
 		return
@@ -468,42 +347,6 @@ local function EnsureMapHooks()
 	end)
 end
 
-local mapTicker = CreateFrame("Frame")
-local mapWait = 0
-local pinError
-mapTicker:SetScript("OnUpdate", function(_, elapsed)
-	if not activePlan then
-		return
-	end
-	mapWait = mapWait + (elapsed or 0)
-	local db = ns.Settings()
-	if mapWait < 0.2 then
-		return
-	end
-	mapWait = 0
-	local ok, err = pcall(function()
-		EnsureMapHooks()
-		if not db.showOnMap then
-			HidePool(miniPool)
-			HidePool(worldPool)
-			return
-		end
-		if ns.InCombat() or ns.Restriction("Map") then
-			return
-		end
-		UpdateMinimapPins(activePlan)
-		if WorldMapFrame and WorldMapFrame:IsShown() then
-			UpdateWorldPins(activePlan)
-		else
-			HidePool(worldPool)
-		end
-	end)
-	if not ok and err ~= pinError then
-		pinError = err
-		ns:Print(string.format(ns.L.MAP_PINS_STOPPED, tostring(err)))
-	end
-end)
-
 local function SyncRoute(plan, focusStep, announce)
 	activePlan = plan
 	local steps = plan and plan.steps or {}
@@ -511,12 +354,12 @@ local function SyncRoute(plan, focusStep, announce)
 	local aim = focusStep or steps[index]
 	PlaceTomTom(steps, ns.Settings().useTomTom and true or false, index, announce and true or false, aim)
 	routeKey = RouteSignature(plan)
+	EnsureMapHooks()
+	local db = ns.Settings()
 	if not db.showOnMap then
-		HidePool(miniPool)
 		HidePool(worldPool)
 		return
 	end
-	UpdateMinimapPins(plan)
 	UpdateWorldPins(plan)
 end
 
