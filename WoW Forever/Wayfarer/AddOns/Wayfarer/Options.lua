@@ -87,6 +87,61 @@ local function HookSliders()
 	end)
 end
 
+-- 16001 registers with (category, variable, key, db, type, name, default).
+-- Older clients use (category, name, variable, type, default). GetSetting exists
+-- on the same registry that keys the variable string, which is the 16001 form.
+function ns.SettingsForm()
+	if ns.settingsForm then
+		return ns.settingsForm
+	end
+	if Settings and Settings.GetSetting then
+		ns.settingsForm = "modern"
+	else
+		ns.settingsForm = "legacy"
+	end
+	return ns.settingsForm
+end
+
+function ns.LookupSetting(variable, key)
+	if ns.settingHandles and ns.settingHandles[variable] then
+		return ns.settingHandles[variable]
+	end
+	if not Settings or not Settings.GetSetting then
+		return nil
+	end
+	local ok, found = pcall(Settings.GetSetting, variable)
+	if ok and found then
+		return found
+	end
+	if key and key ~= variable then
+		ok, found = pcall(Settings.GetSetting, key)
+		if ok and found then
+			return found
+		end
+	end
+	return nil
+end
+
+local function RememberSetting(variable, setting)
+	ns.settingHandles = ns.settingHandles or {}
+	ns.settingHandles[variable] = setting or true
+	return setting
+end
+
+local function RegisterAddonSetting(category, variable, key, db, varType, label, default)
+	local existing = ns.LookupSetting(variable, key)
+	if existing then
+		return RememberSetting(variable, existing)
+	end
+	local setting
+	if ns.SettingsForm() == "modern" then
+		setting = Settings.RegisterAddOnSetting(category, variable, key, db, varType, label, default)
+	else
+		setting = Settings.RegisterAddOnSetting(category, label, key, varType, default)
+	end
+	return RememberSetting(variable, setting)
+end
+
 local function AddControl(category, layout, item)
 	local db = ns.Settings()
 	local tip = TomTomTip(item)
@@ -108,7 +163,7 @@ local function AddControl(category, layout, item)
 		return nil
 	end
 	local varType = Settings.VarType and (item.kind == "slider" and Settings.VarType.Number or item.kind == "check" and Settings.VarType.Boolean or Settings.VarType.String)
-	local setting = Settings.RegisterAddOnSetting(category, "Wayfarer_" .. item.key, item.key, db, varType, item.label, ns.DEFAULTS[item.key])
+	local setting = RegisterAddonSetting(category, "Wayfarer_" .. item.key, item.key, db, varType, item.label, ns.DEFAULTS[item.key])
 	if setting and setting.SetValueChangedCallback then
 		setting:SetValueChangedCallback(OnChanged(item.key))
 	end
@@ -148,18 +203,28 @@ local function AddControl(category, layout, item)
 end
 
 function ns.RegisterSettings()
-	if ns.settingsCategory or not Settings or not Settings.RegisterVerticalLayoutCategory then
+	if ns.settingsRegistered then
 		return
 	end
+	if not Settings or not Settings.RegisterVerticalLayoutCategory then
+		return
+	end
+	-- Set before the panel build. A failure halfway must not register again.
+	ns.settingsRegistered = true
 	HookSliders()
-	local ok = pcall(function()
+	local ok, err = pcall(function()
 		local parent, parentLayout = Settings.RegisterVerticalLayoutCategory(L.TITLE)
+		ns.settingsCategory = parent
 		local useSubs = Settings.RegisterVerticalLayoutSubcategory ~= nil
+		ns.settingsPageIDs = {}
 		for i = 1, #ns.SETTINGS do
 			local section = ns.SETTINGS[i]
 			local category, layout = parent, parentLayout
 			if useSubs then
 				category, layout = Settings.RegisterVerticalLayoutSubcategory(parent, section.section)
+				if category and category.GetID then
+					ns.settingsPageIDs[section.section] = category:GetID()
+				end
 			elseif parentLayout and parentLayout.AddInitializer and CreateSettingsListSectionHeaderInitializer then
 				parentLayout:AddInitializer(CreateSettingsListSectionHeaderInitializer(section.section))
 			end
@@ -170,26 +235,30 @@ function ns.RegisterSettings()
 		if Settings.RegisterAddOnCategory then
 			Settings.RegisterAddOnCategory(parent)
 		end
-		ns.settingsCategory = parent
+		if parent and parent.GetID then
+			ns.settingsCategoryID = parent:GetID()
+		end
 	end)
-	if not ok then
-		ns.settingsCategory = nil
+	if not ok and not ns.settingsErrorPrinted then
+		ns.settingsErrorPrinted = true
+		local message = "Settings could not be registered: " .. tostring(err)
+		if ns.Print then
+			ns:Print(message)
+		end
 	end
 end
 
 function ns.OpenConfig()
-	ns.EnsureUI()
-	if not ns.settingsCategory then
-		ns.RegisterSettings()
+	if ns.EnsureUI then
+		ns.EnsureUI()
 	end
-	local category = ns.settingsCategory
-	local id = category and category.GetID and category:GetID()
+	local id = ns.settingsCategoryID
+	if id == nil and ns.settingsPageIDs then
+		id = ns.settingsPageIDs.General or ns.settingsPageIDs.Map or ns.settingsPageIDs.Appearance
+	end
 	if Settings and Settings.OpenToCategory and id ~= nil then
-		local opened = pcall(Settings.OpenToCategory, id)
-		if opened then
-			pcall(Settings.OpenToCategory, id)
-			return
-		end
+		pcall(Settings.OpenToCategory, id)
+		return
 	end
 	if Settings and Settings.OpenToCategory then
 		pcall(Settings.OpenToCategory, L.TITLE)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 (2026-11-10)
+
+- The cog opens the Blizzard settings panel without registering the settings again. Registration runs once at load. A second click no longer throws "Setting variable 'Wayfarer_rememberWindow' was previously registered."
+
 ## 1.3.0 (2026-11-10)
 
 - Settings live only in Blizzard's AddOns panel, under Wayfarer, with General, Map, and Appearance. The old options window is gone. The cog, a right-click, the addon compartment, and `/wayfarer options` open that panel. Labels are short. The explanation is the tooltip. Pin size no longer draws an edit box over the slider.

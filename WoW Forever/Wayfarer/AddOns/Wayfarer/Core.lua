@@ -20,7 +20,7 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.3.0"
+ns.version = Metadata("Version") or "1.3.1"
 
 function ns:Print(message)
 	print("|cffffd36aWayfarer:|r " .. tostring(message))
@@ -100,6 +100,7 @@ end
 
 ns.driver = CreateFrame("Frame")
 ns.driver:RegisterEvent("ADDON_LOADED")
+ns.driver:RegisterEvent("PLAYER_LOGIN")
 ns.driver:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.driver:RegisterEvent("QUEST_ACCEPTED")
 ns.driver:RegisterEvent("QUEST_REMOVED")
@@ -116,6 +117,12 @@ ns.driver:SetScript("OnEvent", function(_, event, name)
 		end
 		if ns.ApplyPlaceRules then
 			ns.ApplyPlaceRules("login")
+		end
+		return
+	end
+	if event == "PLAYER_LOGIN" then
+		if ns.RegisterSettings then
+			ns.RegisterSettings()
 		end
 		return
 	end
