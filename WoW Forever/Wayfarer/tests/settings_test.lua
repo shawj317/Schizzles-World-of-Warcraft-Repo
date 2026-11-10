@@ -36,7 +36,7 @@ for s = 1, #ns.SETTINGS do
 	end
 end
 check(seen.rememberWindow and seen.showOnLogin and seen.hideInBattleground and seen.hideInInstance and seen.recalc, "general rows")
-check(seen.useTomTom and seen.pinSize and seen.scope and seen.showTrail, "map rows")
+check(seen.useTomTom and seen.pinSize and seen.scope and not seen.showTrail and not seen.trailAnimated and not seen.trailAlpha, "map rows keep pins and omit the trail")
 check(seen.theme and seen.showBorder and seen.backdropAlpha and seen.windowScale, "appearance rows")
 
 local tomtom
@@ -76,14 +76,6 @@ local dx, dy, inside = ns.ClampRadius(100, 0, 40)
 check(not inside and math.abs(dx - 40) < 0.001 and math.abs(dy) < 0.001, "offsets outside the minimap clamp to the radius")
 local ix, iy, stays = ns.ClampRadius(10, 10, 40)
 check(stays and ix == 10 and iy == 10, "offsets inside the minimap stay")
-
-local pool = {
-	{ free = false, hidden = false, Hide = function(self) self.hidden = true end },
-	{ free = false, hidden = false, Hide = function(self) self.hidden = true end },
-}
-assert(loadfile(root .. "Trail.lua"))("Wayfarer", ns)
-ns.ReleaseAll(pool)
-check(pool[1].free and pool[1].hidden and pool[2].free and pool[2].hidden, "releasing a pool hides every pin and dot")
 
 if fails > 0 then
 	print(fails .. " failed")

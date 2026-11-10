@@ -41,6 +41,13 @@ local legacy = {
 	userSized = true,
 	width = 400,
 	height = 320,
+	showTrail = true,
+	trailAnimated = true,
+	trailAlpha = 0.9,
+	trailR = 1,
+	trailG = 0.82,
+	trailB = 0,
+	trailCustom = false,
 }
 local kept = ns.HealSettings(ns.PrepareDB(legacy))
 check(kept.schema == 3, "legacy file migrates to schema 3")
@@ -54,8 +61,8 @@ check(kept.font == 3, "font index stays")
 check(kept.fontSize == 16, "font size stays")
 check(kept.point[1] == "TOPRIGHT" and kept.width == 400 and kept.userSized == true, "window position stays")
 check(kept.configPoint[3] == 40, "options position stays")
-check(kept.scope == "zone" and kept.useFlights == true and kept.showTrail == true, "new map defaults")
-check(kept.pinSize == 20 and math.abs(kept.trailAlpha - 0.9) < 0.001, "pin and trail defaults")
+check(kept.scope == "zone" and kept.useFlights == true and kept.pinSize == 20, "new map defaults")
+check(kept.showTrail == nil and kept.trailAlpha == nil and kept.trailCustom == nil, "old trail keys are dropped")
 check(kept.theme == "wayfarer" and kept.showBorder == true, "appearance defaults")
 check(math.abs(kept.backdropAlpha - 0.85) < 0.001, "background opacity default")
 
@@ -83,11 +90,10 @@ check(newer.schema == 5, "a newer schema is not downgraded")
 check(newer.future == true, "unknown keys stay")
 check(newer.includeLowLevel == false, "missing keys are filled")
 
-local clamped = ns.HealSettings(ns.PrepareDB({ pinSize = 99, trailAlpha = 4, scope = "nope", showTrail = false, showBorder = false, theme = "class", backdropAlpha = 0 }))
+local clamped = ns.HealSettings(ns.PrepareDB({ pinSize = 99, trailAlpha = 4, showTrail = false, trailR = 1, scope = "nope", showBorder = false, theme = "class", backdropAlpha = 0 }))
 check(clamped.pinSize == 32, "pin size clamps")
-check(clamped.trailAlpha == 1, "trail opacity clamps")
 check(clamped.scope == "zone", "unknown scope becomes this zone")
-check(clamped.showTrail == false, "trail can stay off")
+check(clamped.showTrail == nil and clamped.trailAlpha == nil and clamped.trailR == nil, "saved trail keys are cleared")
 check(clamped.showBorder == false and clamped.theme == "class" and clamped.backdropAlpha == 0, "border, theme, and opacity stay")
 
 QuestRouteDB = { font = 4, includeLowLevel = true, point = { "CENTER", "CENTER", 3, 4 } }

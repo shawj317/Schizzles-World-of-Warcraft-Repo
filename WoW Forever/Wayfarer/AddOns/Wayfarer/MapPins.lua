@@ -148,11 +148,36 @@ local function PointAt(step, announce)
 	FocusArrow(step, announce)
 end
 
-local worldDots = {}
-local miniDots = {}
-local trailDistance = 0
 local minimapHost
 local TEX = "Interface\\AddOns\\Wayfarer\\Textures\\"
+
+local function ReleaseAll(pool)
+	if type(pool) ~= "table" then
+		return
+	end
+	for i = 1, #pool do
+		pool[i].free = true
+		if pool[i].Hide then
+			pool[i]:Hide()
+		end
+	end
+end
+
+local function Claim(pool, create)
+	for i = 1, #pool do
+		if pool[i].free then
+			pool[i].free = false
+			if pool[i].Show then
+				pool[i]:Show()
+			end
+			return pool[i]
+		end
+	end
+	local item = create()
+	item.free = false
+	pool[#pool + 1] = item
+	return item
+end
 
 local function MinimapHost()
 	if not Minimap then
@@ -173,7 +198,7 @@ local function MinimapHost()
 end
 
 local function HidePool(pool)
-	ns.ReleaseAll(pool)
+	ReleaseAll(pool)
 end
 
 local function Tex(parent, layer, name, point, x, y)
@@ -216,7 +241,7 @@ local function MakePin(parent)
 end
 
 local function TakeMapPin(pool, parent)
-	local pin = ns.Claim(pool, function()
+	local pin = Claim(pool, function()
 		return MakePin(parent)
 	end)
 	pin:SetParent(parent)
@@ -303,75 +328,6 @@ local function NudgePins(placed)
 	end
 end
 
-local function MakeDot(parent)
-	local dot = parent:CreateTexture(nil, "ARTWORK")
-	dot:SetTexture(TEX .. "dot")
-	dot:SetSize(7, 7)
-	return dot
-end
-
-local function TakeDot(pool, parent)
-	local dot = ns.Claim(pool, function()
-		return MakeDot(parent)
-	end)
-	dot:SetParent(parent)
-	dot:Show()
-	return dot
-end
-
-local function Polylines(steps, placed, origin)
-	local groups, current = {}, {}
-	local function flush()
-		if #current >= 2 then
-			groups[#groups + 1] = current
-		end
-		current = {}
-	end
-	local seen = false
-	if origin then
-		current[1] = origin
-	end
-	for i = 1, #steps do
-		local spot = placed[i]
-		if spot then
-			current[#current + 1] = { x = spot.x, y = spot.y }
-			seen = true
-		elseif origin and not seen then
-			current = {}
-		else
-			flush()
-		end
-	end
-	flush()
-	return groups
-end
-
-local function PaintTrail(pool, parent, anchor, groups, spacing, cap)
-	local db = ns.Settings()
-	local phase = db.trailAnimated and trailDistance or 0
-	local tr, tg, tb = db.trailR, db.trailG, db.trailB
-	if not db.trailCustom and ns.ResolveTheme then
-		local trail = ns.ResolveTheme(db.theme, ns.PlayerClassColor and ns.PlayerClassColor() or nil).trail
-		tr, tg, tb = trail[1], trail[2], trail[3]
-	end
-	local budget = cap
-	for g = 1, #groups do
-		if budget < 1 then
-			break
-		end
-		local samples = ns.TrailSamples(groups[g], spacing, phase, budget)
-		for i = 1, #samples do
-			local dot = TakeDot(pool, parent)
-			dot:SetSize(7, 7)
-			dot:SetVertexColor(tr, tg, tb, db.trailAlpha)
-			dot:ClearAllPoints()
-			dot:SetPoint("CENTER", parent, anchor, samples[i].x, samples[i].y)
-		end
-		budget = budget - #samples
-	end
-end
-
-
 local function ShownWorldMap()
 	if not WorldMapFrame or not WorldMapFrame:IsShown() then
 		return nil, nil
@@ -400,10 +356,9 @@ end
 
 local function UpdateWorldPins(plan)
 	HidePool(worldPool)
-	HidePool(worldDots)
 	local canvas, mapID = ShownWorldMap()
 	local db = ns.Settings()
-	if not canvas or not plan or (not db.showOnMap and not db.showTrail) then
+	if not canvas or not plan or not db.showOnMap then
 		return
 	end
 	local width, height = canvas:GetWidth(), canvas:GetHeight()
@@ -427,31 +382,21 @@ local function UpdateWorldPins(plan)
 		end
 	end
 	NudgePins(placed)
-	if db.showOnMap then
-		for i = 1, #steps do
-			local spot = placed[i]
-			if spot then
-				local pin = TakeMapPin(worldPool, canvas)
-				pin:SetFrameStrata("HIGH")
-				pin:SetFrameLevel(baseLevel + 20 + i)
-				StylePin(pin, i, spot.step, i == 1)
-				pin:ClearAllPoints()
-				pin:SetPoint("CENTER", canvas, "TOPLEFT", spot.x, spot.y)
-				pin.tip = StepTitle(spot.step, i)
-				local captured = spot.step
-				pin:SetScript("OnClick", function()
-					PointAt(captured, true)
-				end)
-			end
+	for i = 1, #steps do
+		local spot = placed[i]
+		if spot then
+			local pin = TakeMapPin(worldPool, canvas)
+			pin:SetFrameStrata("HIGH")
+			pin:SetFrameLevel(baseLevel + 20 + i)
+			StylePin(pin, i, spot.step, i == 1)
+			pin:ClearAllPoints()
+			pin:SetPoint("CENTER", canvas, "TOPLEFT", spot.x, spot.y)
+			pin.tip = StepTitle(spot.step, i)
+			local captured = spot.step
+			pin:SetScript("OnClick", function()
+				PointAt(captured, true)
+			end)
 		end
-	end
-	if db.showTrail then
-		local origin
-		local player, playerMap = ns.PlayerPosition()
-		if player and playerMap and (not mapID or playerMap == mapID) then
-			origin = { x = player.x / 100 * width, y = -player.y / 100 * height }
-		end
-		PaintTrail(worldDots, canvas, "TOPLEFT", Polylines(steps, placed, origin), 18, 64)
 	end
 end
 
@@ -466,9 +411,8 @@ end
 
 local function UpdateMinimapPins(plan)
 	HidePool(miniPool)
-	HidePool(miniDots)
 	local db = ns.Settings()
-	if not Minimap or not plan or (not db.showOnMap and not db.showTrail) then
+	if not Minimap or not plan or not db.showOnMap then
 		return
 	end
 	local player, playerMap = ns.PlayerPosition()
@@ -503,7 +447,6 @@ local function UpdateMinimapPins(plan)
 	end
 	local sinF = math.sin(facing)
 	local cosF = math.cos(facing)
-	local placed = {}
 	local steps = plan.steps or {}
 	local shown = 0
 	for i = 1, #steps do
@@ -528,36 +471,21 @@ local function UpdateMinimapPins(plan)
 					if ns.ClampRadius then
 						drawX, drawY = ns.ClampRadius(dx, dy, pinLimit)
 					end
-					local dotX, dotY, inside = dx, dy, false
-					if ns.ClampRadius then
-						dotX, dotY, inside = ns.ClampRadius(dx, dy, radiusPx - 4)
-					else
-						local dist = math.sqrt(dx * dx + dy * dy)
-						inside = dist <= radiusPx
-					end
-					if db.showOnMap then
-						shown = shown + 1
-						local pin = TakeMapPin(miniPool, host)
-						pin:SetFrameStrata("MEDIUM")
-						pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
-						StylePin(pin, i, step, i == 1)
-						pin:ClearAllPoints()
-						pin:SetPoint("CENTER", host, "CENTER", drawX, drawY)
-						pin.tip = StepTitle(step, i)
-						local captured = step
-						pin:SetScript("OnClick", function()
-							PointAt(captured, true)
-						end)
-					end
-					if inside then
-						placed[i] = { x = dotX, y = dotY }
-					end
+					shown = shown + 1
+					local pin = TakeMapPin(miniPool, host)
+					pin:SetFrameStrata("MEDIUM")
+					pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
+					StylePin(pin, i, step, i == 1)
+					pin:ClearAllPoints()
+					pin:SetPoint("CENTER", host, "CENTER", drawX, drawY)
+					pin.tip = StepTitle(step, i)
+					local captured = step
+					pin:SetScript("OnClick", function()
+						PointAt(captured, true)
+					end)
 				end
 			end
 		end
-	end
-	if db.showTrail then
-		PaintTrail(miniDots, host, "CENTER", Polylines(steps, placed, { x = 0, y = 0 }), 12, 28)
 	end
 end
 
@@ -573,7 +501,6 @@ local function EnsureMapHooks()
 	end)
 	WorldMapFrame:HookScript("OnHide", function()
 		HidePool(worldPool)
-		HidePool(worldDots)
 	end)
 end
 
@@ -586,22 +513,15 @@ mapTicker:SetScript("OnUpdate", function(_, elapsed)
 	end
 	mapWait = mapWait + (elapsed or 0)
 	local db = ns.Settings()
-	local waitFor = (db.showTrail and db.trailAnimated) and 0.05 or 0.2
-	if mapWait < waitFor then
+	if mapWait < 0.2 then
 		return
 	end
-	local step = mapWait
 	mapWait = 0
-	if db.showTrail and db.trailAnimated and not ns.InCombat() then
-		trailDistance = trailDistance + 42 * step
-	end
 	local ok, err = pcall(function()
 		EnsureMapHooks()
-		if not db.showOnMap and not db.showTrail then
+		if not db.showOnMap then
 			HidePool(miniPool)
 			HidePool(worldPool)
-			HidePool(miniDots)
-			HidePool(worldDots)
 			return
 		end
 		if ns.InCombat() or ns.Restriction("Map") then
@@ -612,7 +532,6 @@ mapTicker:SetScript("OnUpdate", function(_, elapsed)
 			UpdateWorldPins(activePlan)
 		else
 			HidePool(worldPool)
-			HidePool(worldDots)
 		end
 	end)
 	if not ok and err ~= pinError then
@@ -656,11 +575,9 @@ local function SyncRoute(plan, focusStep, announce)
 	elseif focusStep then
 		FocusArrow(focusStep, announce and true or false)
 	end
-	if not db.showOnMap and not db.showTrail then
+	if not db.showOnMap then
 		HidePool(miniPool)
 		HidePool(worldPool)
-		HidePool(miniDots)
-		HidePool(worldDots)
 		return
 	end
 	UpdateMinimapPins(plan)

@@ -33,7 +33,7 @@ local given, usedFallback = ns.ClassColorOrFallback({ r = 0.0, g = 0.44, b = 0.8
 check(usedFallback == false and given.b == 0.87, "a real class color is kept")
 
 local classed = ns.ResolveTheme("class", { r = 0.0, g = 0.44, b = 0.87 })
-check(classed.border[3] == 0.87 and classed.trail[3] == 0.87 and classed.pinRing[3] == 0.87, "class theme tints border, trail, and pin ring")
+check(classed.border[3] == 0.87 and classed.pinRing[3] == 0.87, "class theme tints the border and the pin ring")
 check(classed.bg[1] < 0.2, "class theme stays on a dark backdrop")
 
 local bare = ns.ResolveTheme("class", nil)

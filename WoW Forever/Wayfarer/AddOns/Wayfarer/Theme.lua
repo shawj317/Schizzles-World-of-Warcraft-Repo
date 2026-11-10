@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- Table of window themes. Add a key here to grow the list.
 -- Class Colors copies the Wayfarer layout and tints the border, accents,
--- pin rings, and the default trail with the player's class color.
+-- and pin rings with the player's class color.
 
 local function copyInsets(insets)
 	return {
@@ -34,7 +34,6 @@ ns.THEMES = {
 		accent = { 1, 0.82, 0 },
 		tan = { 0.78, 0.61, 0.43 },
 		ember = { 1, 0.47, 0 },
-		trail = { 1, 0.82, 0 },
 		pinRing = { 0.93, 0.88, 0.78 },
 	},
 	blizzard = {
@@ -53,7 +52,6 @@ ns.THEMES = {
 		accent = { 1, 0.82, 0 },
 		tan = { 1, 0.82, 0.45 },
 		ember = { 1, 0.55, 0.1 },
-		trail = { 1, 0.82, 0 },
 		pinRing = { 1, 0.82, 0 },
 	},
 }
@@ -95,7 +93,6 @@ function ns.ResolveTheme(id, classColor)
 		local tint = { color.r, color.g, color.b }
 		theme.border = copyColor(tint)
 		theme.accent = copyColor(tint)
-		theme.trail = copyColor(tint)
 		theme.pinRing = copyColor(tint)
 		theme.header = { color.r * 0.22, color.g * 0.22, color.b * 0.22 }
 		theme.bg = { 0.05, 0.05, 0.05 }

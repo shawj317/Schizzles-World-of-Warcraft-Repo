@@ -3,14 +3,15 @@
 ## 1.3.1 (2026-11-10)
 
 - The cog opens the Blizzard settings panel without registering the settings again. Registration runs once at load. A second click no longer throws "Setting variable 'Wayfarer_rememberWindow' was previously registered."
+- The ant trail is gone. Round numbered pins stay. Ant trail, Animate the trail, and Trail opacity are no longer settings. Old `showTrail`, `trailAnimated`, `trailAlpha`, `trailR`, `trailG`, `trailB`, and `trailCustom` keys are cleared on load.
 
 ## 1.3.0 (2026-11-10)
 
 - Settings live only in Blizzard's AddOns panel, under Wayfarer, with General, Map, and Appearance. The old options window is gone. The cog, a right-click, the addon compartment, and `/wayfarer options` open that panel. Labels are short. The explanation is the tooltip. Pin size no longer draws an edit box over the slider.
 - General: remember the window, show it on login, hide it in battlegrounds, hide it in dungeons and raids, and Recalculate. Hiding waits until you are out of combat, and the window comes back when you leave.
 - Escape no longer closes the route window. Use the close button or `/wayfarer`.
-- A collect step with no spawn data stays in the list as location unknown. It does not get a pin, a trail point, or a TomTom arrow, and it is never aimed at you. Item drops use the creatures that drop them. The pin is the middle of that spawn cluster, so it does not follow you.
-- Minimap pins and trail dots are clipped to the minimap.
+- A collect step with no spawn data stays in the list as location unknown. It does not get a pin or a TomTom arrow, and it is never aimed at you. Item drops use the creatures that drop them. The pin is the middle of that spawn cluster, so it does not follow you.
+- Minimap pins are clipped to the minimap.
 - Questie and TomTom stay optional. Without Questie the route has no objective coordinates and says so. Without TomTom there is no arrow, and the TomTom checkbox is greyed out.
 
 ## 1.2.0 (2026-11-09)

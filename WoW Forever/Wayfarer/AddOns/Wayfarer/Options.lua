@@ -26,7 +26,7 @@ local function ApplyKey(key)
 		end
 		return
 	end
-	if key == "showOnMap" or key == "showTrail" or key == "trailAnimated" or key == "pinSize" or key == "trailAlpha" or key == "useTomTom" or key == "stepsShown" then
+	if key == "showOnMap" or key == "pinSize" or key == "useTomTom" or key == "stepsShown" then
 		if key == "useTomTom" and ns.InvalidateRoute then
 			ns.InvalidateRoute()
 		end
@@ -78,7 +78,7 @@ local function HookSliders()
 		local setting = data and data.GetSetting and data:GetSetting()
 		local variable = setting and (setting.variable or (setting.GetVariable and setting:GetVariable()))
 		local name = setting and (setting.GetName and setting:GetName())
-		local ours = variable == "pinSize" or variable == "trailAlpha" or variable == "stepsShown"
+		local ours = variable == "pinSize" or variable == "stepsShown"
 			or variable == "maxLevelsAbove" or variable == "backdropAlpha" or variable == "windowScale"
 			or variable == "fontSize" or (type(name) == "string" and string.find(name, "Wayfarer_", 1, true))
 		if ours then
@@ -179,7 +179,7 @@ local function AddControl(category, layout, item)
 		local options = Settings.CreateSliderOptions(item.min, item.max, item.step)
 		if options and options.SetLabelFormatter and MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label then
 			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
-				if item.key == "backdropAlpha" or item.key == "trailAlpha" then
+				if item.key == "backdropAlpha" then
 					return string.format("%d%%", math.floor((tonumber(value) or 0) * 100 + 0.5))
 				end
 				if item.key == "windowScale" then

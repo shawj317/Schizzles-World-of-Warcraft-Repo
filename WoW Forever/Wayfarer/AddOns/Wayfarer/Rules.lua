@@ -22,13 +22,10 @@ ns.SETTINGS = {
 			{ key = "showOnMap", kind = "check", label = "Numbered pins", tip = "Numbered round pins on the world map and the minimap." },
 			{ key = "useTomTom", kind = "check", needs = "TomTom", label = "TomTom arrow", tip = "A TomTom waypoint for every step that has a pin. The arrow follows step 1 when the route changes." },
 			{ key = "useFlights", kind = "check", label = "Flight paths", tip = "Compare a long leg with flight masters you know, and with boats and zeppelins." },
-			{ key = "showTrail", kind = "check", label = "Ant trail", tip = "Dots along the route. The world map trail pauses while the map is closed. Minimap dots stay inside the minimap." },
-			{ key = "trailAnimated", kind = "check", label = "Animate trail", tip = "March the dots toward the next step." },
 			{ key = "scope", kind = "menu", label = "Route scope", tip = "This zone, or every non-dungeon quest in the log.", choices = { { "zone", "This zone" }, { "all", "All quests" } } },
 			{ key = "maxLevelsAbove", kind = "slider", label = "Levels above", tip = "Quests higher than you by more than this wait.", min = 0, max = 10, step = 1 },
 			{ key = "stepsShown", kind = "slider", label = "Steps listed", tip = "How many steps the window lists. The rest stay in the plan.", min = 1, max = 20, step = 1 },
 			{ key = "pinSize", kind = "slider", label = "Pin size", tip = "Diameter of the round pins, in pixels.", min = 14, max = 32, step = 1 },
-			{ key = "trailAlpha", kind = "slider", label = "Trail opacity", tip = "How solid the trail dots are.", min = 0.15, max = 1, step = 0.05 },
 		},
 	},
 	{

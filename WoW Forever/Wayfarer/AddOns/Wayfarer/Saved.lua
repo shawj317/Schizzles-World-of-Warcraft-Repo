@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- WayfarerDB schema 1 is the old QuestRoute 1.0.5 table. Schema 2 adds route scope,
--- round-pin size, the ant trail, and flight paths. Schema 3 adds window memory,
+-- round-pin size, and flight paths. Schema 3 adds window memory,
 -- login visibility, and battleground or instance hiding. Keys are not renamed.
 -- A newer schema is left alone. point, configPoint, width, height, and userSized
 -- are not defaults, so a saved window stays where the player put it.
@@ -19,17 +19,10 @@ ns.DEFAULTS = {
 	fontSize = 13,
 	scope = "zone",
 	useFlights = true,
-	showTrail = true,
-	trailAnimated = true,
-	trailAlpha = 0.9,
-	trailR = 1,
-	trailG = 0.82,
-	trailB = 0,
 	pinSize = 20,
 	theme = "wayfarer",
 	backdropAlpha = 0.85,
 	showBorder = true,
-	trailCustom = false,
 	rememberWindow = true,
 	showOnLogin = false,
 	hideInBattleground = false,
@@ -114,12 +107,13 @@ function ns.HealSettings(db)
 	if db.useFlights == nil then
 		db.useFlights = true
 	end
-	if db.showTrail == nil then
-		db.showTrail = true
-	end
-	if db.trailAnimated == nil then
-		db.trailAnimated = true
-	end
+	db.showTrail = nil
+	db.trailAnimated = nil
+	db.trailAlpha = nil
+	db.trailR = nil
+	db.trailG = nil
+	db.trailB = nil
+	db.trailCustom = nil
 	db.pinSize = math.floor((tonumber(db.pinSize) or 20) + 0.5)
 	if db.pinSize < 14 then
 		db.pinSize = 14
@@ -139,22 +133,12 @@ function ns.HealSettings(db)
 		end
 		return n
 	end
-	db.trailAlpha = unit(db.trailAlpha, 0.9)
-	if db.trailAlpha < 0.15 then
-		db.trailAlpha = 0.15
-	end
-	db.trailR = unit(db.trailR, 1)
-	db.trailG = unit(db.trailG, 0.82)
-	db.trailB = unit(db.trailB, 0)
 	if db.theme ~= "blizzard" and db.theme ~= "class" then
 		db.theme = "wayfarer"
 	end
 	db.backdropAlpha = unit(db.backdropAlpha, 0.85)
 	if db.showBorder == nil then
 		db.showBorder = true
-	end
-	if db.trailCustom == nil then
-		db.trailCustom = false
 	end
 	if db.rememberWindow == nil then
 		db.rememberWindow = true

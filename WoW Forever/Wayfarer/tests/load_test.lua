@@ -71,7 +71,6 @@ local order = {
 	"Theme.lua",
 	"Skip.lua",
 	"Planner.lua",
-	"Trail.lua",
 	"Travel.lua",
 	"FlightData.lua",
 	"Saved.lua",

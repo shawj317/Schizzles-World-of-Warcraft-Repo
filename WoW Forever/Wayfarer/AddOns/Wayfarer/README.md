@@ -27,7 +27,7 @@ Settings are in three pages: **General**, **Map**, and **Appearance**. A step wi
 - The gold line is the step count, the rough time, and experience per hour.
 - **Avoid** lists quests left out because they are failed, too low, too high, or a dungeon.
 
-Round pins sit on the world map and the minimap: gold for a pickup, bronze for an objective, ember for a turn-in. The current step has a gold ring. An ant trail of dots runs toward the next step. The world-map trail pauses while the map is closed. On the minimap, a leg is drawn only while both ends are inside the minimap circle, so the trail does not run across the rim to a pin that has been pulled in from off the map.
+Round pins sit on the world map and the minimap: gold for a pickup, bronze for an objective, ember for a turn-in. The current step has a gold ring. A pin past the minimap edge is pulled in so it stays on the minimap.
 
 ## Options
 
@@ -42,10 +42,7 @@ Round pins sit on the world map and the minimap: gold for a pickup, bronze for a
 | Up to N levels above you | 3 | Higher quests are left for later. |
 | Show N steps | 7 | How many steps the window lists. |
 | Show numbered steps | On | Round pins. A step on another map is not drawn until you open that map. |
-| Ant trail | On | Dotted trail. |
-| Animate the trail | On | The dots march toward the next step. |
 | Pin size | 20 | 14 to 32. |
-| Trail opacity and color | 90%, gold | Gold, bronze, ember, tan, or white. |
 | Theme | Wayfarer | Wayfarer (charcoal, bronze, gold), Classic (dialog box), or Class (your class color, or bronze if it cannot be read). |
 | Background | 85% | Opacity of the window backdrop only. Text and icons stay solid. |
 | Show border | On | Off removes the edge on every theme. The header, cog, and close button stay flush, with no empty corner. |
@@ -73,7 +70,7 @@ Flight times are the measured Forever times from RutaMisiones. Wayfarer asks `C_
 
 ## Saved variables
 
-`WayfarerDB` keeps the QuestRoute keys (`includeLowLevel`, `omitDungeons`, `showOnMap`, `useTomTom`, `maxLevelsAbove`, `stepsShown`, `font`, `fontSize`, `point`, `configPoint`, `userSized`, `width`, `height`) and adds `scope`, `useFlights`, `showTrail`, `trailAnimated`, `trailAlpha`, `trailR`, `trailG`, `trailB`, `trailCustom`, `pinSize`, `theme`, `backdropAlpha`, and `showBorder`. Schema 2 is stamped on an older file. Nothing is renamed, and a newer schema is not downgraded.
+`WayfarerDB` keeps the QuestRoute keys (`includeLowLevel`, `omitDungeons`, `showOnMap`, `useTomTom`, `maxLevelsAbove`, `stepsShown`, `font`, `fontSize`, `point`, `configPoint`, `userSized`, `width`, `height`) and adds `scope`, `useFlights`, `pinSize`, `theme`, `backdropAlpha`, `showBorder`, `rememberWindow`, `showOnLogin`, `hideInBattleground`, `hideInInstance`, and `windowScale`. Old ant-trail keys (`showTrail`, `trailAnimated`, `trailAlpha`, `trailR`, `trailG`, `trailB`, `trailCustom`) are removed on load. Schema 3 is stamped on an older file. Nothing else is renamed, and a newer schema is not downgraded.
 
 ## Check in game
 
@@ -82,7 +79,7 @@ Flight times are the measured Forever times from RutaMisiones. Wayfarer asks `C_
 3. Drag, resize, `/reload`.
 4. `/wayfarer scope all` on a log that spans two zones. Zone headers appear, dungeon quests stay out, and gray quests stay out unless you include them.
 5. With a known flight path, a cross-zone step should name the flight or the boat and a minute count. Turn **Use flight paths** off and that line should go away.
-6. Open the world map: round pins, colored by pickup / objective / turn-in, gold ring on step 1, and a moving dotted trail. Close the map and the world trail should stop. The minimap trail should only cover legs inside the circle.
+6. Open the world map: round pins, colored by pickup / objective / turn-in, gold ring on step 1. The same pins sit on the minimap and stay inside it.
 7. Click a pin. The tooltip and the TomTom arrow should still work.
 8. `/wayfarer scope zone` returns to the current zone only.
 
