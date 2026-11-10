@@ -176,16 +176,13 @@ local function ThinPoints(points, zoneIds, player)
 	for i = 1, #order do
 		local id = order[i]
 		local list = byZone[id]
-		local cap = ZoneHere(id, zoneIds) and 6 or 2
-		if player and player.x and #list > cap then
-			table.sort(list, function(a, b)
-				local dax = a.x - player.x
-				local day = a.y - player.y
-				local dbx = b.x - player.x
-				local dby = b.y - player.y
-				return (dax * dax + day * day) < (dbx * dbx + dby * dby)
-			end)
-		end
+		local cap = ZoneHere(id, zoneIds) and 24 or 4
+		table.sort(list, function(a, b)
+			if a.x == b.x then
+				return (a.y or 0) < (b.y or 0)
+			end
+			return (a.x or 0) < (b.x or 0)
+		end)
 		local keep = #list
 		if keep > cap then
 			keep = cap
@@ -223,14 +220,34 @@ local function AppendPoints(into, extra)
 	end
 end
 
+local function ItemRecord(db, itemId)
+	local record = QCall(db, "GetItem", itemId)
+	if type(record) == "table" then
+		return record
+	end
+	return {
+		name = QCall(db, "QueryItemSingle", itemId, "name"),
+		npcDrops = QCall(db, "QueryItemSingle", itemId, "npcDrops"),
+		objectDrops = QCall(db, "QueryItemSingle", itemId, "objectDrops"),
+	}
+end
+
 local function PointsForItem(db, itemId, playerMap, zoneIds)
 	local cached = rawItemPoints[itemId]
 	if cached then
 		return ThinPoints(cached, zoneIds or scanZoneIds, scanPlayer)
 	end
 	local points = {}
-	local npcs = QCall(db, "QueryItemSingle", itemId, "npcDrops")
-	local objects = QCall(db, "QueryItemSingle", itemId, "objectDrops")
+	local record = ItemRecord(db, itemId)
+	local npcIds, objectIds = ns.Planner.CollectDropIds(record)
+	local npcs = npcIds
+	if #npcs == 0 then
+		npcs = QCall(db, "QueryItemSingle", itemId, "npcDrops")
+	end
+	local objects = objectIds
+	if #objects == 0 then
+		objects = QCall(db, "QueryItemSingle", itemId, "objectDrops")
+	end
 	EachId(npcs, function(id)
 		local raw = rawNpcPoints[id]
 		if not raw then
@@ -323,7 +340,8 @@ local function ObjectiveFromData(db, data, playerMap, zoneIds)
 		title = name or title
 		points = PointsForObject(db, data.Id, playerMap, zoneIds)
 	elseif data.Type == "item" then
-		title = QCall(db, "QueryItemSingle", data.Id, "name") or title
+		local record = ItemRecord(db, data.Id)
+		title = (type(record) == "table" and record.name) or title
 		points = PointsForItem(db, data.Id, playerMap, zoneIds)
 	elseif data.Type == "killcredit" then
 		local count = 0
@@ -341,6 +359,18 @@ local function ObjectiveFromData(db, data, playerMap, zoneIds)
 	elseif data.Type == "spell" and data.ItemSourceId then
 		points = PointsForItem(db, data.ItemSourceId, playerMap, zoneIds)
 	end
+	local function addSpawns(raw)
+		if raw == nil then
+			return
+		end
+		AppendPoints(points, Decorate(ns.Planner.PointsFromSpawns(raw), playerMap, zoneIds))
+	end
+	addSpawns(data.Coordinates)
+	addSpawns(data.spawnList)
+	addSpawns(data.spawns)
+	addSpawns(data.Waypoints)
+	addSpawns(data.waypoints)
+	points = ns.Planner.WithoutPlayer(points, scanPlayer)
 	return verb, title, points
 end
 
@@ -851,6 +881,70 @@ local function MakeYards()
 	end
 end
 
+local function BlizzardObjectivePoint(questId, player)
+	questId = tonumber(questId)
+	if not questId then
+		return nil
+	end
+	local function accept(map, x, y)
+		x, y = tonumber(x), tonumber(y)
+		if not x or not y or ns.IsSecret(x) or ns.IsSecret(y) then
+			return nil
+		end
+		if math.abs(x) <= 1 and math.abs(y) <= 1 then
+			x = x * 100
+			y = y * 100
+		end
+		if x == 0 and y == 0 then
+			return nil
+		end
+		local point = { x = x, y = y, uiMap = tonumber(map) }
+		if ns.Planner.IsPlayerPoint(point, player) then
+			return nil
+		end
+		return point
+	end
+	if C_QuestLog and C_QuestLog.GetNextWaypoint then
+		local ok, map, x, y = pcall(C_QuestLog.GetNextWaypoint, questId)
+		if ok then
+			local point = accept(map, x, y)
+			if point then
+				return point
+			end
+		end
+	end
+	if C_QuestLog and C_QuestLog.GetNextWaypointForMap and player and player.uiMap then
+		local ok, x, y = pcall(C_QuestLog.GetNextWaypointForMap, questId, player.uiMap)
+		if ok then
+			local point = accept(player.uiMap, x, y)
+			if point then
+				return point
+			end
+		end
+	end
+	if QuestPOIGetIconInfo then
+		for i = 1, 8 do
+			local ok, _, px, py = pcall(QuestPOIGetIconInfo, questId, i)
+			if ok then
+				local point = accept(player and player.uiMap, px, py)
+				if point then
+					return point
+				end
+			end
+		end
+	end
+	if C_TaskQuest and C_TaskQuest.GetQuestLocation and player and player.uiMap then
+		local ok, x, y = pcall(C_TaskQuest.GetQuestLocation, questId, player.uiMap)
+		if ok then
+			local point = accept(player.uiMap, x, y)
+			if point then
+				return point
+			end
+		end
+	end
+	return nil
+end
+
 local function AttachQuestie(quest, db, playerLevel, playerMap, zoneIds, inLog)
 	if not db or not quest.id then
 		return
@@ -898,6 +992,21 @@ local function AttachQuestie(quest, db, playerLevel, playerMap, zoneIds, inLog)
 		end
 	end
 	quest.turnin = TurninFor(db, record, playerMap, zoneIds, quest.name)
+	if quest.turnin and quest.turnin.points then
+		quest.turnin.points = ns.Planner.WithoutPlayer(quest.turnin.points, scanPlayer)
+	end
+	local filled = false
+	for i = 1, #(quest.objectives or {}) do
+		local obj = quest.objectives[i]
+		obj.points = ns.Planner.WithoutPlayer(obj.points, scanPlayer)
+		if not filled and not obj.done and (not obj.points or #obj.points == 0) then
+			local point = BlizzardObjectivePoint(quest.id, scanPlayer)
+			if point then
+				obj.points = { point }
+				filled = true
+			end
+		end
+	end
 	local nextId = tonumber(record.nextQuestInChain)
 	if nextId and nextId ~= 0 then
 		local seen = {}

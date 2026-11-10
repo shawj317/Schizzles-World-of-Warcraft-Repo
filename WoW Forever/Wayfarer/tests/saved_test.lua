@@ -43,7 +43,7 @@ local legacy = {
 	height = 320,
 }
 local kept = ns.HealSettings(ns.PrepareDB(legacy))
-check(kept.schema == 2, "legacy file migrates to schema 2")
+check(kept.schema == 3, "legacy file migrates to schema 3")
 check(kept.includeLowLevel == true, "include low level stays")
 check(kept.omitDungeons == false, "omit dungeons stays off")
 check(kept.showOnMap == false, "map pins stay off")
@@ -73,7 +73,9 @@ check(broken.includeLowLevel == false, "missing low-level default")
 check(broken.omitDungeons == true, "missing dungeon default")
 
 local fresh = ns.HealSettings(ns.PrepareDB({}))
-check(fresh.schema == 2, "new file is schema 2")
+check(fresh.schema == 3, "new file is schema 3")
+check(fresh.rememberWindow == true and fresh.showOnLogin == false, "window memory defaults")
+check(fresh.hideInBattleground == false and fresh.hideInInstance == false, "hide rules default off")
 check(fresh.stepsShown == 7 and fresh.maxLevelsAbove == 3 and fresh.font == 1, "1.0.5 defaults")
 
 local newer = ns.PrepareDB({ schema = 5, stepsShown = 4, future = true })

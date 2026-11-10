@@ -208,8 +208,20 @@ function QuestRoute.PointsFromSpawns(spawns, defaultZone)
 			add(node[3] or zone, node[1], node[2])
 			return
 		end
-		if type(node.x) == "number" and type(node.y) == "number" then
-			add(node.zone or zone, node.x, node.y)
+		local nx = node.x or node.X
+		local ny = node.y or node.Y
+		if type(nx) == "number" and type(ny) == "number" then
+			local point = { x = nx, y = ny, zone = tonumber(node.zone or node.Zone or node.Area or zone) or zone }
+			if math.abs(point.x) <= 1 and math.abs(point.y) <= 1 then
+				point.x = point.x * 100
+				point.y = point.y * 100
+			end
+			if point.x == 0 and point.y == 0 then
+				return
+			end
+			point.uiMap = tonumber(node.uiMap or node.UiMapID or node.Map or node.map)
+			point.zoneName = node.zoneName or node.ZoneName
+			points[#points + 1] = point
 			return
 		end
 		local any = false
@@ -430,8 +442,186 @@ local function NewStop(fields)
 	return fields
 end
 
-local function PickPoint(stop, cursor)
-	if stop.anchor and #stop.points == 0 and stop.anchor.x then
+-- A point copied from the player (or standing on the same spot) is not an objective.
+-- player at 0,0 is the offline test origin and is ignored.
+function QuestRoute.IsPlayerPoint(point, player)
+	if type(point) ~= "table" or type(player) ~= "table" then
+		return false
+	end
+	if point.fromPlayer then
+		return true
+	end
+	local px, py = tonumber(player.x), tonumber(player.y)
+	local x, y = tonumber(point.x), tonumber(point.y)
+	if not px or not py or not x or not y then
+		return false
+	end
+	if px <= 0 and py <= 0 then
+		return false
+	end
+	if player.uiMap and point.uiMap and player.uiMap ~= point.uiMap then
+		return false
+	end
+	local dx, dy = x - px, y - py
+	return dx * dx + dy * dy < (0.2 * 0.2)
+end
+
+function QuestRoute.WithoutPlayer(points, player)
+	local out = {}
+	for i = 1, #(points or {}) do
+		if not QuestRoute.IsPlayerPoint(points[i], player) then
+			out[#out + 1] = points[i]
+		end
+	end
+	return out
+end
+
+-- Largest group of spawns within 12 map-percent of each other. The target is
+-- that group's centroid, so walking does not move the pin to the next spawn.
+function QuestRoute.ClusterCentroid(points)
+	local list = {}
+	for i = 1, #(points or {}) do
+		local point = points[i]
+		if type(point) == "table" and tonumber(point.x) and tonumber(point.y) then
+			list[#list + 1] = point
+		end
+	end
+	if #list == 0 then
+		return nil
+	end
+	table.sort(list, function(a, b)
+		if a.x == b.x then
+			return (a.y or 0) < (b.y or 0)
+		end
+		return a.x < b.x
+	end)
+	local radius = 12
+	local used = {}
+	local best
+	for i = 1, #list do
+		if not used[i] then
+			local cluster = { list[i] }
+			used[i] = true
+			local grew = true
+			while grew do
+				grew = false
+				for j = 1, #list do
+					if not used[j] then
+						for k = 1, #cluster do
+							local dx = list[j].x - cluster[k].x
+							local dy = list[j].y - cluster[k].y
+							if dx * dx + dy * dy <= radius * radius then
+								used[j] = true
+								cluster[#cluster + 1] = list[j]
+								grew = true
+								break
+							end
+						end
+					end
+				end
+			end
+			local sumX, sumY = 0, 0
+			for k = 1, #cluster do
+				sumX = sumX + cluster[k].x
+				sumY = sumY + cluster[k].y
+			end
+			local sample = cluster[1]
+			local centroid = {
+				x = sumX / #cluster,
+				y = sumY / #cluster,
+				uiMap = sample.uiMap,
+				zone = sample.zone,
+				zoneName = sample.zoneName,
+				areaId = sample.areaId or sample.zone,
+				count = #cluster,
+			}
+			local better = not best or centroid.count > best.count
+			if best and centroid.count == best.count then
+				better = centroid.x < best.x or (centroid.x == best.x and centroid.y < best.y)
+			end
+			if better then
+				best = centroid
+			end
+		end
+	end
+	return best
+end
+
+local function IdList(into, list)
+	local function add(id)
+		id = tonumber(id)
+		if not id or id < 1 or id ~= math.floor(id) then
+			return
+		end
+		for i = 1, #into do
+			if into[i] == id then
+				return
+			end
+		end
+		into[#into + 1] = id
+	end
+	if type(list) ~= "table" then
+		return
+	end
+	if #list == 2 and tonumber(list[1]) and tonumber(list[2]) and tonumber(list[1]) <= 100 and tonumber(list[2]) <= 100 then
+		return
+	end
+	for key, value in pairs(list) do
+		if type(value) == "number" then
+			add(value)
+		elseif value == true and type(key) == "number" then
+			add(key)
+		elseif type(value) == "table" then
+			if type(value.id) == "number" or type(value.Id) == "number" then
+				add(value.id or value.Id)
+			elseif type(value[1]) == "number" and type(value[2]) ~= "number" then
+				add(value[1])
+			end
+		end
+	end
+end
+
+-- Item records name the creatures and objects that drop them. A coordinate
+-- pair is not an id. The lookup returns spawn points for one id.
+function QuestRoute.CollectDropIds(record)
+	local npcs, objects = {}, {}
+	if type(record) ~= "table" then
+		return npcs, objects
+	end
+	IdList(npcs, record.npcDrops)
+	IdList(npcs, record.NPCDrops)
+	IdList(npcs, record.npcDrop)
+	IdList(objects, record.objectDrops)
+	IdList(objects, record.ObjectDrops)
+	IdList(objects, record.objectDrop)
+	if type(record.Sources) == "table" then
+		IdList(npcs, record.Sources.NPC)
+		IdList(objects, record.Sources.GameObject)
+		IdList(objects, record.Sources.Object)
+	end
+	table.sort(npcs)
+	table.sort(objects)
+	return npcs, objects
+end
+
+function QuestRoute.PointsFromDropIds(npcIds, objectIds, lookup)
+	local points = {}
+	local function pull(ids, kind)
+		for i = 1, #(ids or {}) do
+			local spawns = lookup and lookup(kind, ids[i])
+			for j = 1, #(spawns or {}) do
+				points[#points + 1] = spawns[j]
+			end
+		end
+	end
+	pull(npcIds, "npc")
+	pull(objectIds, "object")
+	return points
+end
+
+local function PickPoint(stop, cursor, player)
+	local points = QuestRoute.WithoutPlayer(stop.points, player)
+	if stop.anchor and #points == 0 and stop.anchor.x and not QuestRoute.IsPlayerPoint(stop.anchor, player) then
 		local point = {
 			x = stop.anchor.x,
 			y = stop.anchor.y,
@@ -445,22 +635,15 @@ local function PickPoint(stop, cursor)
 		end
 		return distance, point
 	end
-	if #stop.points == 0 then
+	local target = QuestRoute.ClusterCentroid(points)
+	if not target then
 		return 1e9, nil
 	end
-	if not cursor or not cursor.x then
-		return 0, stop.points[1]
+	local distance = 0
+	if cursor and cursor.x then
+		distance = Hypot(cursor.x - target.x, cursor.y - target.y)
 	end
-	local bestDistance, bestPoint
-	for i = 1, #stop.points do
-		local point = stop.points[i]
-		local distance = Hypot(cursor.x - point.x, cursor.y - point.y)
-		if not bestDistance or distance < bestDistance then
-			bestDistance = distance
-			bestPoint = point
-		end
-	end
-	return bestDistance, bestPoint
+	return distance, target
 end
 
 local function ApplyPoint(stop, point)
@@ -488,7 +671,7 @@ local function LegYards(a, b, yardsFn)
 	return Hypot(a.x - b.x, a.y - b.y) * YARDS_PER_PERCENT
 end
 
-local function Realize(order, cursor, yardsFn)
+local function Realize(order, cursor, yardsFn, player)
 	local cost = 0
 	local have = cursor and cursor.x and true or false
 	local x = have and cursor.x or nil
@@ -496,7 +679,7 @@ local function Realize(order, cursor, yardsFn)
 	local map = have and cursor.uiMap or nil
 	for i = 1, #order do
 		local stop = order[i]
-		local _, point = PickPoint(stop, have and { x = x, y = y, uiMap = map } or nil)
+		local _, point = PickPoint(stop, have and { x = x, y = y, uiMap = map } or nil, player)
 		ApplyPoint(stop, point)
 		if have and stop.x then
 			cost = cost + LegYards({ x = x, y = y, uiMap = map }, stop, yardsFn)
@@ -518,7 +701,7 @@ local function Ready(stop, done)
 	return true
 end
 
-local function BuildOrder(stops, player)
+local function BuildOrder(stops, player, origin)
 	local done = {}
 	local order = {}
 	local cursor = player
@@ -534,7 +717,7 @@ local function BuildOrder(stops, player)
 					fallback = stop
 				end
 				if Ready(stop, done) then
-					local distance, point = PickPoint(stop, cursor)
+					local distance, point = PickPoint(stop, cursor, origin)
 					if not best or distance < bestDistance then
 						best = stop
 						bestDistance = distance
@@ -546,7 +729,7 @@ local function BuildOrder(stops, player)
 		if not best then
 			best = fallback
 			if best then
-				local _, point = PickPoint(best, cursor)
+				local _, point = PickPoint(best, cursor, origin)
 				bestPoint = point
 			end
 		end
@@ -589,7 +772,7 @@ local function CanPlace(orderWithout, stop, index)
 	return true
 end
 
-local function Improve(order, player, yardsFn)
+local function Improve(order, player, yardsFn, origin)
 	for _ = 1, 4 do
 		local changed = false
 		local index = 1
@@ -602,7 +785,7 @@ local function Improve(order, player, yardsFn)
 				end
 			end
 			local bestList = order
-			local bestCost = Realize(order, player, yardsFn)
+			local bestCost = Realize(order, player, yardsFn, origin)
 			for place = 1, #without + 1 do
 				if CanPlace(without, stop, place) then
 					local trial = {}
@@ -613,7 +796,7 @@ local function Improve(order, player, yardsFn)
 					for i = place, #without do
 						trial[#trial + 1] = without[i]
 					end
-					local cost = Realize(trial, player, yardsFn)
+					local cost = Realize(trial, player, yardsFn, origin)
 					if cost + 0.001 < bestCost then
 						bestCost = cost
 						bestList = trial
@@ -630,7 +813,7 @@ local function Improve(order, player, yardsFn)
 			break
 		end
 	end
-	Realize(order, player, yardsFn)
+	Realize(order, player, yardsFn, origin)
 	return order
 end
 
@@ -706,8 +889,9 @@ local function RouteQuest(quest, zone, stops, notices, anchor, depth, seen, inpu
 	if not quest.complete then
 		for _, obj in ipairs(quest.objectives or {}) do
 			if not obj.done then
-				local points = FilterPoints(obj.points, zone)
-				local pinless = not obj.points or #obj.points == 0
+				local stripped = QuestRoute.WithoutPlayer(obj.points, input and input.player)
+				local points = FilterPoints(stripped, zone)
+				local pinless = not obj.points or #obj.points == 0 or #stripped == 0
 				local include = #points > 0 or (pinless and HeaderMatch(quest, zone))
 				if include then
 					local preds = {}
@@ -848,9 +1032,9 @@ local function PlanZone(quests, zone, input)
 	end
 
 	local start, fromPlayer = StartPoint(stops, input.player)
-	local order = BuildOrder(stops, start)
+	local order = BuildOrder(stops, start, input.player)
 	if #order <= 24 then
-		order = Improve(order, start, input.yards)
+		order = Improve(order, start, input.yards, input.player)
 	end
 
 	local speed = tonumber(input.speed) or 7
@@ -876,7 +1060,7 @@ local function PlanZone(quests, zone, input)
 				stop.travel = hop.label
 			end
 		end
-		if i == 1 and fromPlayer then
+		if i == 1 and fromPlayer and stop.x and not QuestRoute.IsPlayerPoint(stop, input.player) then
 			arrive = leg
 		end
 		total = total + leg + (stop.dwell or 0)
@@ -889,7 +1073,14 @@ local function PlanZone(quests, zone, input)
 		if stop.x then
 			prev = stop
 		end
-		steps[#steps + 1] = CopyStep(stop)
+		local step = CopyStep(stop)
+		if QuestRoute.IsPlayerPoint(step, input.player) then
+			step.x, step.y, step.uiMap, step.areaId = nil, nil, nil, nil
+			step.unknown = true
+		elseif not step.x then
+			step.unknown = true
+		end
+		steps[#steps + 1] = step
 	end
 
 	table.sort(avoid, function(a, b)
@@ -1023,9 +1214,9 @@ function QuestRoute.Build(input)
 		end
 	end
 	if pinless == 1 then
-		AddNotice(notices, "1 step has no map pin.")
+		AddNotice(notices, "1 step has no map pin. Its location is unknown.")
 	elseif pinless > 1 then
-		AddNotice(notices, pinless .. " steps have no map pin.")
+		AddNotice(notices, pinless .. " steps have no map pin. Their locations are unknown.")
 	end
 	if plan.xpEstimated and plan.xp > 0 then
 		AddNotice(notices, "Experience is estimated from quest level.")
@@ -1329,9 +1520,9 @@ BuildAll = function(input)
 		end
 	end
 	if pinless == 1 then
-		AddNotice(wrapped, "1 step has no map pin.")
+		AddNotice(wrapped, "1 step has no map pin. Its location is unknown.")
 	elseif pinless > 1 then
-		AddNotice(wrapped, pinless .. " steps have no map pin.")
+		AddNotice(wrapped, pinless .. " steps have no map pin. Their locations are unknown.")
 	end
 	if plan.xpEstimated and plan.xp > 0 then
 		AddNotice(wrapped, "Experience is estimated from quest level.")

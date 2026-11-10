@@ -13,11 +13,13 @@ Wayfarer is the new name of QuestRoute. It is an improved take on RutaMisiones (
 3. If you still have the old `QuestRoute` folder, delete it. Saved variables are not renamed by the client, and two copies would both try to handle `/qr`.
 4. Reload (`/reload`). The first launch copies `QuestRouteDB` into `WayfarerDB` when Wayfarer has no saved settings yet.
 
-Questie and TomTom are optional. Without Questie there are no map pins and no follow-up chain. Without TomTom there is no arrow.
+Questie and TomTom are optional. Without Questie, Wayfarer still reads your quest log and orders the steps, but it has no objective coordinates, no follow-up chain, and no map pins for those steps. It says so in a notice. Without TomTom there is no arrow. The TomTom checkbox is greyed out and explains that. Neither addon missing stops the window from opening.
 
 ## What's on screen
 
-The window opens at the top right. Drag the header or the list to move it. Drag the corner to resize. Escape closes it. The header shows **This zone** or **All quests**. The cog opens settings. The refresh icon recalculates. Right-click the window or a step for settings. Shift-click a step to skip it (`/wayfarer unskip` puts them back, and so does recalculate).
+The window opens at the top right. Drag the header or the list to move it. Drag the corner to resize. Escape does not close it. Use the close button or `/wayfarer`. The header shows **This zone** or **All quests**. The cog, a right-click, and `/wayfarer options` open Wayfarer in the AddOns settings. Shift-click a step to skip it (`/wayfarer unskip` puts them back, and so does recalculate).
+
+Settings are in three pages: **General**, **Map**, and **Appearance**. A step with no known location stays in the list as **location unknown** and is not pinned on you.
 
 - **Step 1** is the next thing to do. Click a step to aim TomTom there.
 - **Then** lists the following steps, up to the step cap. The rest stay in the plan.

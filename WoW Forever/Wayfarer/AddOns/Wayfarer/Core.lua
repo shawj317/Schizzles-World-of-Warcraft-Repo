@@ -20,19 +20,20 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.2.0"
+ns.version = Metadata("Version") or "1.3.0"
 
 function ns:Print(message)
 	print("|cffffd36aWayfarer:|r " .. tostring(message))
 end
 
 function ns.EnsureUI()
-	ns.Settings()
+	local db = ns.Settings()
+	if db.rememberWindow == false and not ns.windowForgotten and ns.ForgetWindow then
+		ns.ForgetWindow(db)
+		ns.windowForgotten = true
+	end
 	if not ns.mainFrame and ns.BuildMain then
 		ns.BuildMain()
-		if ns.BuildConfig then
-			ns.BuildConfig()
-		end
 	end
 end
 
@@ -45,6 +46,11 @@ function ns.NoteChange(event)
 		ns.InvalidateCompleted()
 	end
 	if event == "PLAYER_REGEN_ENABLED" then
+		if ns.pendingVisibility and ns.ApplyPlaceRules then
+			local why = ns.pendingVisibility
+			ns.pendingVisibility = nil
+			ns.ApplyPlaceRules(why)
+		end
 		if not ns.pendingCombatRefresh then
 			return
 		end
@@ -94,6 +100,7 @@ end
 
 ns.driver = CreateFrame("Frame")
 ns.driver:RegisterEvent("ADDON_LOADED")
+ns.driver:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.driver:RegisterEvent("QUEST_ACCEPTED")
 ns.driver:RegisterEvent("QUEST_REMOVED")
 ns.driver:RegisterEvent("QUEST_TURNED_IN")
@@ -107,7 +114,18 @@ ns.driver:SetScript("OnEvent", function(_, event, name)
 		if ns.RegisterSettings then
 			ns.RegisterSettings()
 		end
+		if ns.ApplyPlaceRules then
+			ns.ApplyPlaceRules("login")
+		end
 		return
+	end
+	if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+		if ns.ApplyPlaceRules then
+			ns.ApplyPlaceRules(ns.loginApplied and "zone" or "login")
+		end
+		if event == "PLAYER_ENTERING_WORLD" then
+			return
+		end
 	end
 	if event == "ADDON_LOADED" then
 		if ns.EnsureMapHooks and WorldMapFrame then

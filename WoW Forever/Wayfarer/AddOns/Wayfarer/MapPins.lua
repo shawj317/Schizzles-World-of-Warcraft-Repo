@@ -151,7 +151,26 @@ end
 local worldDots = {}
 local miniDots = {}
 local trailDistance = 0
+local minimapHost
 local TEX = "Interface\\AddOns\\Wayfarer\\Textures\\"
+
+local function MinimapHost()
+	if not Minimap then
+		return nil
+	end
+	if minimapHost and minimapHost.GetParent and minimapHost:GetParent() == Minimap then
+		return minimapHost
+	end
+	minimapHost = CreateFrame("Frame", nil, Minimap)
+	minimapHost:SetAllPoints(Minimap)
+	if minimapHost.SetClipsChildren then
+		minimapHost:SetClipsChildren(true)
+	end
+	if minimapHost.EnableMouse then
+		minimapHost:EnableMouse(false)
+	end
+	return minimapHost
+end
 
 local function HidePool(pool)
 	ns.ReleaseAll(pool)
@@ -460,6 +479,10 @@ local function UpdateMinimapPins(plan)
 	if not playerX then
 		return
 	end
+	local host = MinimapHost()
+	if not host then
+		return
+	end
 	local radiusYards = MinimapYards()
 	local radiusPx = (Minimap:GetWidth() / 2) - 8
 	if radiusPx < 20 then
@@ -497,21 +520,29 @@ local function UpdateMinimapPins(plan)
 					if rotate then
 						dx, dy = dx * cosF - dy * sinF, dx * sinF + dy * cosF
 					end
-					local dist = math.sqrt(dx * dx + dy * dy)
-					local inside = dist <= radiusPx
+					local pinLimit = radiusPx - ((db.pinSize or 20) / 2)
+					if pinLimit < 8 then
+						pinLimit = 8
+					end
+					local drawX, drawY = dx, dy
+					if ns.ClampRadius then
+						drawX, drawY = ns.ClampRadius(dx, dy, pinLimit)
+					end
+					local dotX, dotY, inside = dx, dy, false
+					if ns.ClampRadius then
+						dotX, dotY, inside = ns.ClampRadius(dx, dy, radiusPx - 4)
+					else
+						local dist = math.sqrt(dx * dx + dy * dy)
+						inside = dist <= radiusPx
+					end
 					if db.showOnMap then
-						local drawX, drawY = dx, dy
-						if dist > radiusPx and dist > 0 then
-							drawX = dx / dist * radiusPx
-							drawY = dy / dist * radiusPx
-						end
 						shown = shown + 1
-						local pin = TakeMapPin(miniPool, Minimap)
+						local pin = TakeMapPin(miniPool, host)
 						pin:SetFrameStrata("MEDIUM")
 						pin:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 5)
 						StylePin(pin, i, step, i == 1)
 						pin:ClearAllPoints()
-						pin:SetPoint("CENTER", Minimap, "CENTER", drawX, drawY)
+						pin:SetPoint("CENTER", host, "CENTER", drawX, drawY)
 						pin.tip = StepTitle(step, i)
 						local captured = step
 						pin:SetScript("OnClick", function()
@@ -519,14 +550,14 @@ local function UpdateMinimapPins(plan)
 						end)
 					end
 					if inside then
-						placed[i] = { x = dx, y = dy }
+						placed[i] = { x = dotX, y = dotY }
 					end
 				end
 			end
 		end
 	end
 	if db.showTrail then
-		PaintTrail(miniDots, Minimap, "CENTER", Polylines(steps, placed, { x = 0, y = 0 }), 12, 28)
+		PaintTrail(miniDots, host, "CENTER", Polylines(steps, placed, { x = 0, y = 0 }), 12, 28)
 	end
 end
 

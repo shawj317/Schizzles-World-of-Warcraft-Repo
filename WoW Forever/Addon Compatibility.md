@@ -8,7 +8,7 @@ Forever is build 1.60.1.70755 and installs to `World of Warcraft\_forever_\`, so
 | Addon | Version | How it supports Forever | Kit job |
 |---|---|---|---|
 | Schizzle's Warrior Setup | F1.2 | Interface 16001 | one-click setup, XP & Rep Tray |
-| Wayfarer | 1.2.0 | Interface 16001, `AllowLoadGameType: camelot, forever` | zone quest route. Not checked in game yet |
+| Wayfarer | 1.3.0 | Interface 16001, `AllowLoadGameType: camelot, forever` | zone quest route. Not checked in game yet |
 | Musca Auras | 1.14.0 | Interface 16001 (a WeakAuras fork; the folder is called `WeakAuras`) | [Schizzle's Warrior Essentials](Schizzle's%20Warrior/AddOns/Musca%20Auras/): proc alerts, priority lanes, rage colours |
 | Bartender4 | 4.18.4 | 16001 in its main TOC | action bars, stance bar |
 | BetterBlizzFrames | v2.2.0e | `_Camelot.toc` | unit frames, cast bar |

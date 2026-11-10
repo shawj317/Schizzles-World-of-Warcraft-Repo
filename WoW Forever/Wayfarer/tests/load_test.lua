@@ -75,6 +75,7 @@ local order = {
 	"Travel.lua",
 	"FlightData.lua",
 	"Saved.lua",
+	"Rules.lua",
 	"Core.lua",
 	"QuestLog.lua",
 	"MapPins.lua",

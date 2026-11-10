@@ -1,13 +1,14 @@
 local _, ns = ...
 
 -- WayfarerDB schema 1 is the old QuestRoute 1.0.5 table. Schema 2 adds route scope,
--- round-pin size, the ant trail, and flight paths. Keys are not renamed.
+-- round-pin size, the ant trail, and flight paths. Schema 3 adds window memory,
+-- login visibility, and battleground or instance hiding. Keys are not renamed.
 -- A newer schema is left alone. point, configPoint, width, height, and userSized
 -- are not defaults, so a saved window stays where the player put it.
 -- On first load, an empty WayfarerDB is filled from QuestRouteDB if that still exists.
 
 ns.DEFAULTS = {
-	schema = 2,
+	schema = 3,
 	includeLowLevel = false,
 	omitDungeons = true,
 	showOnMap = true,
@@ -29,12 +30,18 @@ ns.DEFAULTS = {
 	backdropAlpha = 0.85,
 	showBorder = true,
 	trailCustom = false,
+	rememberWindow = true,
+	showOnLogin = false,
+	hideInBattleground = false,
+	hideInInstance = false,
+	windowScale = 1,
 }
 
 -- MIGRATIONS[n] rewrites a saved table from schema n-1 to n.
 -- 2 adds keys only. Missing values are filled from DEFAULTS afterwards.
 ns.MIGRATIONS = {
 	[2] = function() end,
+	[3] = function() end,
 }
 
 local function MergeDefaults(db, defaults)
@@ -149,6 +156,25 @@ function ns.HealSettings(db)
 	if db.trailCustom == nil then
 		db.trailCustom = false
 	end
+	if db.rememberWindow == nil then
+		db.rememberWindow = true
+	end
+	if db.showOnLogin == nil then
+		db.showOnLogin = false
+	end
+	if db.hideInBattleground == nil then
+		db.hideInBattleground = false
+	end
+	if db.hideInInstance == nil then
+		db.hideInInstance = false
+	end
+	local scale = tonumber(db.windowScale) or 1
+	if scale < 0.8 then
+		scale = 0.8
+	elseif scale > 1.4 then
+		scale = 1.4
+	end
+	db.windowScale = scale
 	return db
 end
 

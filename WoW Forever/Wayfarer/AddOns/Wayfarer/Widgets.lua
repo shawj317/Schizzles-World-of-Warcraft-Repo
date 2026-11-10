@@ -160,6 +160,9 @@ function ns.ApplyAppearance()
 	paintColor(ns.colors.EMBER, theme.ember)
 	if ns.mainFrame then
 		ns.Paint(ns.mainFrame)
+		if ns.mainFrame.SetScale then
+			ns.mainFrame:SetScale(tonumber(db.windowScale) or 1)
+		end
 	end
 	if ns.configFrame then
 		ns.Paint(ns.configFrame)
@@ -181,6 +184,9 @@ end
 
 function ns.SavePoint(frame, key)
 	local db = ns.Settings()
+	if key == "point" and db.rememberWindow == false then
+		return
+	end
 	local point, _, relative, x, y = frame:GetPoint(1)
 	db[key] = { point, relative, x, y }
 end

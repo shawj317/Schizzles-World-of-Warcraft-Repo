@@ -348,6 +348,51 @@ function ns.Unskip()
 	end
 end
 
+function ns.InstanceKind()
+	if not IsInInstance then
+		return "none"
+	end
+	local ok, inside, kind = pcall(IsInInstance)
+	if not ok or not inside or (ns.IsSecret and ns.IsSecret(kind)) then
+		return "none"
+	end
+	return kind or "none"
+end
+
+function ns.ApplyPlaceRules(reason)
+	if (ns.InCombat and ns.InCombat()) or (InCombatLockdown and InCombatLockdown()) then
+		ns.pendingVisibility = reason or "zone"
+		return
+	end
+	local frame = ns.mainFrame
+	if not frame then
+		return
+	end
+	local db = ns.Settings()
+	local why = ns.HideKind and ns.HideKind(ns.InstanceKind(), db)
+	if why then
+		if reason == "login" and db.showOnLogin then
+			ns.hiddenByRule = true
+		elseif frame:IsShown() then
+			ns.hiddenByRule = true
+			frame:Hide()
+		end
+		if reason == "login" then
+			ns.loginApplied = true
+		end
+		return
+	end
+	if ns.hiddenByRule then
+		ns.hiddenByRule = false
+		frame:Show()
+	elseif reason == "login" and db.showOnLogin and not ns.loginApplied then
+		frame:Show()
+	end
+	if reason == "login" then
+		ns.loginApplied = true
+	end
+end
+
 function ns.Refresh(setArrow)
 	if ns.scanning then
 		return
@@ -394,9 +439,6 @@ function ns.BuildMain()
 	end)
 	ns.Paint(frame)
 	frame:Hide()
-	if UISpecialFrames then
-		table.insert(UISpecialFrames, "WayfarerFrame")
-	end
 	ns.LoadPoint(frame, "point", { "TOPRIGHT", "TOPRIGHT", -40, -160 })
 
 	local bar = frame:CreateTexture(nil, "BACKGROUND")
@@ -500,9 +542,11 @@ function ns.BuildMain()
 	grip:SetScript("OnMouseUp", function()
 		frame:StopMovingOrSizing()
 		local db = ns.Settings()
-		db.userSized = true
-		db.width = frame:GetWidth()
-		db.height = frame:GetHeight()
+		if db.rememberWindow ~= false then
+			db.userSized = true
+			db.width = frame:GetWidth()
+			db.height = frame:GetHeight()
+		end
 		if frame.plan and ns.Redisplay then
 			ns.Redisplay()
 		end
