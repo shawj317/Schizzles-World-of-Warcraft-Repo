@@ -101,6 +101,12 @@ SlashCmdList.WAYFARER = function(message)
 		ns.PrintDebug()
 		return
 	end
+	if command == "perf" then
+		if ns.PrintPerf then
+			ns.PrintPerf()
+		end
+		return
+	end
 	if command ~= "" then
 		ns:Print(L.HELP)
 		return

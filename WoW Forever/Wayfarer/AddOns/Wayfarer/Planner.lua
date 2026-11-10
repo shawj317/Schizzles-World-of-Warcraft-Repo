@@ -560,6 +560,14 @@ end
 
 -- Largest group of spawns within 12 map-percent of each other. The target is
 -- that group's centroid, so walking does not move the pin to the next spawn.
+-- The same spawn list returns the centroid already computed.
+local clusterMemo = {}
+local clusterMemoN = 0
+
+function QuestRoute.ClusterCacheSize()
+	return clusterMemoN
+end
+
 function QuestRoute.ClusterCentroid(points)
 	local list = {}
 	for i = 1, #(points or {}) do
@@ -577,6 +585,16 @@ function QuestRoute.ClusterCentroid(points)
 		end
 		return a.x < b.x
 	end)
+	local keyParts = {}
+	for i = 1, #list do
+		local point = list[i]
+		keyParts[i] = string.format("%d:%.3f:%.3f", tonumber(point.uiMap) or 0, point.x, point.y)
+	end
+	local key = table.concat(keyParts, ";")
+	local cached = clusterMemo[key]
+	if cached ~= nil then
+		return cached or nil
+	end
 	local radius = 12
 	local used = {}
 	local best
@@ -624,6 +642,16 @@ function QuestRoute.ClusterCentroid(points)
 			if better then
 				best = centroid
 			end
+		end
+	end
+	clusterMemo[key] = best or false
+	clusterMemoN = clusterMemoN + 1
+	if clusterMemoN > 400 then
+		clusterMemo = {}
+		clusterMemoN = 0
+		if best then
+			clusterMemo[key] = best
+			clusterMemoN = 1
 		end
 	end
 	return best

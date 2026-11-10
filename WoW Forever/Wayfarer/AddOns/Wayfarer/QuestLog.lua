@@ -324,11 +324,28 @@ local function FinisherBuckets(record)
 	return npcs, objects
 end
 
+local objectiveCache = {}
+
+local function ObjectiveCacheSize()
+	local count = 0
+	for _ in pairs(objectiveCache) do
+		count = count + 1
+	end
+	return count
+end
+
 local function ObjectiveFromData(db, data, playerMap, zoneIds)
 	if type(data) ~= "table" then
 		return nil, nil
 	end
-	local verb = VERB[data.Type] or "visit"
+	local kind = data.Type
+	local cacheable = kind == "monster" or kind == "npc" or kind == "object" or kind == "item"
+	local cacheKey = cacheable and (tostring(kind) .. ":" .. tostring(data.Id) .. ":" .. tostring(playerMap or 0)) or nil
+	local cached = cacheKey and objectiveCache[cacheKey]
+	if cached then
+		return cached.verb, cached.title, ns.Planner.WithoutPlayer(cached.points, scanPlayer)
+	end
+	local verb = VERB[kind] or "visit"
 	local title = data.Text
 	local points = {}
 	if data.Type == "monster" or data.Type == "npc" then
@@ -370,8 +387,10 @@ local function ObjectiveFromData(db, data, playerMap, zoneIds)
 	addSpawns(data.spawns)
 	addSpawns(data.Waypoints)
 	addSpawns(data.waypoints)
-	points = ns.Planner.WithoutPlayer(points, scanPlayer)
-	return verb, title, points
+	if cacheKey then
+		objectiveCache[cacheKey] = { verb = verb, title = title, points = points }
+	end
+	return verb, title, ns.Planner.WithoutPlayer(points, scanPlayer)
 end
 
 local function TurninFor(db, record, playerMap, zoneIds, fallback)
@@ -1388,6 +1407,12 @@ local function ScanQuests()
 		AttachQuestie(quests[i], db, playerLevel, playerMap, ids, inLog)
 		MarkDungeon(quests[i], db)
 		MarkPvp(quests[i], db)
+		if i % 4 == 0 and coroutine.running() then
+			coroutine.yield()
+		end
+	end
+	if coroutine.running() then
+		coroutine.yield()
 	end
 	RestoreCollapsed(opened)
 	if previous and previous > 0 and SelectQuestLogEntry then
@@ -1449,4 +1474,16 @@ ns.PlayerPosition = PlayerPosition
 
 function ns.InvalidateCompleted()
 	completedCache = nil
+end
+
+function ns.CacheCounts()
+	local npcs, items = 0, 0
+	for _ in pairs(rawNpcPoints) do
+		npcs = npcs + 1
+	end
+	for _ in pairs(rawItemPoints) do
+		items = items + 1
+	end
+	local clusters = ns.Planner and ns.Planner.ClusterCacheSize and ns.Planner.ClusterCacheSize() or 0
+	return ObjectiveCacheSize(), clusters, npcs, items
 end

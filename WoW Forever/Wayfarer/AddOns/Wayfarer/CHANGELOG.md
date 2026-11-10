@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.5 (2026-11-10)
+
+- The hitch every few seconds was a full route scan, not the auto-recalculate timer. Turning that option off did not stop it. `QUEST_LOG_UPDATE` fires on its own every few seconds, and each one rebuilt the route from Questie whenever the window was open. A scan now waits about a second and a half, then runs only if the quest list, finished objectives, or zone actually changed. Walking does not count. Combat waits. A hidden window does not scan. There is no OnUpdate while it waits.
+- Auto recalculate still has one timer. Turning it off cancels that timer. The timer also does nothing unless the log or zone changed.
+- Spawn clusters and Questie objective lookups are reused. A long log yields every few quests so one scan does not freeze the frame. World map pins are left as they are when the route did not change. TomTom is left alone unless the current step changed, or you click a step.
+- `/wayfarer perf` prints how long the last rebuild took, how many were skipped, and whether a timer or OnUpdate is running.
+
 ## 1.3.4 (2026-11-10)
 
 - Wayfarer no longer draws pins on the minimap. World map pins and the TomTom arrow stay. Only the current step's TomTom waypoint asks for a minimap icon. Extra steps, when that option is on, stay off the minimap.

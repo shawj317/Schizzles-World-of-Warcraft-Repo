@@ -393,22 +393,76 @@ function ns.ApplyPlaceRules(reason)
 	end
 end
 
-function ns.Refresh(setArrow)
+function ns.Refresh(setArrow, reason)
 	if ns.scanning then
+		ns.pendingRescan = true
+		if setArrow then
+			ns.pendingRescanArrow = true
+		end
 		return
 	end
 	ns.scanning = true
-	local ok, plan = pcall(ns.ScanQuests)
-	ns.scanning = false
-	if GetTime then
-		ns.quietUntil = GetTime() + 3
+	local started
+	if debugprofilestop then
+		started = debugprofilestop()
+	elseif GetTime then
+		started = GetTime() * 1000
 	end
-	if not ok then
-		ns.ShowError(plan)
+	local function finish(ok, plan)
+		ns.scanning = false
+		local elapsed = 0
+		if started then
+			local now
+			if debugprofilestop then
+				now = debugprofilestop()
+			elseif GetTime then
+				now = GetTime() * 1000
+			end
+			if now then
+				elapsed = now - started
+			end
+		end
+		ns.perf = ns.perf or {}
+		ns.perf.lastMs = elapsed
+		ns.perf.lastReason = reason or (setArrow and "manual" or "event")
+		ns.perf.scans = (ns.perf.scans or 0) + 1
+		if ns.CurrentWatch then
+			ns.lastWatch = ns.CurrentWatch()
+		end
+		if not ok then
+			ns.ShowError(plan)
+		else
+			ns.mainFrame.plan = plan
+			ns.ShowRoute(plan, setArrow)
+		end
+		if ns.pendingRescan then
+			local again = ns.pendingRescanArrow
+			ns.pendingRescan = nil
+			ns.pendingRescanArrow = nil
+			ns.Refresh(again and true or false, "retry")
+		end
+	end
+	if coroutine and coroutine.create and C_Timer and C_Timer.After then
+		local thread = coroutine.create(function()
+			return ns.ScanQuests()
+		end)
+		local function step()
+			local ok, plan = coroutine.resume(thread)
+			if not ok then
+				finish(false, plan)
+				return
+			end
+			if coroutine.status(thread) == "dead" then
+				finish(true, plan)
+			else
+				C_Timer.After(0, step)
+			end
+		end
+		step()
 		return
 	end
-	ns.mainFrame.plan = plan
-	ns.ShowRoute(plan, setArrow)
+	local ok, plan = pcall(ns.ScanQuests)
+	finish(ok, plan)
 end
 
 function ns.BuildMain()

@@ -60,7 +60,7 @@ local function PlaceTomTom(steps, allSteps, focusIndex, announce, focusStep)
 		return
 	end
 	local planKey = ns.WaypointPlanKey and ns.WaypointPlanKey(steps, allSteps, focusIndex)
-	if planKey and planKey == waypointKey and ns.CacheStillValid and ns.CacheStillValid(TomTom, routePins, planKey) then
+	if not announce and planKey and planKey == waypointKey and ns.CacheStillValid and ns.CacheStillValid(TomTom, routePins, planKey) then
 		return
 	end
 	routePins, arrowUID = ns.ReplaceWaypoints(TomTom, routePins, steps, allSteps, focusIndex)
@@ -352,12 +352,17 @@ local function SyncRoute(plan, focusStep, announce)
 	local steps = plan and plan.steps or {}
 	local index = focusStep and StepIndex(steps, focusStep) or 1
 	local aim = focusStep or steps[index]
+	local signature = RouteSignature(plan)
+	local samePins = routeKey ~= nil and signature == routeKey
 	PlaceTomTom(steps, ns.Settings().useTomTom and true or false, index, announce and true or false, aim)
-	routeKey = RouteSignature(plan)
+	routeKey = signature
 	EnsureMapHooks()
 	local db = ns.Settings()
 	if not db.showOnMap then
 		HidePool(worldPool)
+		return
+	end
+	if samePins then
 		return
 	end
 	UpdateWorldPins(plan)

@@ -4,9 +4,15 @@ local addonName, ns = ...
 -- QuestRoute by Jon Shaw (Schizzle).
 
 ns.name = addonName
-ns.quietUntil = 0
 ns.scheduled = false
 ns.pendingCombatRefresh = false
+ns.perf = {
+	scans = 0,
+	skipped = 0,
+	lastMs = 0,
+	lastReason = "none",
+	events = 0,
+}
 
 local function Metadata(field)
 	local getter = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
@@ -20,7 +26,7 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.3.4"
+ns.version = Metadata("Version") or "1.3.5"
 
 function ns:Print(message)
 	print("|cffffd36aWayfarer:|r " .. tostring(message))
@@ -37,8 +43,156 @@ function ns.EnsureUI()
 	end
 end
 
--- Automatic refreshes wait out combat. A click on Recalculate still runs immediately.
+local function QuestCount()
+	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
+		local ok, value = pcall(C_QuestLog.GetNumQuestLogEntries)
+		if ok then
+			return tonumber(value) or 0
+		end
+	end
+	if GetNumQuestLogEntries then
+		local ok, value = pcall(GetNumQuestLogEntries)
+		if ok then
+			return tonumber(value) or 0
+		end
+	end
+	return 0
+end
+
+local function DoneBits(questID)
+	if not questID or not C_QuestLog or not C_QuestLog.GetQuestObjectives then
+		return ""
+	end
+	local ok, objectives = pcall(C_QuestLog.GetQuestObjectives, questID)
+	if not ok or type(objectives) ~= "table" then
+		return ""
+	end
+	local bits = {}
+	for i = 1, #objectives do
+		local finished = objectives[i].finished
+		if ns.IsSecret and ns.IsSecret(finished) then
+			bits[i] = "?"
+		else
+			bits[i] = finished and "1" or "0"
+		end
+	end
+	return table.concat(bits)
+end
+
+-- Quest ids, which objectives are finished, and the current map. No coordinates.
+function ns.CurrentWatch()
+	local ids = {}
+	local count = QuestCount()
+	for i = 1, count do
+		local questID, header, complete
+		if C_QuestLog and C_QuestLog.GetInfo then
+			local ok, info = pcall(C_QuestLog.GetInfo, i)
+			if ok and type(info) == "table" then
+				header = info.isHeader
+				questID = tonumber(info.questID)
+				complete = info.isComplete
+			end
+		elseif GetQuestLogTitle then
+			local ok, _, _, _, isHeader, _, isComplete, _, id = pcall(GetQuestLogTitle, i)
+			if ok then
+				header = isHeader
+				questID = tonumber(id)
+				complete = isComplete
+			end
+		end
+		if questID and questID > 0 and not header then
+			local bits = DoneBits(questID)
+			if bits == "" then
+				bits = (complete == true or complete == 1) and "1" or "0"
+			end
+			ids[#ids + 1] = questID .. ":" .. bits
+		end
+	end
+	if #ids == 0 then
+		ids[1] = "n:" .. count
+	end
+	local map
+	if C_Map and C_Map.GetBestMapForUnit then
+		local ok, value = pcall(C_Map.GetBestMapForUnit, "player")
+		if ok and type(value) == "number" then
+			map = value
+		end
+	end
+	if ns.WatchHash then
+		return ns.WatchHash(ids, map)
+	end
+	return tostring(count) .. "|" .. tostring(map or "")
+end
+
+function ns.CurrentRouteHash()
+	return ns.CurrentWatch()
+end
+
+local function WindowShown()
+	local frame = ns.mainFrame
+	return frame and frame.IsShown and frame:IsShown() and true or false
+end
+
+local function ClearDriverUpdate()
+	if ns.driver and ns.driver.SetScript then
+		ns.driver:SetScript("OnUpdate", nil)
+	end
+end
+
+-- One delayed scan. A newer request retires the previous callback.
+-- The driver has no OnUpdate while this waits, unless this client has no timer.
+function ns.ScheduleScan(reason)
+	if ns.scheduled then
+		return
+	end
+	ns.scanGen = (ns.scanGen or 0) + 1
+	local gen = ns.scanGen
+	ns.scheduled = true
+	ns.scanReason = reason
+	local function fire()
+		if gen ~= ns.scanGen then
+			return
+		end
+		ns.scheduled = false
+		ClearDriverUpdate()
+		local hash = ns.CurrentWatch()
+		if not ns.ShouldScan or not ns.ShouldScan({
+			scanning = ns.scanning,
+			inCombat = ns.InCombat and ns.InCombat(),
+			windowShown = WindowShown(),
+			hash = hash,
+			lastHash = ns.lastWatch,
+		}) then
+			if ns.InCombat and ns.InCombat() and WindowShown() and hash ~= ns.lastWatch then
+				ns.pendingCombatRefresh = true
+			end
+			ns.perf.skipped = (ns.perf.skipped or 0) + 1
+			return
+		end
+		if ns.Refresh then
+			ns.Refresh(false, reason or "event")
+		end
+	end
+	if C_Timer and C_Timer.After then
+		ClearDriverUpdate()
+		C_Timer.After(1.5, fire)
+		return
+	end
+	local waited = 0
+	ns.driver:SetScript("OnUpdate", function(_, elapsed)
+		waited = waited + (elapsed or 0)
+		if waited < 1.5 then
+			return
+		end
+		ClearDriverUpdate()
+		fire()
+	end)
+end
+
+-- Log and zone events do not rebuild unless the quest log or zone changed.
+-- Auto recalculate is a separate timer and is not required for this gate.
 function ns.NoteChange(event)
+	ns.perf.events = (ns.perf.events or 0) + 1
 	if event == "TAXIMAP_OPENED" and ns.ForgetFlights then
 		ns.ForgetFlights()
 	end
@@ -52,6 +206,7 @@ function ns.NoteChange(event)
 			ns.ApplyPlaceRules(why)
 		end
 		if not ns.pendingCombatRefresh then
+			ns.perf.skipped = (ns.perf.skipped or 0) + 1
 			return
 		end
 		ns.pendingCombatRefresh = false
@@ -59,112 +214,90 @@ function ns.NoteChange(event)
 		ns.pendingCombatRefresh = true
 		return
 	end
-	if ns.scanning then
+	local hash = ns.CurrentWatch()
+	if not ns.ShouldScan or not ns.ShouldScan({
+		scanning = ns.scanning,
+		inCombat = false,
+		windowShown = WindowShown(),
+		hash = hash,
+		lastHash = ns.lastWatch,
+	}) then
+		ns.perf.skipped = (ns.perf.skipped or 0) + 1
 		return
 	end
-	local frame = ns.mainFrame
-	if not frame or not frame:IsShown() then
-		return
-	end
-	if ns.scheduled then
-		return
-	end
-	local delay = 1
-	if GetTime then
-		local remain = (ns.quietUntil or 0) - GetTime()
-		if remain > delay then
-			delay = remain
-		end
-	end
-	ns.scheduled = true
-	local waited = 0
-	ns.driver:SetScript("OnUpdate", function(_, elapsed)
-		waited = waited + (elapsed or 0)
-		if waited < delay then
-			return
-		end
-		ns.driver:SetScript("OnUpdate", nil)
-		ns.scheduled = false
-		if not ns.mainFrame or not ns.mainFrame:IsShown() then
-			return
-		end
-		if ns.InCombat() then
-			ns.pendingCombatRefresh = true
-			return
-		end
-		if ns.Refresh then
-			ns.Refresh(false)
-		end
-	end)
+	ns.ScheduleScan(event)
 end
 
 function ns.RestartRouteTicker()
-	if ns.routeTicker and ns.routeTicker.Cancel then
-		pcall(ns.routeTicker.Cancel, ns.routeTicker)
-	end
-	ns.routeTicker = nil
+	ns.tickerGen = (ns.tickerGen or 0) + 1
+	local gen = ns.tickerGen
 	local db = ns.Settings()
-	if db.autoRecalc == false then
-		return
-	end
+	local enabled = db.autoRecalc ~= false
 	local interval = ns.ClampInterval and ns.ClampInterval(db.autoInterval) or 30
 	local function pulse()
+		if gen ~= ns.tickerGen then
+			return
+		end
 		local current = ns.Settings()
-		local hash = ns.CurrentRouteHash and ns.CurrentRouteHash() or ""
-		local shown = ns.mainFrame and ns.mainFrame.IsShown and ns.mainFrame:IsShown()
+		local hash = ns.CurrentWatch()
 		if not ns.ShouldTickRoute or not ns.ShouldTickRoute({
 			enabled = current.autoRecalc ~= false,
 			inCombat = ns.InCombat and ns.InCombat(),
-			windowShown = shown and true or false,
-			useArrow = TomTom ~= nil,
+			windowShown = WindowShown(),
 			hash = hash,
-			lastHash = ns.lastRouteHash,
+			lastHash = ns.lastWatch,
 		}) then
+			ns.perf.skipped = (ns.perf.skipped or 0) + 1
 			return
 		end
-		ns.lastRouteHash = hash
 		if ns.Refresh then
-			ns.Refresh(false)
+			ns.Refresh(false, "timer")
 		end
 	end
-	if C_Timer and C_Timer.NewTicker then
-		ns.routeTicker = C_Timer.NewTicker(interval, pulse)
+	local function create()
+		if not C_Timer or not C_Timer.NewTicker then
+			return nil
+		end
+		return C_Timer.NewTicker(interval, pulse)
+	end
+	if ns.ReplaceTicker then
+		ns.routeTicker = ns.ReplaceTicker(ns.routeTicker, enabled, create)
+	elseif not enabled then
+		if ns.routeTicker and ns.routeTicker.Cancel then
+			pcall(ns.routeTicker.Cancel, ns.routeTicker)
+		end
+		ns.routeTicker = nil
 	end
 end
 
-function ns.CurrentRouteHash()
-	local ids = {}
-	local count = 0
-	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
-		local ok, value = pcall(C_QuestLog.GetNumQuestLogEntries)
-		if ok then
-			count = tonumber(value) or 0
-		end
-	elseif GetNumQuestLogEntries then
-		local ok, value = pcall(GetNumQuestLogEntries)
-		if ok then
-			count = tonumber(value) or 0
-		end
+function ns.PrintPerf()
+	local perf = ns.perf or {}
+	local objectives, clusters, npcs, items = 0, 0, 0, 0
+	if ns.CacheCounts then
+		objectives, clusters, npcs, items = ns.CacheCounts()
 	end
-	for i = 1, count do
-		if C_QuestLog and C_QuestLog.GetInfo then
-			local ok, info = pcall(C_QuestLog.GetInfo, i)
-			if ok and type(info) == "table" and info.questID and not info.isHeader then
-				ids[#ids + 1] = info.questID
-			end
+	local updating = 0
+	if ns.driver and ns.driver.GetScript then
+		local ok, script = pcall(ns.driver.GetScript, ns.driver, "OnUpdate")
+		if ok and script then
+			updating = 1
 		end
 	end
-	if #ids == 0 then
-		ids[1] = count
-	end
-	local player, map
-	if ns.PlayerPosition then
-		player, map = ns.PlayerPosition()
-	end
-	if ns.LogHash then
-		return ns.LogHash(ids, map, player and player.x, player and player.y)
-	end
-	return tostring(count)
+	ns:Print(string.format(
+		"last recalc %.1f ms (%s), scans %d, skipped %d, events %d, ticker %d, pending %d, onupdate %d, objectives %d, clusters %d, npcs %d, items %d",
+		tonumber(perf.lastMs) or 0,
+		tostring(perf.lastReason or "none"),
+		tonumber(perf.scans) or 0,
+		tonumber(perf.skipped) or 0,
+		tonumber(perf.events) or 0,
+		ns.routeTicker and 1 or 0,
+		ns.scheduled and 1 or 0,
+		updating,
+		tonumber(objectives) or 0,
+		tonumber(clusters) or 0,
+		tonumber(npcs) or 0,
+		tonumber(items) or 0
+	))
 end
 
 ns.driver = CreateFrame("Frame")
@@ -177,8 +310,8 @@ ns.driver:RegisterEvent("QUEST_REMOVED")
 ns.driver:RegisterEvent("QUEST_TURNED_IN")
 ns.driver:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 ns.driver:RegisterEvent("PLAYER_LEVEL_UP")
-	ns.driver:RegisterEvent("PLAYER_REGEN_ENABLED")
-	ns.driver:RegisterEvent("TAXIMAP_OPENED")
+ns.driver:RegisterEvent("PLAYER_REGEN_ENABLED")
+ns.driver:RegisterEvent("TAXIMAP_OPENED")
 ns.driver:SetScript("OnEvent", function(_, event, name)
 	if event == "ADDON_LOADED" and name == addonName then
 		ns.EnsureUI()

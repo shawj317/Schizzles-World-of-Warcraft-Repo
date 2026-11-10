@@ -19,7 +19,7 @@ Questie and TomTom are optional. Without Questie, Wayfarer still reads your ques
 
 The window opens at the top right. Drag the header or the list to move it. Drag the corner to resize. Escape does not close it. Use the close button or `/wayfarer`. The header shows **This zone** or **All quests**. The cog, a right-click, and `/wayfarer options` open Wayfarer in the AddOns settings. Shift-click a step to skip it (`/wayfarer unskip` puts them back, and so does recalculate).
 
-Settings are in three pages: **General**, **Map**, and **Appearance**. A step with no known location stays in the list as **location unknown** and is not pinned on you.
+Settings are in three pages: **General**, **Map**, and **Appearance**. A step with no known location stays in the list as **location unknown** and is not pinned on you. The route rebuilds when the quest log or the zone changes, not on a timer by itself and not while you walk. `/wayfarer perf` prints how long the last rebuild took.
 
 - **Step 1** is the next thing to do. Click a step to aim TomTom there.
 - **Then** lists the following steps, up to the step cap. The rest stay in the plan.

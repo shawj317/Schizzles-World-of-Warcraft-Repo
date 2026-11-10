@@ -138,6 +138,14 @@ end
 check(unknown and not unknown.x and not unknown.y, "an unresolvable collect step has no pin")
 check(unknown.unknown == true, "the step is marked location unknown")
 check(not QR.IsPlayerPoint(unknown, player), "it is not given the player coordinates")
+local sample = {
+	{ x = 10, y = 10, uiMap = 1 },
+	{ x = 11, y = 10, uiMap = 1 },
+	{ x = 80, y = 80, uiMap = 1 },
+}
+local first = QR.ClusterCentroid(sample)
+local second = QR.ClusterCentroid(sample)
+check(first == second and first.count == 2, "a spawn cluster is computed once and reused")
 
 if fails > 0 then
 	print(fails .. " failed")

@@ -33,7 +33,7 @@ local function ApplyKey(key)
 		return
 	end
 	if key == "showOnMap" or key == "pinSize" or key == "useTomTom" or key == "stepsShown" then
-		if key == "useTomTom" and ns.InvalidateRoute then
+		if (key == "useTomTom" or key == "showOnMap" or key == "pinSize") and ns.InvalidateRoute then
 			ns.InvalidateRoute()
 		end
 		if ns.Redisplay then

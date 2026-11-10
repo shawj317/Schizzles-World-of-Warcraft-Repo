@@ -11,7 +11,7 @@ ns.SETTINGS = {
 			{ key = "showOnLogin", kind = "check", label = "Show on login", tip = "Open the route window when you log in. A battleground or instance hide still wins." },
 			{ key = "hideInBattleground", kind = "check", label = "Hide in battlegrounds", tip = "Hide the window in battlegrounds and arenas. It comes back when you leave, if it was open." },
 			{ key = "hideInInstance", kind = "check", label = "Hide in instances", tip = "Hide the window in dungeons and raids. It comes back when you leave, if it was open." },
-			{ key = "autoRecalc", kind = "check", label = "Auto recalculate", tip = "Rebuild the route on a timer. It waits out combat, skips when the window is hidden and TomTom is not loaded, and skips when the log, zone, and position have not changed." },
+			{ key = "autoRecalc", kind = "check", label = "Auto recalculate", tip = "On a timer, rebuild only if the quest log or zone changed. It waits out combat and does nothing while the window is hidden. Walking around does not rebuild." },
 			{ key = "autoInterval", kind = "slider", label = "Recalc seconds", tip = "How often the automatic rebuild runs, from 15 to 120 seconds.", min = 15, max = 120, step = 5 },
 			{ key = "recalc", kind = "button", label = "Recalculate", tip = "Plan again from where you are standing, and point the arrow at step 1." },
 		},
@@ -55,6 +55,50 @@ function ns.LogHash(ids, zone, x, y)
 	return table.concat(list, ",") .. "|" .. tostring(zone or "") .. "|" .. rx .. "|" .. ry
 end
 
+-- Quest ids (with objective-done bits) and the zone. Position is not part of it,
+-- so walking does not count as a change.
+function ns.WatchHash(ids, zone)
+	local list = {}
+	for i = 1, #(ids or {}) do
+		list[#list + 1] = tostring(ids[i])
+	end
+	table.sort(list)
+	return table.concat(list, ",") .. "|" .. tostring(zone or "")
+end
+
+function ns.ShouldScan(opts)
+	opts = opts or {}
+	if opts.force then
+		return true
+	end
+	if opts.scanning or opts.inCombat then
+		return false
+	end
+	if not opts.windowShown then
+		return false
+	end
+	if opts.hash ~= nil and opts.hash == opts.lastHash then
+		return false
+	end
+	return true
+end
+
+-- One ticker. The previous one is cancelled, and a disabled setting creates none.
+function ns.ReplaceTicker(previous, enabled, create)
+	local gen = ((type(previous) == "table" and previous.gen) or 0) + 1
+	if type(previous) == "table" and previous.Cancel then
+		pcall(previous.Cancel, previous)
+	end
+	if enabled == false or type(create) ~= "function" then
+		return nil, gen
+	end
+	local ticker = create()
+	if type(ticker) == "table" then
+		ticker.gen = gen
+	end
+	return ticker, gen
+end
+
 function ns.ClampInterval(seconds)
 	local n = math.floor((tonumber(seconds) or 30) + 0.5)
 	if n < 15 then
@@ -73,7 +117,7 @@ function ns.ShouldTickRoute(opts)
 	if opts.inCombat then
 		return false
 	end
-	if not opts.windowShown and not opts.useArrow then
+	if not opts.windowShown then
 		return false
 	end
 	if opts.hash ~= nil and opts.hash == opts.lastHash then

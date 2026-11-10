@@ -158,8 +158,32 @@ check(ns.ClampInterval(5) == 15 and ns.ClampInterval(200) == 120 and ns.ClampInt
 check(ns.ShouldTickRoute({ enabled = true, windowShown = true, hash = "a", lastHash = "b" }), "a changed log recalculates")
 check(not ns.ShouldTickRoute({ enabled = true, windowShown = true, hash = "a", lastHash = "a" }), "an unchanged log does not recalculate")
 check(not ns.ShouldTickRoute({ enabled = true, inCombat = true, windowShown = true, hash = "a", lastHash = "b" }), "combat skips the timer")
-check(not ns.ShouldTickRoute({ enabled = true, windowShown = false, useArrow = false, hash = "a", lastHash = "b" }), "a hidden window without TomTom skips the timer")
-check(ns.ShouldTickRoute({ enabled = true, windowShown = false, useArrow = true, hash = "a", lastHash = "b" }), "TomTom still refreshes while the window is hidden")
+check(not ns.ShouldTickRoute({ enabled = true, windowShown = false, useArrow = false, hash = "a", lastHash = "b" }), "a hidden window skips the timer")
+check(not ns.ShouldTickRoute({ enabled = true, windowShown = false, useArrow = true, hash = "a", lastHash = "b" }), "a hidden window skips the timer even with TomTom")
+check(ns.WatchHash({ "2:1", "1:0" }, 1413) == "1:0,2:1|1413", "the watch hash sorts ids and ignores position")
+check(ns.WatchHash({ "1:0" }, 1413) ~= ns.WatchHash({ "1:1" }, 1413), "a finished objective changes the watch hash")
+check(not ns.ShouldScan({ windowShown = true, hash = "a", lastHash = "a" }), "an unchanged log does not scan")
+check(ns.ShouldScan({ windowShown = true, hash = "b", lastHash = "a" }), "a changed log scans")
+check(not ns.ShouldScan({ windowShown = false, hash = "b", lastHash = "a" }), "a hidden window does not scan")
+check(not ns.ShouldScan({ scanning = true, windowShown = true, hash = "b", lastHash = "a" }), "a scan in progress does not start another")
+check(not ns.ShouldScan({ inCombat = true, windowShown = true, hash = "b", lastHash = "a" }), "combat does not scan")
+check(ns.ShouldScan({ force = true, windowShown = false }), "a manual recalc still runs")
+local cancelled = false
+local created = false
+local retired = ns.ReplaceTicker({
+	gen = 1,
+	Cancel = function()
+		cancelled = true
+	end,
+}, false, function()
+	created = true
+	return {}
+end)
+check(cancelled and retired == nil and not created, "turning auto recalc off cancels the ticker and does not create another")
+local replacement = ns.ReplaceTicker({ Cancel = function() end, gen = 3 }, true, function()
+	return {}
+end)
+check(type(replacement) == "table" and replacement.gen == 4, "a new ticker replaces the old one")
 
 if fails > 0 then
 	print(fails .. " failed")
