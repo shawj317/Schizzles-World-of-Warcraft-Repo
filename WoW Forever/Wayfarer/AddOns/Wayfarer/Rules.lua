@@ -35,7 +35,7 @@ ns.SETTINGS = {
 			{ key = "backdropAlpha", kind = "slider", label = "Background", tip = "Opacity of the window background only. Text stays solid.", min = 0, max = 1, step = 0.05 },
 			{ key = "showBorder", kind = "check", label = "Show border", tip = "Off removes the edge on every theme. The header, cog, and close button stay flush." },
 			{ key = "windowScale", kind = "slider", label = "Window scale", tip = "Scale of the route window.", min = 0.8, max = 1.4, step = 0.05 },
-			{ key = "font", kind = "menu", label = "Font", tip = "Typeface for the route window.", choices = { { "1", "Game font" }, { "2", "Friz Quadrata" }, { "3", "Arial Narrow" }, { "4", "Morpheus" }, { "5", "Skurri" }, { "6", "PT Sans Narrow" } } },
+			{ key = "font", kind = "menu", label = "Font", tip = "Typeface for the route window.", choices = { { 1, "Game font" }, { 2, "Friz Quadrata" }, { 3, "Arial Narrow" }, { 4, "Morpheus" }, { 5, "Skurri" }, { 6, "PT Sans Narrow" } } },
 			{ key = "fontSize", kind = "slider", label = "Text size", tip = "Size of the route text.", min = 9, max = 22, step = 1 },
 		},
 	},

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 (2026-11-10)
+
+- Wayfarer is registered in the AddOns list before any individual setting. A control that fails is skipped. The cog opens that category by id. If the category never registered, it says so in chat instead of opening the Game tab. `/wayfarer debugsettings` prints the errors and which Settings functions this client has.
+- The route window uses MEDIUM strata, so the settings panel, game menu, world map, bags, and dialogs draw over it. Tooltips still use the normal game tooltip.
+
 ## 1.3.1 (2026-11-10)
 
 - The cog opens the Blizzard settings panel without registering the settings again. Registration runs once at load. A second click no longer throws "Setting variable 'Wayfarer_rememberWindow' was previously registered."

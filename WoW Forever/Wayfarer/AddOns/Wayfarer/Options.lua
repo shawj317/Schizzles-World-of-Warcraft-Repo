@@ -87,9 +87,8 @@ local function HookSliders()
 	end)
 end
 
--- 16001 registers with (category, variable, key, db, type, name, default).
--- Older clients use (category, name, variable, type, default). GetSetting exists
--- on the same registry that keys the variable string, which is the 16001 form.
+-- 16001: RegisterAddOnSetting(category, variable, variableKey, variableTbl, variableType, name, default).
+-- Older clients: RegisterAddOnSetting(category, name, variable, type, default).
 function ns.SettingsForm()
 	if ns.settingsForm then
 		return ns.settingsForm
@@ -102,20 +101,80 @@ function ns.SettingsForm()
 	return ns.settingsForm
 end
 
+function ns.NoteSettingsError(err)
+	ns.settingsErrors = ns.settingsErrors or {}
+	ns.settingsErrors[#ns.settingsErrors + 1] = tostring(err)
+end
+
+function ns.ChoiceValueType(item)
+	local sample = item.choices and item.choices[1] and item.choices[1][1]
+	if type(sample) == "number" then
+		return "number"
+	end
+	return "string"
+end
+
+function ns.FitSettingValue(item, value)
+	if item.kind == "check" then
+		if value == nil then
+			value = ns.DEFAULTS[item.key]
+		end
+		return value and true or false
+	end
+	if item.kind == "slider" then
+		local n = tonumber(value)
+		if n == nil then
+			n = tonumber(ns.DEFAULTS[item.key]) or item.min or 0
+		end
+		return n
+	end
+	if item.kind == "menu" then
+		if ns.ChoiceValueType(item) == "number" then
+			local n = tonumber(value)
+			if n == nil then
+				n = tonumber(ns.DEFAULTS[item.key]) or item.choices[1][1]
+			end
+			return n
+		end
+		if value == nil then
+			value = ns.DEFAULTS[item.key] or item.choices[1][1]
+		end
+		return tostring(value)
+	end
+	return value
+end
+
+function ns.VarTypeFor(item)
+	if not Settings or not Settings.VarType then
+		return nil
+	end
+	if item.kind == "check" then
+		return Settings.VarType.Boolean
+	end
+	if item.kind == "slider" then
+		return Settings.VarType.Number
+	end
+	if ns.ChoiceValueType(item) == "number" then
+		return Settings.VarType.Number
+	end
+	return Settings.VarType.String
+end
+
 function ns.LookupSetting(variable, key)
-	if ns.settingHandles and ns.settingHandles[variable] then
-		return ns.settingHandles[variable]
+	local handle = ns.settingHandles and ns.settingHandles[variable]
+	if type(handle) == "table" then
+		return handle
 	end
 	if not Settings or not Settings.GetSetting then
 		return nil
 	end
 	local ok, found = pcall(Settings.GetSetting, variable)
-	if ok and found then
+	if ok and type(found) == "table" then
 		return found
 	end
 	if key and key ~= variable then
 		ok, found = pcall(Settings.GetSetting, key)
-		if ok and found then
+		if ok and type(found) == "table" then
 			return found
 		end
 	end
@@ -123,15 +182,21 @@ function ns.LookupSetting(variable, key)
 end
 
 local function RememberSetting(variable, setting)
+	if type(setting) ~= "table" then
+		return nil
+	end
 	ns.settingHandles = ns.settingHandles or {}
-	ns.settingHandles[variable] = setting or true
+	ns.settingHandles[variable] = setting
 	return setting
 end
 
 local function RegisterAddonSetting(category, variable, key, db, varType, label, default)
+	if type(db) ~= "table" then
+		error("variableTbl must be a table")
+	end
 	local existing = ns.LookupSetting(variable, key)
 	if existing then
-		return RememberSetting(variable, existing)
+		return existing
 	end
 	local setting
 	if ns.SettingsForm() == "modern" then
@@ -139,18 +204,22 @@ local function RegisterAddonSetting(category, variable, key, db, varType, label,
 	else
 		setting = Settings.RegisterAddOnSetting(category, label, key, varType, default)
 	end
+	if type(setting) ~= "table" then
+		error("RegisterAddOnSetting did not return a setting")
+	end
 	return RememberSetting(variable, setting)
 end
 
-local function AddControl(category, layout, item)
-	local db = ns.Settings()
+local function AddControl(category, layout, item, db)
 	local tip = TomTomTip(item)
 	if item.kind == "button" then
 		if not CreateSettingsButtonInitializer or not layout or not layout.AddInitializer then
 			return nil
 		end
 		local initializer = CreateSettingsButtonInitializer(item.label, item.label, function()
-			ns.EnsureUI()
+			if ns.EnsureUI then
+				ns.EnsureUI()
+			end
 			if ns.mainFrame then
 				ns.mainFrame:Show()
 				ns.Refresh(true)
@@ -162,9 +231,13 @@ local function AddControl(category, layout, item)
 	if not Settings or not Settings.RegisterAddOnSetting then
 		return nil
 	end
-	local varType = Settings.VarType and (item.kind == "slider" and Settings.VarType.Number or item.kind == "check" and Settings.VarType.Boolean or Settings.VarType.String)
-	local setting = RegisterAddonSetting(category, "Wayfarer_" .. item.key, item.key, db, varType, item.label, ns.DEFAULTS[item.key])
-	if setting and setting.SetValueChangedCallback then
+	local value = ns.FitSettingValue(item, db[item.key])
+	db[item.key] = value
+	local setting = RegisterAddonSetting(category, "Wayfarer_" .. item.key, item.key, db, ns.VarTypeFor(item), item.label, value)
+	if type(setting) ~= "table" then
+		return nil
+	end
+	if setting.SetValueChangedCallback then
 		setting:SetValueChangedCallback(OnChanged(item.key))
 	end
 	local initializer
@@ -202,49 +275,270 @@ local function AddControl(category, layout, item)
 	return initializer
 end
 
-function ns.RegisterSettings()
-	if ns.settingsRegistered then
-		return
+local function AddSectionControls(category, layout, section, db)
+	for j = 1, #section.items do
+		local item = section.items[j]
+		local ok, err = pcall(AddControl, category, layout, item, db)
+		if not ok then
+			ns.NoteSettingsError((item.key or item.label or "control") .. ": " .. tostring(err))
+		end
 	end
-	if not Settings or not Settings.RegisterVerticalLayoutCategory then
-		return
+end
+
+local function AddHeader(layout, title)
+	if layout and layout.AddInitializer and CreateSettingsListSectionHeaderInitializer then
+		pcall(layout.AddInitializer, layout, CreateSettingsListSectionHeaderInitializer(title))
 	end
-	-- Set before the panel build. A failure halfway must not register again.
-	ns.settingsRegistered = true
-	HookSliders()
+end
+
+local function FillVertical(parent, parentLayout, db)
+	ns.settingsPageIDs = {}
+	local subsWork = Settings.RegisterVerticalLayoutSubcategory ~= nil
+	for i = 1, #ns.SETTINGS do
+		local section = ns.SETTINGS[i]
+		local category, layout = parent, parentLayout
+		local usedSub = false
+		if subsWork then
+			local ok, sub, subLayout = pcall(Settings.RegisterVerticalLayoutSubcategory, parent, section.section)
+			if ok and type(sub) == "table" then
+				category = sub
+				layout = subLayout or parentLayout
+				usedSub = true
+				if sub.GetID then
+					local idOk, id = pcall(sub.GetID, sub)
+					if idOk then
+						ns.settingsPageIDs[section.section] = id
+					end
+				end
+			else
+				subsWork = false
+				ns.NoteSettingsError("subcategory " .. section.section .. ": " .. tostring(sub))
+			end
+		end
+		if not usedSub then
+			AddHeader(parentLayout, section.section)
+			category, layout = parent, parentLayout
+		end
+		AddSectionControls(category, layout, section, db)
+	end
+end
+
+local function CanvasRow(parent, item, db, y)
+	local value = ns.FitSettingValue(item, db[item.key])
+	if item.key then
+		db[item.key] = value
+	end
+	if item.kind == "check" then
+		local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+		check:SetPoint("TOPLEFT", 16, y)
+		if check.SetChecked then
+			check:SetChecked(value)
+		end
+		local text = check.Text or parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		if not check.Text then
+			text:SetPoint("LEFT", check, "RIGHT", 4, 0)
+		end
+		text:SetText(item.label)
+		check:SetScript("OnClick", function(self)
+			db[item.key] = self:GetChecked() and true or false
+			ApplyKey(item.key)
+		end)
+		return y - 28
+	end
+	if item.kind == "slider" then
+		local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		label:SetPoint("TOPLEFT", 16, y)
+		label:SetText(item.label)
+		local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
+		slider:SetPoint("TOPLEFT", 180, y)
+		slider:SetWidth(180)
+		slider:SetMinMaxValues(item.min, item.max)
+		slider:SetValueStep(item.step)
+		if slider.SetObeyStepOnDrag then
+			slider:SetObeyStepOnDrag(true)
+		end
+		slider:SetValue(value)
+		slider:SetScript("OnValueChanged", function(_, newValue)
+			db[item.key] = newValue
+			ApplyKey(item.key)
+		end)
+		return y - 32
+	end
+	if item.kind == "menu" then
+		local index = 1
+		for i = 1, #item.choices do
+			if item.choices[i][1] == value then
+				index = i
+			end
+		end
+		local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+		button:SetPoint("TOPLEFT", 16, y)
+		button:SetSize(220, 22)
+		button:SetText(item.label .. ": " .. item.choices[index][2])
+		button:SetScript("OnClick", function(self)
+			index = index % #item.choices + 1
+			db[item.key] = item.choices[index][1]
+			self:SetText(item.label .. ": " .. item.choices[index][2])
+			ApplyKey(item.key)
+		end)
+		return y - 28
+	end
+	if item.kind == "button" then
+		local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+		button:SetPoint("TOPLEFT", 16, y)
+		button:SetSize(140, 22)
+		button:SetText(item.label)
+		button:SetScript("OnClick", function()
+			if ns.EnsureUI then
+				ns.EnsureUI()
+			end
+			if ns.mainFrame then
+				ns.mainFrame:Show()
+				ns.Refresh(true)
+			end
+		end)
+		return y - 28
+	end
+	return y
+end
+
+local function TryCanvas(db)
+	if not Settings.RegisterCanvasLayoutCategory or not CreateFrame then
+		ns.NoteSettingsError("canvas layout is unavailable")
+		return false
+	end
 	local ok, err = pcall(function()
-		local parent, parentLayout = Settings.RegisterVerticalLayoutCategory(L.TITLE)
-		ns.settingsCategory = parent
-		local useSubs = Settings.RegisterVerticalLayoutSubcategory ~= nil
-		ns.settingsPageIDs = {}
+		local frame = CreateFrame("Frame", "WayfarerSettingsCanvas", nil)
+		frame:SetSize(520, 40)
+		local y = -12
 		for i = 1, #ns.SETTINGS do
 			local section = ns.SETTINGS[i]
-			local category, layout = parent, parentLayout
-			if useSubs then
-				category, layout = Settings.RegisterVerticalLayoutSubcategory(parent, section.section)
-				if category and category.GetID then
-					ns.settingsPageIDs[section.section] = category:GetID()
-				end
-			elseif parentLayout and parentLayout.AddInitializer and CreateSettingsListSectionHeaderInitializer then
-				parentLayout:AddInitializer(CreateSettingsListSectionHeaderInitializer(section.section))
-			end
+			local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			header:SetPoint("TOPLEFT", 16, y)
+			header:SetText(section.section)
+			y = y - 24
 			for j = 1, #section.items do
-				AddControl(category, layout, section.items[j])
+				local rowOk, rowY = pcall(CanvasRow, frame, section.items[j], db, y)
+				if rowOk then
+					y = rowY
+				else
+					ns.NoteSettingsError((section.items[j].key or "row") .. ": " .. tostring(rowY))
+				end
 			end
+			y = y - 8
 		end
+		frame:SetHeight(math.abs(y) + 24)
+		local category = Settings.RegisterCanvasLayoutCategory(frame, L.TITLE)
 		if Settings.RegisterAddOnCategory then
-			Settings.RegisterAddOnCategory(parent)
+			Settings.RegisterAddOnCategory(category)
 		end
-		if parent and parent.GetID then
-			ns.settingsCategoryID = parent:GetID()
+		local id = category.GetID and category:GetID()
+		if not id then
+			error("canvas category has no id")
 		end
+		ns.settingsCategory = category
+		ns.settingsCategoryID = id
+		ns.settingsRegistered = true
+		ns.settingsLayout = "canvas"
 	end)
-	if not ok and not ns.settingsErrorPrinted then
-		ns.settingsErrorPrinted = true
-		local message = "Settings could not be registered: " .. tostring(err)
-		if ns.Print then
-			ns:Print(message)
+	if not ok then
+		ns.NoteSettingsError("canvas: " .. tostring(err))
+		return false
+	end
+	return true
+end
+
+local function TryVertical(db)
+	if not Settings.RegisterVerticalLayoutCategory then
+		return false
+	end
+	local parent, parentLayout
+	local created, createErr = pcall(function()
+		parent, parentLayout = Settings.RegisterVerticalLayoutCategory(L.TITLE)
+	end)
+	if not created or type(parent) ~= "table" then
+		ns.NoteSettingsError("vertical category: " .. tostring(createErr))
+		return false
+	end
+	if Settings.RegisterAddOnCategory then
+		local listed, listErr = pcall(Settings.RegisterAddOnCategory, parent)
+		if not listed then
+			ns.NoteSettingsError("RegisterAddOnCategory: " .. tostring(listErr))
 		end
+	end
+	local id
+	if parent.GetID then
+		local idOk, idValue = pcall(parent.GetID, parent)
+		if idOk then
+			id = idValue
+		end
+	end
+	if id == nil then
+		ns.NoteSettingsError("vertical category has no id")
+		return false
+	end
+	ns.settingsCategory = parent
+	ns.settingsCategoryID = id
+	ns.settingsRegistered = true
+	ns.settingsLayout = "vertical"
+	local filled, fillErr = pcall(FillVertical, parent, parentLayout, db)
+	if not filled then
+		ns.NoteSettingsError("controls: " .. tostring(fillErr))
+	end
+	return true
+end
+
+function ns.RegisterSettings()
+	if ns.settingsCategoryID ~= nil then
+		return
+	end
+	if not Settings then
+		ns.NoteSettingsError("Settings API is missing")
+		return
+	end
+	local db = ns.Settings and ns.Settings()
+	if type(db) ~= "table" then
+		ns.NoteSettingsError("WayfarerDB is not ready")
+		return
+	end
+	pcall(HookSliders)
+	if not TryVertical(db) then
+		TryCanvas(db)
+	end
+end
+
+function ns.PrintSettingsReport()
+	local function say(text)
+		if ns.Print then
+			ns:Print(text)
+		else
+			print(text)
+		end
+	end
+	say("Settings category id: " .. tostring(ns.settingsCategoryID) .. " layout: " .. tostring(ns.settingsLayout))
+	local caps = {}
+	local function flag(name, present)
+		caps[#caps + 1] = name .. "=" .. (present and "yes" or "no")
+	end
+	flag("Settings", Settings ~= nil)
+	flag("Vertical", Settings and Settings.RegisterVerticalLayoutCategory ~= nil)
+	flag("Subcategory", Settings and Settings.RegisterVerticalLayoutSubcategory ~= nil)
+	flag("Canvas", Settings and Settings.RegisterCanvasLayoutCategory ~= nil)
+	flag("GetSetting", Settings and Settings.GetSetting ~= nil)
+	flag("Checkbox", Settings and Settings.CreateCheckbox ~= nil)
+	flag("Slider", Settings and Settings.CreateSlider ~= nil)
+	flag("Dropdown", Settings and Settings.CreateDropdown ~= nil)
+	flag("Button", CreateSettingsButtonInitializer ~= nil)
+	flag("VarType", Settings and Settings.VarType ~= nil)
+	say(table.concat(caps, " "))
+	local errors = ns.settingsErrors or {}
+	if #errors == 0 then
+		say("No settings registration errors.")
+		return
+	end
+	say(#errors .. " settings registration errors:")
+	for i = 1, #errors do
+		say(errors[i])
 	end
 end
 
@@ -252,16 +546,19 @@ function ns.OpenConfig()
 	if ns.EnsureUI then
 		ns.EnsureUI()
 	end
-	local id = ns.settingsCategoryID
-	if id == nil and ns.settingsPageIDs then
-		id = ns.settingsPageIDs.General or ns.settingsPageIDs.Map or ns.settingsPageIDs.Appearance
+	if ns.settingsCategoryID == nil and ns.RegisterSettings then
+		ns.RegisterSettings()
 	end
+	local id = ns.settingsCategoryID
 	if Settings and Settings.OpenToCategory and id ~= nil then
 		pcall(Settings.OpenToCategory, id)
 		return
 	end
-	if Settings and Settings.OpenToCategory then
-		pcall(Settings.OpenToCategory, L.TITLE)
+	if ns.Print then
+		ns:Print("Wayfarer settings are not in the AddOns list. /wayfarer debugsettings prints why.")
+	end
+	if ns.PrintSettingsReport then
+		ns.PrintSettingsReport()
 	end
 end
 

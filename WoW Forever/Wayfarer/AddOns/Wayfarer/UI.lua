@@ -426,7 +426,10 @@ function ns.BuildMain()
 		frame:SetMinResize(280, 200)
 		frame:SetMaxResize(720, 900)
 	end
-	frame:SetFrameStrata("HIGH")
+	frame:SetFrameStrata("MEDIUM")
+	if frame.SetToplevel then
+		frame:SetToplevel(false)
+	end
 	frame:SetMovable(true)
 	frame:EnableMouse(true)
 	frame:EnableMouseWheel(true)
@@ -562,7 +565,19 @@ function ns.BuildMain()
 
 	frame.scroll = scroll
 	frame.child = child
-	frame:SetScript("OnShow", function()
+	local function StayUnderMenus(widget)
+		if widget and widget.SetFrameStrata then
+			widget:SetFrameStrata("MEDIUM")
+		end
+	end
+	StayUnderMenus(frame)
+	StayUnderMenus(scroll)
+	StayUnderMenus(close)
+	StayUnderMenus(cog)
+	StayUnderMenus(refresh)
+	StayUnderMenus(grip)
+	frame:SetScript("OnShow", function(self)
+		StayUnderMenus(self)
 		ns.Refresh(false)
 	end)
 	ns.mainFrame = frame

@@ -91,6 +91,12 @@ SlashCmdList.WAYFARER = function(message)
 		ns:Print(L.HELP)
 		return
 	end
+	if command == "debugsettings" then
+		if ns.PrintSettingsReport then
+			ns.PrintSettingsReport()
+		end
+		return
+	end
 	if command == "debug" then
 		ns.PrintDebug()
 		return

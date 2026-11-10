@@ -20,7 +20,7 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.3.1"
+ns.version = Metadata("Version") or "1.3.2"
 
 function ns:Print(message)
 	print("|cffffd36aWayfarer:|r " .. tostring(message))
