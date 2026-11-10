@@ -4,7 +4,7 @@
 ## Title: |cffffd100Wayfarer|r
 ## Notes: Plans a route through your quests, in this zone or across the whole log, and can point TomTom at the next step. Flight times are reused from RutaMisiones (Fastest Quest Route) by Nico.
 ## Author: Jon Shaw (Schizzle)
-## Version: 1.3.2
+## Version: 1.3.3
 ## IconTexture: Interface\Icons\INV_Misc_Note_01
 ## SavedVariables: WayfarerDB
 ## OptionalDeps: Questie, QuestieDB, TomTom
@@ -34,6 +34,7 @@ Saved.lua
 Rules.lua
 Core.lua
 QuestLog.lua
+Waypoints.lua
 MapPins.lua
 Widgets.lua
 UI.lua

@@ -38,6 +38,7 @@ Round pins sit on the world map and the minimap: gold for a pickup, bronze for a
 | Route scope | This zone | **This zone** is the old behavior. **All quests** routes every non-dungeon quest in the log, one zone at a time, current zone first, and it does not bounce between continents. |
 | Include low-level quests | Off | Gray quests stay under Avoid. |
 | Omit dungeon quests | On | In This zone, turn it off to include dungeon quests. All quests scope always leaves dungeons out. |
+| Omit PvP quests | On | Battleground quests stay out of both scopes and are listed under Avoid as PvP. |
 | Use flight paths | On | A long leg, or a leg into another zone, is flown or taken by boat or zeppelin when that is faster than walking and you know the flight masters. |
 | Up to N levels above you | 3 | Higher quests are left for later. |
 | Show N steps | 7 | How many steps the window lists. |
@@ -46,7 +47,7 @@ Round pins sit on the world map and the minimap: gold for a pickup, bronze for a
 | Theme | Wayfarer | Wayfarer (charcoal, bronze, gold), Classic (dialog box), or Class (your class color, or bronze if it cannot be read). |
 | Background | 85% | Opacity of the window backdrop only. Text and icons stay solid. |
 | Show border | On | Off removes the edge on every theme. The header, cog, and close button stay flush, with no empty corner. |
-| Send every step to TomTom | On | A waypoint for every pinned step. |
+| Every step in TomTom | Off | Off keeps one arrow on the current step. On adds a waypoint for every step. Wayfarer removes its own previous waypoints first. |
 
 ## Slash commands
 

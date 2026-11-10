@@ -20,6 +20,12 @@ local function ApplyKey(key)
 		end
 		return
 	end
+	if key == "autoRecalc" or key == "autoInterval" then
+		if ns.RestartRouteTicker then
+			ns.RestartRouteTicker()
+		end
+		return
+	end
 	if key == "hideInBattleground" or key == "hideInInstance" or key == "showOnLogin" then
 		if ns.ApplyPlaceRules then
 			ns.ApplyPlaceRules("zone")

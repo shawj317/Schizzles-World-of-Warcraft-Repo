@@ -11,6 +11,8 @@ ns.SETTINGS = {
 			{ key = "showOnLogin", kind = "check", label = "Show on login", tip = "Open the route window when you log in. A battleground or instance hide still wins." },
 			{ key = "hideInBattleground", kind = "check", label = "Hide in battlegrounds", tip = "Hide the window in battlegrounds and arenas. It comes back when you leave, if it was open." },
 			{ key = "hideInInstance", kind = "check", label = "Hide in instances", tip = "Hide the window in dungeons and raids. It comes back when you leave, if it was open." },
+			{ key = "autoRecalc", kind = "check", label = "Auto recalculate", tip = "Rebuild the route on a timer. It waits out combat, skips when the window is hidden and TomTom is not loaded, and skips when the log, zone, and position have not changed." },
+			{ key = "autoInterval", kind = "slider", label = "Recalc seconds", tip = "How often the automatic rebuild runs, from 15 to 120 seconds.", min = 15, max = 120, step = 5 },
 			{ key = "recalc", kind = "button", label = "Recalculate", tip = "Plan again from where you are standing, and point the arrow at step 1." },
 		},
 	},
@@ -19,8 +21,9 @@ ns.SETTINGS = {
 		items = {
 			{ key = "includeLowLevel", kind = "check", label = "Low-level quests", tip = "Gray quests. Off, they are listed under Avoid and left out of the route." },
 			{ key = "omitDungeons", kind = "check", label = "Skip dungeons", tip = "Leave dungeon quests out of the route. They are listed under Avoid." },
+			{ key = "omitPvp", kind = "check", label = "Omit PvP quests", tip = "Leave battleground quests out of the route in this zone and in all quests. They are listed under Avoid as PvP." },
 			{ key = "showOnMap", kind = "check", label = "Numbered pins", tip = "Numbered round pins on the world map and the minimap." },
-			{ key = "useTomTom", kind = "check", needs = "TomTom", label = "TomTom arrow", tip = "A TomTom waypoint for every step that has a pin. The arrow follows step 1 when the route changes." },
+			{ key = "useTomTom", kind = "check", needs = "TomTom", label = "Every step", tip = "Off: one TomTom arrow for the current step. On: a waypoint for every step. Wayfarer removes its own previous waypoints first, and leaves yours alone." },
 			{ key = "useFlights", kind = "check", label = "Flight paths", tip = "Compare a long leg with flight masters you know, and with boats and zeppelins." },
 			{ key = "scope", kind = "menu", label = "Route scope", tip = "This zone, or every non-dungeon quest in the log.", choices = { { "zone", "This zone" }, { "all", "All quests" } } },
 			{ key = "maxLevelsAbove", kind = "slider", label = "Levels above", tip = "Quests higher than you by more than this wait.", min = 0, max = 10, step = 1 },
@@ -40,6 +43,44 @@ ns.SETTINGS = {
 		},
 	},
 }
+
+function ns.LogHash(ids, zone, x, y)
+	local list = {}
+	for i = 1, #(ids or {}) do
+		list[#list + 1] = tostring(ids[i])
+	end
+	table.sort(list)
+	local rx = math.floor((tonumber(x) or 0) + 0.5)
+	local ry = math.floor((tonumber(y) or 0) + 0.5)
+	return table.concat(list, ",") .. "|" .. tostring(zone or "") .. "|" .. rx .. "|" .. ry
+end
+
+function ns.ClampInterval(seconds)
+	local n = math.floor((tonumber(seconds) or 30) + 0.5)
+	if n < 15 then
+		n = 15
+	elseif n > 120 then
+		n = 120
+	end
+	return n
+end
+
+function ns.ShouldTickRoute(opts)
+	opts = opts or {}
+	if opts.enabled == false then
+		return false
+	end
+	if opts.inCombat then
+		return false
+	end
+	if not opts.windowShown and not opts.useArrow then
+		return false
+	end
+	if opts.hash ~= nil and opts.hash == opts.lastHash then
+		return false
+	end
+	return true
+end
 
 function ns.TomTomLoaded()
 	return TomTom ~= nil

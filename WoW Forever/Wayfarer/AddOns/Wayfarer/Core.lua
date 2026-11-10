@@ -20,7 +20,7 @@ local function Metadata(field)
 	return nil
 end
 
-ns.version = Metadata("Version") or "1.3.2"
+ns.version = Metadata("Version") or "1.3.3"
 
 function ns:Print(message)
 	print("|cffffd36aWayfarer:|r " .. tostring(message))
@@ -98,10 +98,80 @@ function ns.NoteChange(event)
 	end)
 end
 
+function ns.RestartRouteTicker()
+	if ns.routeTicker and ns.routeTicker.Cancel then
+		pcall(ns.routeTicker.Cancel, ns.routeTicker)
+	end
+	ns.routeTicker = nil
+	local db = ns.Settings()
+	if db.autoRecalc == false then
+		return
+	end
+	local interval = ns.ClampInterval and ns.ClampInterval(db.autoInterval) or 30
+	local function pulse()
+		local current = ns.Settings()
+		local hash = ns.CurrentRouteHash and ns.CurrentRouteHash() or ""
+		local shown = ns.mainFrame and ns.mainFrame.IsShown and ns.mainFrame:IsShown()
+		if not ns.ShouldTickRoute or not ns.ShouldTickRoute({
+			enabled = current.autoRecalc ~= false,
+			inCombat = ns.InCombat and ns.InCombat(),
+			windowShown = shown and true or false,
+			useArrow = TomTom ~= nil,
+			hash = hash,
+			lastHash = ns.lastRouteHash,
+		}) then
+			return
+		end
+		ns.lastRouteHash = hash
+		if ns.Refresh then
+			ns.Refresh(false)
+		end
+	end
+	if C_Timer and C_Timer.NewTicker then
+		ns.routeTicker = C_Timer.NewTicker(interval, pulse)
+	end
+end
+
+function ns.CurrentRouteHash()
+	local ids = {}
+	local count = 0
+	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
+		local ok, value = pcall(C_QuestLog.GetNumQuestLogEntries)
+		if ok then
+			count = tonumber(value) or 0
+		end
+	elseif GetNumQuestLogEntries then
+		local ok, value = pcall(GetNumQuestLogEntries)
+		if ok then
+			count = tonumber(value) or 0
+		end
+	end
+	for i = 1, count do
+		if C_QuestLog and C_QuestLog.GetInfo then
+			local ok, info = pcall(C_QuestLog.GetInfo, i)
+			if ok and type(info) == "table" and info.questID and not info.isHeader then
+				ids[#ids + 1] = info.questID
+			end
+		end
+	end
+	if #ids == 0 then
+		ids[1] = count
+	end
+	local player, map
+	if ns.PlayerPosition then
+		player, map = ns.PlayerPosition()
+	end
+	if ns.LogHash then
+		return ns.LogHash(ids, map, player and player.x, player and player.y)
+	end
+	return tostring(count)
+end
+
 ns.driver = CreateFrame("Frame")
 ns.driver:RegisterEvent("ADDON_LOADED")
 ns.driver:RegisterEvent("PLAYER_LOGIN")
 ns.driver:RegisterEvent("PLAYER_ENTERING_WORLD")
+ns.driver:RegisterEvent("QUEST_LOG_UPDATE")
 ns.driver:RegisterEvent("QUEST_ACCEPTED")
 ns.driver:RegisterEvent("QUEST_REMOVED")
 ns.driver:RegisterEvent("QUEST_TURNED_IN")
@@ -114,6 +184,12 @@ ns.driver:SetScript("OnEvent", function(_, event, name)
 		ns.EnsureUI()
 		if ns.RegisterSettings then
 			ns.RegisterSettings()
+		end
+		if ns.SweepTomTom then
+			ns.SweepTomTom()
+		end
+		if ns.RestartRouteTicker then
+			ns.RestartRouteTicker()
 		end
 		if ns.ApplyPlaceRules then
 			ns.ApplyPlaceRules("login")

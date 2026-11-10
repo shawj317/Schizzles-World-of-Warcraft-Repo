@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.3 (2026-11-10)
+
+- The green arrows left of the minimap were Wayfarer's TomTom waypoints. An earlier guess that they belonged to another addon was wrong. Each route now removes only Wayfarer's own waypoints before adding the next ones, so they do not pile up, and other TomTom waypoints stay. The default is one arrow for the current step. Every step is an option. Clicking a step always creates that waypoint again and points the crazy arrow at it, including after TomTom's own clear. Waypoints are not saved across reloads. An unchanged step does not replace the arrow.
+- This zone keeps only steps whose map is the current zone or a child of it. A turn-in, objective, or Questie follow-up on another zone's map is left out, and This zone does not add a flight out of the zone.
+- Omit PvP quests is on by default, next to Skip dungeons. Battleground headers (Warsong Gulch, Arathi Basin, Alterac Valley, and the others), PvP tag 41, and battleground maps are listed under Avoid as PvP in both route scopes.
+- Auto recalculate is on by default, every 30 seconds (15 to 120). It waits out combat, skips when the window is hidden and TomTom is not loaded, and skips when the log, zone, and rounded position have not changed. Quest log and zone events stay throttled.
+
 ## 1.3.2 (2026-11-10)
 
 - Wayfarer is registered in the AddOns list before any individual setting. A control that fails is skipped. The cog opens that category by id. If the category never registered, it says so in chat instead of opening the Game tab. `/wayfarer debugsettings` prints the errors and which Settings functions this client has.

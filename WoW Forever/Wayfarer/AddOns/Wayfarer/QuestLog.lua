@@ -470,6 +470,106 @@ local function IdSetFrom(...)
 	return set
 end
 
+local PVP_TAG = {
+	[41] = true,
+}
+
+local PVP_ZONE = {
+	[2597] = true,
+	[3277] = true,
+	[3358] = true,
+	[3820] = true,
+	[4384] = true,
+	[4710] = true,
+}
+
+local function TagMeansPvp(first, second)
+	if type(first) == "number" and PVP_TAG[first] then
+		return true
+	end
+	if type(second) == "number" and PVP_TAG[second] then
+		return true
+	end
+	local text = ""
+	if type(first) == "string" then
+		text = first
+	end
+	if type(second) == "string" then
+		text = text .. " " .. second
+	end
+	return string.find(string.lower(text), "pvp", 1, true) ~= nil
+end
+
+local function MarkPvp(quest, db)
+	if type(quest) ~= "table" or quest.pvp then
+		return
+	end
+	if ns.Planner.IsPvpHeader(quest.header) then
+		quest.pvp = true
+		return
+	end
+	local id = tonumber(quest.id)
+	if id and GetQuestTagInfo then
+		local ok, first, second = pcall(GetQuestTagInfo, id)
+		if ok and TagMeansPvp(first, second) then
+			quest.pvp = true
+			return
+		end
+	end
+	if id and C_QuestLog and C_QuestLog.GetQuestTagInfo then
+		local ok, info = pcall(C_QuestLog.GetQuestTagInfo, id)
+		if ok and type(info) == "table" and TagMeansPvp(info.tagID, info.tagName) then
+			quest.pvp = true
+			return
+		end
+		if ok and TagMeansPvp(info, nil) then
+			quest.pvp = true
+			return
+		end
+	end
+	local record
+	if db and id then
+		record = QCall(db, "GetQuest", id)
+	end
+	if type(record) == "table" then
+		if record.requiredBG or record.pvp then
+			quest.pvp = true
+			return
+		end
+		local sort = tonumber(record.zoneOrSort)
+		if sort and (PVP_ZONE[sort] or PVP_ZONE[math.abs(sort)]) then
+			quest.pvp = true
+			return
+		end
+	end
+	local function pointsPvp(points)
+		for i = 1, #(points or {}) do
+			local point = points[i]
+			if type(point) == "table" and (ns.Planner.IsPvpHeader(point.zoneName) or PVP_ZONE[tonumber(point.zone) or 0]) then
+				return true
+			end
+			if type(point) == "table" and point.uiMap and C_Map and C_Map.GetMapInfo then
+				local ok, info = pcall(C_Map.GetMapInfo, point.uiMap)
+				if ok and type(info) == "table" and ns.Planner.IsPvpHeader(info.name) then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	if not quest.complete then
+		for i = 1, #(quest.objectives or {}) do
+			if pointsPvp(quest.objectives[i].points) then
+				quest.pvp = true
+				return
+			end
+		end
+	end
+	if quest.turnin and pointsPvp(quest.turnin.points) then
+		quest.pvp = true
+	end
+end
+
 local DUNGEON_TAG = {
 	[62] = true,
 	[81] = true,
@@ -1287,6 +1387,7 @@ local function ScanQuests()
 	for i = 1, #quests do
 		AttachQuestie(quests[i], db, playerLevel, playerMap, ids, inLog)
 		MarkDungeon(quests[i], db)
+		MarkPvp(quests[i], db)
 	end
 	RestoreCollapsed(opened)
 	if previous and previous > 0 and SelectQuestLogEntry then
@@ -1294,17 +1395,43 @@ local function ScanQuests()
 	end
 
 	local dbSettings = ns.Settings()
+	local zone = { ids = ids, names = names, parents = parents }
+	if dbSettings.scope ~= "all" and playerMap and C_Map and C_Map.GetMapInfo then
+		local parentOf = {}
+		local root = playerMap
+		local cursor = playerMap
+		local guard = 0
+		while cursor and guard < 12 do
+			local ok, info = pcall(C_Map.GetMapInfo, cursor)
+			if not ok or type(info) ~= "table" then
+				break
+			end
+			if info.mapType == 3 then
+				root = cursor
+			end
+			local parent = tonumber(info.parentMapID)
+			if not parent or parent == 0 or parent == cursor then
+				break
+			end
+			parentOf[cursor] = parent
+			cursor = parent
+			guard = guard + 1
+		end
+		zone.root = root
+		zone.parentOf = parentOf
+	end
 	return ns.Planner.Build({
 		playerLevel = playerLevel,
 		greenRange = green,
 		maxLevelsAbove = dbSettings.maxLevelsAbove,
 		includeLowLevel = dbSettings.includeLowLevel,
 		omitDungeons = dbSettings.omitDungeons,
+		omitPvp = dbSettings.omitPvp,
 		scope = dbSettings.scope,
 		useFlights = dbSettings.useFlights,
 		player = player,
 		speed = PlayerSpeed(),
-		zone = { ids = ids, names = names, parents = parents },
+		zone = zone,
 		zoneLabel = zoneLabel,
 		parents = parents,
 		namesById = namesById,

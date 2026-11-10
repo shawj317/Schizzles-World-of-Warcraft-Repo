@@ -5,6 +5,7 @@ local _, ns = ...
 
 local routePins = {}
 local routeKey
+local waypointKey
 local activePlan
 local arrowUID
 local miniPool = {}
@@ -49,99 +50,62 @@ local function SameStep(a, b)
 	return a.questId == b.questId and a.title == b.title and a.verb == b.verb and a.x == b.x and a.y == b.y
 end
 
-local function ClearTomTom()
-	if TomTom and TomTom.RemoveWaypoint then
-		for i = 1, #routePins do
-			if routePins[i].uid then
-				pcall(TomTom.RemoveWaypoint, TomTom, routePins[i].uid)
-			end
+local function StepIndex(steps, step)
+	for i = 1, #(steps or {}) do
+		if SameStep(steps[i], step) then
+			return i
 		end
 	end
-	if arrowUID and TomTom and TomTom.RemoveWaypoint then
-		pcall(TomTom.RemoveWaypoint, TomTom, arrowUID)
-	end
-	routePins = {}
-	arrowUID = nil
-	routeKey = nil
+	return 1
 end
 
-local function AddTomTom(step, index)
-	if not TomTom or not step or not step.x or not step.y then
-		return nil
-	end
-	local title = StepTitle(step, index)
-	local uid
-	if step.uiMap and TomTom.AddWaypoint then
-		local ok, value = pcall(function()
-			return TomTom:AddWaypoint(step.uiMap, step.x / 100, step.y / 100, {
-				title = title,
-				persistent = false,
-				minimap = true,
-				world = true,
-				crazy = false,
-				from = "Wayfarer",
-				silent = true,
-				cleardistance = 0,
-			})
-		end)
-		if ok then
-			uid = value
+local function PlaceTomTom(steps, allSteps, focusIndex, announce, focusStep)
+	if not TomTom or not ns.ReplaceWaypoints then
+		if announce then
+			ns:Print(ns.L.NO_TOMTOM)
 		end
+		return
 	end
-	if not uid and TomTom.AddZWaypoint and step.areaId then
-		local ok, value = pcall(TomTom.AddZWaypoint, TomTom, 0, step.areaId, step.x, step.y, title, false, true, true, false)
-		if ok then
-			uid = value
+	if focusStep and (not focusStep.x or not focusStep.y) then
+		if announce then
+			ns:Print(string.format(ns.L.NO_MAP_PIN_STEP, focusStep.title or "That step"))
 		end
+		return
 	end
-	return uid
+	local planKey = ns.WaypointPlanKey and ns.WaypointPlanKey(steps, allSteps, focusIndex)
+	if planKey and planKey == waypointKey and ns.CacheStillValid and ns.CacheStillValid(TomTom, routePins, planKey) then
+		return
+	end
+	routePins, arrowUID = ns.ReplaceWaypoints(TomTom, routePins, steps, allSteps, focusIndex)
+	waypointKey = planKey
+	if announce and arrowUID then
+		local title = focusStep and (focusStep.title or focusStep.questName) or "the step"
+		ns:Print(string.format(ns.L.ARROW_SET, title))
+	elseif announce then
+		ns:Print(ns.L.TOMTOM_REFUSED)
+	end
+end
+
+function ns.SweepTomTom()
+	if TomTom and ns.RemoveOurWaypoints then
+		routePins = ns.RemoveOurWaypoints(TomTom, routePins)
+		arrowUID = nil
+		waypointKey = nil
+	end
 end
 
 local function FocusArrow(step, announce)
 	if not step then
 		return
 	end
-	if not TomTom then
-		if announce then
-			ns:Print(ns.L.NO_TOMTOM)
-		end
-		return
+	local steps = activePlan and activePlan.steps or { step }
+	local index = StepIndex(steps, step)
+	if not steps[index] or not SameStep(steps[index], step) then
+		steps = { step }
+		index = 1
 	end
-	if not step.x or not step.y then
-		if announce then
-			ns:Print(string.format(ns.L.NO_MAP_PIN_STEP, step.title or "That step"))
-		end
-		return
-	end
-	local pin, index
-	for i = 1, #routePins do
-		if SameStep(routePins[i].step, step) then
-			pin = routePins[i]
-			index = routePins[i].index
-			break
-		end
-	end
-	index = index or 1
-	local uid = pin and pin.uid
-	local title = StepTitle(step, index)
-	if not uid then
-		uid = AddTomTom(step, index)
-		if uid then
-			if pin then
-				pin.uid = uid
-			else
-				arrowUID = uid
-			end
-		end
-	end
-	if uid and TomTom.SetCrazyArrow then
-		pcall(TomTom.SetCrazyArrow, TomTom, uid, 10, title)
-	end
-	if uid and announce then
-		ns:Print(string.format(ns.L.ARROW_SET, step.title or "the step"))
-	elseif not uid and announce then
-		ns:Print(ns.L.TOMTOM_REFUSED)
-	end
+	local all = ns.Settings().useTomTom and true or false
+	PlaceTomTom(steps, all, index, announce, step)
 end
 
 local function PointAt(step, announce)
@@ -542,39 +506,11 @@ end)
 
 local function SyncRoute(plan, focusStep, announce)
 	activePlan = plan
-	local db = ns.Settings()
-	local key = RouteSignature(plan)
-	local changed = key ~= routeKey
-	if not db.useTomTom or not TomTom then
-		if #routePins > 0 or routeKey then
-			ClearTomTom()
-		end
-	elseif changed then
-		ClearTomTom()
-		local steps = plan and plan.steps or {}
-		for i = 1, #steps do
-			local step = steps[i]
-			if step.x and step.y then
-				routePins[#routePins + 1] = {
-					step = step,
-					index = i,
-					uid = AddTomTom(step, i),
-				}
-			end
-		end
-		routeKey = key
-	end
-	if db.useTomTom and TomTom then
-		local aim = focusStep
-		if not aim and changed and plan and plan.steps then
-			aim = plan.steps[1]
-		end
-		if aim then
-			FocusArrow(aim, announce and true or false)
-		end
-	elseif focusStep then
-		FocusArrow(focusStep, announce and true or false)
-	end
+	local steps = plan and plan.steps or {}
+	local index = focusStep and StepIndex(steps, focusStep) or 1
+	local aim = focusStep or steps[index]
+	PlaceTomTom(steps, ns.Settings().useTomTom and true or false, index, announce and true or false, aim)
+	routeKey = RouteSignature(plan)
 	if not db.showOnMap then
 		HidePool(miniPool)
 		HidePool(worldPool)

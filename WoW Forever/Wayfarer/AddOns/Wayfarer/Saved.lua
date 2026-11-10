@@ -11,8 +11,11 @@ ns.DEFAULTS = {
 	schema = 3,
 	includeLowLevel = false,
 	omitDungeons = true,
+	omitPvp = true,
+	autoRecalc = true,
+	autoInterval = 30,
 	showOnMap = true,
-	useTomTom = true,
+	useTomTom = false,
 	maxLevelsAbove = 3,
 	stepsShown = 7,
 	font = 1,
@@ -81,11 +84,30 @@ function ns.HealSettings(db)
 	if db.omitDungeons == nil then
 		db.omitDungeons = true
 	end
+	if db.omitPvp == nil then
+		db.omitPvp = true
+	end
+	if db.autoRecalc == nil then
+		db.autoRecalc = true
+	end
+	local function clampInterval(seconds)
+		if ns.ClampInterval then
+			return ns.ClampInterval(seconds)
+		end
+		local n = math.floor((tonumber(seconds) or 30) + 0.5)
+		if n < 15 then
+			n = 15
+		elseif n > 120 then
+			n = 120
+		end
+		return n
+	end
+	db.autoInterval = clampInterval(db.autoInterval)
 	if db.showOnMap == nil then
 		db.showOnMap = true
 	end
 	if db.useTomTom == nil then
-		db.useTomTom = true
+		db.useTomTom = false
 	end
 	db.maxLevelsAbove = planner.ClampAbove(db.maxLevelsAbove)
 	db.stepsShown = planner.ClampSteps(db.stepsShown)

@@ -253,9 +253,91 @@ function QuestRoute.PointsFromSpawns(spawns, defaultZone)
 	return points
 end
 
+function QuestRoute.MapInZone(uiMap, root, parentOf)
+	uiMap = tonumber(uiMap)
+	root = tonumber(root)
+	if not uiMap or not root then
+		return false
+	end
+	parentOf = parentOf or {}
+	local guard = 0
+	local cursor = uiMap
+	while cursor and guard < 12 do
+		if cursor == root then
+			return true
+		end
+		local parent = parentOf[cursor]
+		if not parent or parent == cursor then
+			return false
+		end
+		cursor = parent
+		guard = guard + 1
+	end
+	return false
+end
+
+QuestRoute.PVP_HEADERS = {
+	["Warsong Gulch"] = true,
+	["Arathi Basin"] = true,
+	["Alterac Valley"] = true,
+	["Eye of the Storm"] = true,
+	["Strand of the Ancients"] = true,
+	["Isle of Conquest"] = true,
+	["Battle for Gilneas"] = true,
+	["Twin Peaks"] = true,
+	["Silvershard Mines"] = true,
+	["Temple of Kotmogu"] = true,
+	["Deepwind Gorge"] = true,
+}
+
+function QuestRoute.IsPvpHeader(header)
+	if type(header) ~= "string" or header == "" then
+		return false
+	end
+	if QuestRoute.PVP_HEADERS[header] then
+		return true
+	end
+	local lower = string.lower(header)
+	return string.find(lower, "battleground", 1, true) ~= nil
+end
+
+function QuestRoute.IsPvpQuest(quest)
+	if type(quest) ~= "table" then
+		return false
+	end
+	if quest.pvp then
+		return true
+	end
+	if QuestRoute.IsPvpHeader(quest.header) then
+		return true
+	end
+	local function named(points)
+		for i = 1, #(points or {}) do
+			if type(points[i]) == "table" and QuestRoute.IsPvpHeader(points[i].zoneName) then
+				return true
+			end
+		end
+		return false
+	end
+	if not quest.complete then
+		for _, obj in ipairs(quest.objectives or {}) do
+			if named(obj.points) then
+				return true
+			end
+		end
+	end
+	if quest.turnin and named(quest.turnin.points) then
+		return true
+	end
+	return false
+end
+
 local function PointMatches(point, zone)
 	if type(point) ~= "table" or type(zone) ~= "table" then
 		return false
+	end
+	if zone.root and point.uiMap then
+		return QuestRoute.MapInZone(point.uiMap, zone.root, zone.parentOf)
 	end
 	local id = tonumber(point.zone)
 	local ids = zone.ids
@@ -839,6 +921,9 @@ local function CopyStep(stop)
 end
 
 local function FollowupTouches(quest, zone)
+	if zone.root then
+		return QuestRoute.Touches(quest, zone)
+	end
 	if quest.pickup and quest.pickup.atPrevious then
 		return true
 	end
@@ -859,6 +944,9 @@ local function RouteQuest(quest, zone, stops, notices, anchor, depth, seen, inpu
 		seen[quest.id] = true
 	end
 	if input.omitDungeons and quest.dungeon then
+		return
+	end
+	if input.omitPvp and QuestRoute.IsPvpQuest(quest) then
 		return
 	end
 
@@ -892,7 +980,7 @@ local function RouteQuest(quest, zone, stops, notices, anchor, depth, seen, inpu
 				local stripped = QuestRoute.WithoutPlayer(obj.points, input and input.player)
 				local points = FilterPoints(stripped, zone)
 				local pinless = not obj.points or #obj.points == 0 or #stripped == 0
-				local include = #points > 0 or (pinless and HeaderMatch(quest, zone))
+				local include = #points > 0 or (pinless and not zone.root and HeaderMatch(quest, zone))
 				if include then
 					local preds = {}
 					if pickupStop then
@@ -928,7 +1016,7 @@ local function RouteQuest(quest, zone, stops, notices, anchor, depth, seen, inpu
 	local turninStop
 	if canTurnIn then
 		local include = #turnPoints > 0
-		if not include and not outside and (HeaderMatch(quest, zone) or pickupStop or #objStops > 0) then
+		if not include and not outside and not zone.root and (HeaderMatch(quest, zone) or pickupStop or #objStops > 0) then
 			if HeaderMatch(quest, zone) or #turnPoints > 0 then
 				include = true
 			end
@@ -979,6 +1067,8 @@ local function RouteQuest(quest, zone, stops, notices, anchor, depth, seen, inpu
 			AddNotice(notices, (nextQuest.name or "The next quest") .. " is below your level.")
 		elseif input.omitDungeons and nextQuest.dungeon then
 			AddNotice(notices, (nextQuest.name or "The next quest") .. " is a dungeon quest.")
+		elseif input.omitPvp and QuestRoute.IsPvpQuest(nextQuest) then
+			AddNotice(notices, (nextQuest.name or "The next quest") .. " is a PvP quest.")
 		elseif FollowupTouches(nextQuest, zone) then
 			RouteQuest(nextQuest, zone, stops, notices, turninStop, depth + 1, seen, input)
 		else
@@ -1020,6 +1110,8 @@ local function PlanZone(quests, zone, input)
 			if QuestRoute.Touches(quest, zone) then
 				avoid[#avoid + 1] = { name = quest.name or "Quest", reason = "dungeon" }
 			end
+		elseif input.omitPvp and QuestRoute.IsPvpQuest(quest) then
+			avoid[#avoid + 1] = { name = quest.name or "Quest", reason = "PvP" }
 		elseif not QuestRoute.Touches(quest, zone) then
 			-- Another zone. The caller counts these.
 		elseif QuestRoute.IsTooHigh(quest.level, input.playerLevel, input.maxLevelsAbove) then
@@ -1053,7 +1145,17 @@ local function PlanZone(quests, zone, input)
 		if prev and prev.x and stop.x then
 			leg = LegYards(prev, stop, input.yards) / speed
 		end
-		if input.useFlights ~= false and type(input.travel) == "function" and prev and prev.x and stop.x and leg >= 180 then
+		local stayInZone = true
+		if input.scope ~= "all" and zone and zone.root then
+			local function here(point)
+				if not point or not point.uiMap then
+					return true
+				end
+				return QuestRoute.MapInZone(point.uiMap, zone.root, zone.parentOf)
+			end
+			stayInZone = here(prev) and here(stop)
+		end
+		if stayInZone and input.useFlights ~= false and type(input.travel) == "function" and prev and prev.x and stop.x and leg >= 180 then
 			local okHop, hop = pcall(input.travel, prev, stop)
 			if okHop and type(hop) == "table" and type(hop.seconds) == "number" and hop.seconds >= 0 and hop.seconds + 5 < leg then
 				leg = hop.seconds
@@ -1114,6 +1216,7 @@ function QuestRoute.Build(input)
 	input.maxLevelsAbove = QuestRoute.ClampAbove(input.maxLevelsAbove or 3)
 	input.includeLowLevel = input.includeLowLevel and true or false
 	input.omitDungeons = input.omitDungeons and true or false
+	input.omitPvp = input.omitPvp ~= false
 	if input.scope == "all" then
 		return BuildAll(input)
 	end
@@ -1367,6 +1470,8 @@ BuildAll = function(input)
 		if type(quest) == "table" and quest.dungeon then
 			omitted = omitted + 1
 			avoid[#avoid + 1] = { name = quest.name or "Quest", reason = "dungeon" }
+		elseif type(quest) == "table" and input.omitPvp and QuestRoute.IsPvpQuest(quest) then
+			avoid[#avoid + 1] = { name = quest.name or "Quest", reason = "PvP" }
 		else
 			open[#open + 1] = quest
 		end

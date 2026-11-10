@@ -77,6 +77,7 @@ local order = {
 	"Rules.lua",
 	"Core.lua",
 	"QuestLog.lua",
+	"Waypoints.lua",
 	"MapPins.lua",
 	"Widgets.lua",
 	"UI.lua",
