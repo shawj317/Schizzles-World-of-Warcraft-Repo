@@ -330,10 +330,13 @@ events:SetScript("OnEvent", function(_, event, arg1)
   elseif event == "AUCTION_HOUSE_SHOW" then
     if SL.EnsureAHTab then SL.EnsureAHTab() end
   elseif event == "AUCTION_HOUSE_CLOSED" then
-    if SL.CancelScan then SL.CancelScan() end
+    if SL.AbortScan then SL.AbortScan("Auction house closed. Scan stopped.") end
     if SL.HideAHPanel then SL.HideAHPanel() end
-  elseif event == "AUCTION_ITEM_LIST_UPDATE" or event == "REPLICATE_ITEM_LIST_UPDATE" then
-    if SL.OnAuctionEvent then SL.OnAuctionEvent(event) end
+  elseif event == "AUCTION_ITEM_LIST_UPDATE" or event == "REPLICATE_ITEM_LIST_UPDATE"
+    or event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" or event == "AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED"
+    or event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "COMMODITY_SEARCH_RESULTS_UPDATED"
+    or event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then
+    if SL.OnAuctionEvent then SL.OnAuctionEvent(event, arg1) end
   end
 end)
 local function listen(eventName)
@@ -355,3 +358,8 @@ listen("AUCTION_HOUSE_SHOW")
 listen("AUCTION_HOUSE_CLOSED")
 listen("AUCTION_ITEM_LIST_UPDATE")
 listen("REPLICATE_ITEM_LIST_UPDATE")
+listen("AUCTION_HOUSE_THROTTLED_SYSTEM_READY")
+listen("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED")
+listen("ITEM_SEARCH_RESULTS_UPDATED")
+listen("COMMODITY_SEARCH_RESULTS_UPDATED")
+listen("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")

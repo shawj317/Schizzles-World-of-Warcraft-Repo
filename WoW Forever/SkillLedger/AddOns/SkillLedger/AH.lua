@@ -1,25 +1,23 @@
--- Auction House tab. Sits on the bottom tab row after whatever tabs are already
--- there (Browse, Bids, Auctions, Auctionator, TSM, and so on). No OnUpdate.
+-- Modern AuctionHouseFrame tab (Forever / Camelot). Anchored after the last
+-- tab already in the row, using AuctionHouseFrameDisplayModeTabTemplate the
+-- way LibAHTab (Auctionator) does. Not inserted into AuctionHouseFrame.Tabs
+-- and not passed to PanelTemplates_SetNumTabs, so Buy/Sell/Auctions and the
+-- TSM tabs keep their own widths. No OnUpdate.
 
 local SL = SkillLedger
 
 local tab
 local panel
 local statusText
-local host
-local hookedSetTab = false
 local layoutToken = 0
+local hookedMode = false
 
-local function classicHost()
-  if AuctionFrame and (AuctionFrameBrowse or _G.AuctionFrameTab1) then
-    return AuctionFrame
+local function camelotOffset()
+  if WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_CAMELOT
+    and WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE and WOW_PROJECT_ID ~= WOW_PROJECT_CAMELOT then
+    return -14
   end
-  return nil
-end
-
-local function modernHost()
-  if AuctionHouseFrame then return AuctionHouseFrame end
-  return nil
+  return 3
 end
 
 local function remember(list, button)
@@ -30,37 +28,31 @@ local function remember(list, button)
   list[#list + 1] = button
 end
 
-local function namedTabs()
-  local list = {}
-  local i = 1
-  while i < 30 do
-    local button = _G["AuctionFrameTab" .. i] or _G["AuctionHouseFrameTab" .. i]
-    if not button then break end
-    remember(list, button)
-    i = i + 1
-  end
-  return list
-end
-
-local function alongBottom(parent)
-  local list = namedTabs()
-  if not parent or not parent.GetChildren or not parent.GetBottom then return list end
-  local parentBottom = parent:GetBottom()
-  if not parentBottom then return list end
+local function collect(parent, list, depth)
+  if not parent or not parent.GetChildren or depth > 4 then return end
   local children = { parent:GetChildren() }
   for i = 1, #children do
     local child = children[i]
-    if child and child.GetObjectType and child:GetObjectType() == "Button" and child.GetBottom and child:GetBottom() then
-      local id = child.GetID and child:GetID() or 0
-      local gap = child:GetBottom() - parentBottom
-      if id > 0 and gap > -30 and gap < 40 then
-        remember(list, child)
+    if child and child.GetObjectType and child:GetObjectType() == "Button" then
+      local text = child.GetText and child:GetText()
+      local bottom = child.GetBottom and child:GetBottom()
+      local parentBottom = parent.GetBottom and parent:GetBottom()
+      if text and text ~= "" and bottom and parentBottom then
+        local gap = bottom - parentBottom
+        if gap > -40 and gap < 70 then remember(list, child) end
       end
     end
+    if child then collect(child, list, depth + 1) end
   end
-  if parent.Tabs then
-    for i = 1, #parent.Tabs do remember(list, parent.Tabs[i]) end
+end
+
+local function tabButtons()
+  local list = {}
+  local frame = AuctionHouseFrame
+  if frame and frame.Tabs then
+    for i = 1, #frame.Tabs do remember(list, frame.Tabs[i]) end
   end
+  if frame then collect(frame, list, 0) end
   return list
 end
 
@@ -69,7 +61,7 @@ local function rightmost(list)
   for i = 1, #list do
     local button = list[i]
     local right = button.GetRight and button:GetRight()
-    if right and (not bestRight or right > bestRight) then
+    if right and (not bestRight or right > bestRight + 0.5) then
       best = button
       bestRight = right
     end
@@ -77,58 +69,59 @@ local function rightmost(list)
   return best
 end
 
-local function hideBlizzardPages()
-  if AuctionFrameBrowse then AuctionFrameBrowse:Hide() end
-  if AuctionFrameBids then AuctionFrameBids:Hide() end
-  if AuctionFrameAuctions then AuctionFrameAuctions:Hide() end
-end
-
-local function showOthers()
+local function hidePanel()
   if panel then panel:Hide() end
+  if tab and PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, tab) end
 end
 
 function SL.HideAHPanel()
-  showOthers()
+  hidePanel()
 end
 
 function SL.RefreshAHPanel()
-  if statusText then statusText:SetText(SL.ScanStatus and SL.ScanStatus() or "") end
+  if statusText and SL.ScanStatus then statusText:SetText(SL.ScanStatus()) end
+end
+
+local function watch(button)
+  if not button or button == tab or button.skillLedgerHooked or not button.HookScript then return end
+  button.skillLedgerHooked = true
+  button:HookScript("OnClick", function(self)
+    if self ~= tab then hidePanel() end
+  end)
 end
 
 local function selectUs()
-  if not tab or not host then return end
-  if AuctionFrameTab_OnClick and host == AuctionFrame then
-    pcall(AuctionFrameTab_OnClick, tab)
-  elseif PanelTemplates_SetTab then
-    pcall(PanelTemplates_SetTab, host, tab:GetID())
+  if not tab or not AuctionHouseFrame then return end
+  if AuctionHouseFrame.SetDisplayMode then
+    pcall(AuctionHouseFrame.SetDisplayMode, AuctionHouseFrame, {})
   end
-  hideBlizzardPages()
+  if AuctionHouseFrame.Tabs and PanelTemplates_DeselectTab then
+    for i = 1, #AuctionHouseFrame.Tabs do
+      pcall(PanelTemplates_DeselectTab, AuctionHouseFrame.Tabs[i])
+    end
+  end
+  local others = tabButtons()
+  if PanelTemplates_DeselectTab then
+    for i = 1, #others do pcall(PanelTemplates_DeselectTab, others[i]) end
+  end
+  if PanelTemplates_SelectTab then pcall(PanelTemplates_SelectTab, tab) end
+  if AuctionHouseFrame.SetTitle then pcall(AuctionHouseFrame.SetTitle, AuctionHouseFrame, "SkillLedger") end
   if panel then
     panel:Show()
     SL.RefreshAHPanel()
   end
 end
 
-local function watchTab(button)
-  if not button or button == tab or button.skillLedgerHooked or not button.HookScript then return end
-  button.skillLedgerHooked = true
-  button:HookScript("OnClick", function(self)
-    if self ~= tab then showOthers() end
-  end)
-end
-
 local function place()
-  if not tab or not host then return end
-  local others = alongBottom(host)
-  for i = 1, #others do watchTab(others[i]) end
+  if not tab or not AuctionHouseFrame then return end
+  local others = tabButtons()
+  for i = 1, #others do watch(others[i]) end
   local anchor = rightmost(others)
   tab:ClearAllPoints()
   if anchor then
-    tab:SetPoint("LEFT", anchor, "RIGHT", -15, 0)
-  elseif _G.AuctionFrameTab1 then
-    tab:SetPoint("LEFT", _G.AuctionFrameTab1, "RIGHT", -15, 0)
-  else
-    tab:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", 20, -30)
+    tab:SetPoint("TOPLEFT", anchor, "TOPRIGHT", camelotOffset(), 0)
+  elseif AuctionHouseFrame.Tabs and AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs] then
+    tab:SetPoint("TOPLEFT", AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs], "TOPRIGHT", camelotOffset(), 0)
   end
 end
 
@@ -136,60 +129,28 @@ local function paint(widget)
   local backdrop = widget:CreateTexture(nil, "BACKGROUND")
   backdrop:SetAllPoints()
   if backdrop.SetColorTexture then
-    backdrop:SetColorTexture(0.06, 0.06, 0.06, 0.92)
+    backdrop:SetColorTexture(0.05, 0.05, 0.05, 0.94)
   else
     backdrop:SetTexture("Interface\\Buttons\\WHITE8x8")
-    backdrop:SetVertexColor(0.06, 0.06, 0.06, 0.92)
+    backdrop:SetVertexColor(0.05, 0.05, 0.05, 0.94)
   end
 end
 
-local function makeTab(parent)
-  local id = (parent.numTabs or 0) + 1
-  while _G["AuctionFrameTab" .. id] or _G["AuctionHouseFrameTab" .. id] do
-    id = id + 1
-  end
-  local name = (parent == AuctionFrame) and ("AuctionFrameTab" .. id) or ("AuctionHouseFrameTab" .. id)
-  local button
-  local templates = { "AuctionTabTemplate", "CharacterFrameTabButtonTemplate", "PanelTabButtonTemplate" }
-  for i = 1, #templates do
-    local ok, created = pcall(CreateFrame, "Button", name, parent, templates[i])
-    if ok and created then
-      button = created
-      break
-    end
-  end
-  if not button then
-    button = CreateFrame("Button", name, parent, "UIPanelButtonTemplate")
-    button:SetSize(110, 24)
-  end
-  button:SetID(id)
-  button:SetText("SkillLedger")
-  if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, button, 0) end
-  if PanelTemplates_SetNumTabs then
-    local count = parent.numTabs or 0
-    if id > count then pcall(PanelTemplates_SetNumTabs, parent, id) end
-  end
-  if PanelTemplates_EnableTab then pcall(PanelTemplates_EnableTab, parent, id) end
-  button:SetScript("OnClick", function()
-    selectUs()
-  end)
-  return button
-end
-
-local function makePanel(parent)
-  local frame = CreateFrame("Frame", "SkillLedgerAHPanel", parent)
-  frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 18, -70)
-  frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -18, 36)
+local function makePanel()
+  local frame = CreateFrame("Frame", "SkillLedgerAHPanel", AuctionHouseFrame)
+  frame:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPLEFT", 6, -26)
+  frame:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", -6, 38)
   paint(frame)
+  frame:SetFrameLevel((AuctionHouseFrame:GetFrameLevel() or 1) + 10)
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 16, -16)
   title:SetText("SkillLedger")
   statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  statusText:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
+  statusText:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
   statusText:SetJustifyH("LEFT")
-  statusText:SetWidth(420)
+  statusText:SetWidth(460)
   local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  button:SetSize(120, 24)
+  button:SetSize(140, 24)
   button:SetPoint("TOPLEFT", statusText, "BOTTOMLEFT", 0, -16)
   button:SetText("Scan")
   button:SetScript("OnClick", function()
@@ -198,44 +159,42 @@ local function makePanel(parent)
   end)
   local note = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   note:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -12)
+  note:SetWidth(460)
   note:SetJustifyH("LEFT")
-  note:SetWidth(420)
-  note:SetText("One full scan when the client allows it. Otherwise the reagent list, slowly. The window stays on this tab until you pick another.")
+  note:SetText("Forever uses the retail auction house. The scan calls C_AuctionHouse.ReplicateItems when the client allows it, and otherwise searches each reagent with SendSearchQuery, waiting out the throttle.")
   frame:Hide()
   return frame
 end
 
+local function makeTab()
+  local button = CreateFrame("Button", "SkillLedgerAHTab", AuctionHouseFrame, "AuctionHouseFrameDisplayModeTabTemplate")
+  button:SetText("SkillLedger")
+  if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, button, 20, nil, 70) end
+  if PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, button) end
+  button:SetScript("OnClick", selectUs)
+  return button
+end
+
 function SL.EnsureAHTab()
-  host = classicHost() or modernHost()
-  if not host or not CreateFrame then return end
+  if not AuctionHouseFrame or not CreateFrame then return end
   if not tab then
-    local ok, created = pcall(makeTab, host)
-    if not ok or not created then return end
+    local ok, created = pcall(makeTab)
+    if not ok or not created then
+      if SL.Say then SL.Say("could not add an auction house tab (" .. tostring(created) .. ").") end
+      return
+    end
     tab = created
   end
   if not panel then
-    local ok, created = pcall(makePanel, host)
+    local ok, created = pcall(makePanel)
     if ok then panel = created end
   end
-  if not hookedSetTab and hooksecurefunc and PanelTemplates_SetTab then
-    hookedSetTab = true
-    hooksecurefunc("PanelTemplates_SetTab", function(frame, id)
-      if frame == host and tab and id ~= tab:GetID() then
-        showOthers()
-      end
-    end)
-  end
-  if AuctionFrameTab_OnClick and not SL.ahClickHooked and hooksecurefunc then
-    SL.ahClickHooked = true
-    hooksecurefunc("AuctionFrameTab_OnClick", function(clicked)
-      local id = clicked and clicked.GetID and clicked:GetID()
-      if tab and id == tab:GetID() then
-        hideBlizzardPages()
-        if panel then panel:Show() end
-        SL.RefreshAHPanel()
-      else
-        showOthers()
-      end
+  if not hookedMode and hooksecurefunc and AuctionHouseFrame.SetDisplayMode then
+    hookedMode = true
+    hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
+      if mode == nil then return end
+      if type(mode) == "table" and #mode == 0 then return end
+      hidePanel()
     end)
   end
   layoutToken = layoutToken + 1
@@ -243,6 +202,10 @@ function SL.EnsureAHTab()
   place()
   if C_Timer and C_Timer.After then
     C_Timer.After(0, function()
+      if token ~= layoutToken then return end
+      place()
+    end)
+    C_Timer.After(0.3, function()
       if token ~= layoutToken then return end
       place()
     end)

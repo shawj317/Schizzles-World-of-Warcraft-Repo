@@ -332,7 +332,30 @@ function SL.SnapshotMerchant()
 end
 
 local function chat(text)
-  print("|cffe0b060SkillLedger|r " .. text)
+  if SL.Say then
+    SL.Say(text)
+  else
+    print("|cffe0b060SkillLedger|r " .. text)
+  end
+end
+
+local function chime()
+  if not PlaySound then return end
+  if SOUNDKIT and SOUNDKIT.READY_CHECK_READY then
+    if pcall(PlaySound, SOUNDKIT.READY_CHECK_READY) then return end
+  end
+  if SOUNDKIT and SOUNDKIT.AUCTION_WINDOW_CLOSE then
+    pcall(PlaySound, SOUNDKIT.AUCTION_WINDOW_CLOSE)
+  end
+end
+
+local function splash(text)
+  if RaidNotice_AddMessage and RaidWarningFrame and ChatTypeInfo and ChatTypeInfo.RAID_WARNING then
+    if pcall(RaidNotice_AddMessage, RaidWarningFrame, text, ChatTypeInfo.RAID_WARNING) then return end
+  end
+  if UIErrorsFrame and UIErrorsFrame.AddMessage then
+    pcall(UIErrorsFrame.AddMessage, UIErrorsFrame, text, 1, 0.82, 0, 1)
+  end
 end
 
 function SL.CancelScan()
@@ -343,15 +366,18 @@ end
 
 function SL.ScanStatus()
   if scan.active then
-    if scan.mode == "reagents" and scan.queue then
+    if scan.waitingThrottle then
+      return "Waiting for the auction house throttle (" .. (scan.path or "scan") .. ")."
+    end
+    if (scan.mode == "reagents" or scan.mode == "search") and scan.queue then
       local at = (scan.query or 1) - 1
       if at < 0 then at = 0 end
-      return "Scanning reagents " .. at .. " / " .. #scan.queue .. "."
+      return "Scanning " .. at .. " / " .. #scan.queue .. " (" .. (scan.path or "search") .. ")."
     end
     if scan.total and scan.total > 0 and scan.index then
-      return "Reading auctions " .. scan.index .. " / " .. scan.total .. "."
+      return "Reading auctions " .. scan.index .. " / " .. scan.total .. " (" .. (scan.path or "replicate") .. ")."
     end
-    return "Scan running."
+    return "Scan running (" .. (scan.path or "auction house") .. ")."
   end
   local prices = SL.DB and SL.DB() and SL.DB().prices
   local when = prices and prices.updated
@@ -430,7 +456,11 @@ local function commitPrices(working, mode)
   db.prices.full = mode == "full"
   local priced = 0
   for i = 1, #items do if items[i].unit and items[i].unit > 0 then priced = priced + 1 end end
-  chat("auction scan saved " .. priced .. " prices.")
+  local path = scan.path or mode or "scan"
+  local detail = priced == 0 and " The auction house returned no listings." or ""
+  chat("Scan complete (" .. path .. "): " .. priced .. " prices saved." .. detail)
+  splash("SkillLedger: scan complete, " .. priced .. " prices saved")
+  chime()
   SL.CancelScan()
   showStatus()
   if SL.Refresh then SL.Refresh() end
@@ -604,23 +634,281 @@ local function onReplicate()
   end)
 end
 
-function SL.OnAuctionEvent(event)
-  if event == "REPLICATE_ITEM_LIST_UPDATE" then
-    onReplicate()
+function SL.AbortScan(reason)
+  if not scan.active then return end
+  SL.CancelScan()
+  chat(reason)
+  splash("SkillLedger: " .. reason)
+  showStatus()
+end
+
+local function ahOpen()
+  if AuctionHouseFrame and AuctionHouseFrame.IsShown and AuctionHouseFrame:IsShown() then return true end
+  if AuctionFrame and AuctionFrame.IsShown and AuctionFrame:IsShown() then return true end
+  return false
+end
+
+local function throttleReady()
+  if not C_AuctionHouse or not C_AuctionHouse.IsThrottledMessageSystemReady then return true end
+  local ok, value = pcall(C_AuctionHouse.IsThrottledMessageSystemReady)
+  if not ok then return true end
+  return value and true or false
+end
+
+local function noteUnit(itemId, name, unit, listed)
+  if not itemId or not unit or unit <= 0 then return end
+  listed = listed or 1
+  if listed <= 0 then listed = 1 end
+  consider(scan.working, itemId, name, unit * listed, listed)
+end
+
+local function readCommodity(itemId, name)
+  if not C_AuctionHouse.GetNumCommoditySearchResults then return false end
+  local ok, count = pcall(C_AuctionHouse.GetNumCommoditySearchResults, itemId)
+  if not ok or not count or count < 1 then return false end
+  local best, qty = nil, 0
+  for i = 1, count do
+    local okInfo, info = pcall(C_AuctionHouse.GetCommoditySearchResultInfo, itemId, i)
+    if okInfo and type(info) == "table" and info.unitPrice and info.unitPrice > 0 then
+      local q = info.quantity or 1
+      qty = qty + q
+      if not best or info.unitPrice < best then best = info.unitPrice end
+    end
+  end
+  if best then noteUnit(itemId, name, best, qty) end
+  return true
+end
+
+local function readItemKey(itemKey, name)
+  if not itemKey or not C_AuctionHouse.GetNumItemSearchResults then return false end
+  local ok, count = pcall(C_AuctionHouse.GetNumItemSearchResults, itemKey)
+  if not ok or not count or count < 1 then return false end
+  local best, qty = nil, 0
+  for i = 1, count do
+    local okInfo, info = pcall(C_AuctionHouse.GetItemSearchResultInfo, itemKey, i)
+    if okInfo and type(info) == "table" then
+      local price = info.buyoutAmount or info.buyoutPrice
+      local q = info.quantity or 1
+      if price and price > 0 then
+        qty = qty + q
+        local unit = math.floor(price / q)
+        if unit > 0 and (not best or unit < best) then best = unit end
+      end
+    end
+  end
+  if best then noteUnit(itemKey.itemID, name, best, qty) end
+  return best ~= nil
+end
+
+local function readBrowse(onlyId)
+  if not C_AuctionHouse.GetBrowseResults then return false end
+  local ok, results = pcall(C_AuctionHouse.GetBrowseResults)
+  if not ok or type(results) ~= "table" then return false end
+  local found = false
+  for i = 1, #results do
+    local row = results[i]
+    local key = row and row.itemKey
+    local id = key and key.itemID
+    if id and (not onlyId or id == onlyId) and row.minPrice and row.minPrice > 0 then
+      noteUnit(id, nil, row.minPrice, row.totalQuantity or 1)
+      found = true
+    end
+  end
+  return found
+end
+
+local function priceSorts()
+  if Enum and Enum.AuctionHouseSortOrder then
+    return { { sortOrder = Enum.AuctionHouseSortOrder.Price, reverseSort = false } }
+  end
+  return {}
+end
+
+local function itemKeyFor(itemId)
+  if C_AuctionHouse.MakeItemKey then
+    local ok, key = pcall(C_AuctionHouse.MakeItemKey, itemId)
+    if ok and type(key) == "table" then return key end
+  end
+  return { itemID = itemId, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 }
+end
+
+local sendNextSearch
+
+local function armSearchTimeout()
+  local token = scan.token
+  if not C_Timer or not C_Timer.After then return end
+  C_Timer.After(8, function()
+    if not scan.active or scan.token ~= token or not scan.waitingResult then return end
+    scan.waitingResult = false
+    local entry = scan.pendingItem
+    if entry then scan.misses[entry.id] = entry.name end
+    scan.query = (scan.query or 1) + 1
+    chat("No answer for " .. (entry and entry.name or "a reagent") .. ". Continuing.")
+    sendNextSearch()
+  end)
+end
+
+sendNextSearch = function()
+  if not scan.active or scan.mode ~= "search" then return end
+  if not ahOpen() then
+    SL.AbortScan("Auction house closed. Scan stopped.")
+    return
+  end
+  local queue = scan.queue or {}
+  local index = scan.query or 1
+  if index > #queue then
+    commitPrices(scan.working, "search")
+    return
+  end
+  if not throttleReady() then
+    scan.waitingThrottle = true
+    showStatus()
+    return
+  end
+  local entry = queue[index]
+  scan.pendingItem = entry
+  scan.pendingKey = itemKeyFor(entry.id)
+  scan.waitingResult = true
+  scan.waitingThrottle = false
+  local ok, err = pcall(C_AuctionHouse.SendSearchQuery, scan.pendingKey, priceSorts(), false)
+  if not ok and C_AuctionHouse.SendBrowseQuery then
+    local filters = {}
+    if Enum and Enum.AuctionHouseFilter and Enum.AuctionHouseFilter.ExactMatch then
+      filters[1] = Enum.AuctionHouseFilter.ExactMatch
+    end
+    ok, err = pcall(C_AuctionHouse.SendBrowseQuery, {
+      searchString = entry.name,
+      sorts = priceSorts(),
+      filters = filters,
+    })
+    scan.browseFallback = ok and true or false
   else
-    onListUpdate()
+    scan.browseFallback = false
+  end
+  if not ok then
+    scan.waitingResult = false
+    chat("Query failed for " .. entry.name .. ": " .. tostring(err))
+    scan.misses[entry.id] = entry.name
+    scan.query = index + 1
+    if C_Timer and C_Timer.After then C_Timer.After(0.2, sendNextSearch) else sendNextSearch() end
+    return
+  end
+  if index == 1 or index % 25 == 0 then
+    chat("Reagent search " .. index .. "/" .. #queue .. " (" .. entry.name .. ").")
+  end
+  showStatus()
+  armSearchTimeout()
+end
+
+local function startReagentSearch(why)
+  if not C_AuctionHouse or not (C_AuctionHouse.SendSearchQuery or C_AuctionHouse.SendBrowseQuery) then
+    SL.AbortScan("No C_AuctionHouse search API on this client.")
+    return
+  end
+  scan.mode = "search"
+  scan.path = "C_AuctionHouse.SendSearchQuery"
+  scan.queue = reagentQueue()
+  scan.query = 1
+  scan.waitingResult = false
+  scan.waitingThrottle = false
+  if #scan.queue == 0 then
+    SL.AbortScan("No reagent names are bundled, so there is nothing to search.")
+    return
+  end
+  chat((why or "Full scan is not available.") .. " Searching " .. #scan.queue .. " reagents with C_AuctionHouse.SendSearchQuery.")
+  showStatus()
+  sendNextSearch()
+end
+
+local function tryReplicate()
+  if not scan.active then return end
+  if not ahOpen() then
+    SL.AbortScan("Auction house closed. Scan stopped.")
+    return
+  end
+  if not throttleReady() then
+    scan.waitingThrottle = true
+    scan.mode = "replicate"
+    chat("The auction house is throttled. Waiting, then C_AuctionHouse.ReplicateItems will run.")
+    showStatus()
+    return
+  end
+  scan.mode = "replicate"
+  scan.path = "C_AuctionHouse.ReplicateItems"
+  scan.waitingThrottle = false
+  local ok, err = pcall(C_AuctionHouse.ReplicateItems)
+  if not ok then
+    chat("C_AuctionHouse.ReplicateItems failed: " .. tostring(err))
+    startReagentSearch("Full scan failed.")
+    return
+  end
+  chat("Full scan started (C_AuctionHouse.ReplicateItems).")
+  showStatus()
+  local token = scan.token
+  if C_Timer and C_Timer.After then
+    C_Timer.After(20, function()
+      if scan.active and scan.token == token and scan.mode == "replicate" and (scan.index or 0) == 0 and not scan.replicateSawEvent then
+        chat("Full scan returned nothing. Switching to a reagent search.")
+        startReagentSearch("Full scan returned nothing.")
+      end
+    end)
   end
 end
 
+function SL.OnAuctionEvent(event, arg1)
+  if event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
+    if scan.active and scan.waitingThrottle then
+      scan.waitingThrottle = false
+      chat("Auction house throttle cleared.")
+      if scan.mode == "replicate" then tryReplicate()
+      elseif scan.mode == "search" then sendNextSearch() end
+    end
+    return
+  end
+  if event == "AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED" then
+    if scan.active then
+      chat("The auction house dropped a query. It will be sent again when the throttle clears.")
+      scan.waitingThrottle = true
+      scan.waitingResult = false
+      showStatus()
+    end
+    return
+  end
+  if event == "REPLICATE_ITEM_LIST_UPDATE" then
+    scan.replicateSawEvent = true
+    onReplicate()
+    return
+  end
+  if event == "COMMODITY_SEARCH_RESULTS_UPDATED" or event == "ITEM_SEARCH_RESULTS_UPDATED" or event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then
+    if not scan.active or scan.mode ~= "search" or not scan.waitingResult then return end
+    local entry = scan.pendingItem
+    if event == "COMMODITY_SEARCH_RESULTS_UPDATED" then
+      local id = tonumber(arg1) or (entry and entry.id)
+      if entry and id and id ~= entry.id then return end
+      if entry then readCommodity(entry.id, entry.name) end
+    elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
+      local key = type(arg1) == "table" and arg1 or scan.pendingKey
+      if entry and key and key.itemID and key.itemID ~= entry.id then return end
+      if entry then readItemKey(key or scan.pendingKey, entry.name) end
+    else
+      if entry then readBrowse(entry.id) end
+    end
+    scan.waitingResult = false
+    scan.query = (scan.query or 1) + 1
+    showStatus()
+    if C_Timer and C_Timer.After then C_Timer.After(0.05, sendNextSearch) else sendNextSearch() end
+    return
+  end
+  onListUpdate()
+end
+
 function SL.StartScan()
-  local open = (AuctionHouseFrame and AuctionHouseFrame.IsShown and AuctionHouseFrame:IsShown())
-    or (AuctionFrame and AuctionFrame.IsShown and AuctionFrame:IsShown())
-  if not open then
-    chat("open the auction house, then use the SkillLedger tab or /skillledger scan.")
+  if not ahOpen() then
+    chat("Open the auction house, then use the SkillLedger tab or /skillledger scan.")
     return
   end
   if scan.active then
-    chat("a scan is already running.")
+    chat("A scan is already running.")
     return
   end
   scan.token = scan.token + 1
@@ -631,45 +919,43 @@ function SL.StartScan()
   scan.query = 1
   scan.waiting = false
   scan.replicate = false
+  scan.replicateSawEvent = false
+  scan.index = 0
+  scan.total = 0
   showStatus()
   if C_AuctionHouse and C_AuctionHouse.ReplicateItems then
-    local ready = true
-    if C_AuctionHouse.IsThrottledMessageSystemReady then
-      local ok, value = pcall(C_AuctionHouse.IsThrottledMessageSystemReady)
-      if ok and value == false then ready = false end
-    end
-    if ready then
-      local ok = pcall(C_AuctionHouse.ReplicateItems)
-      if ok then
-        scan.mode = "replicate"
-        chat("full auction scan started.")
-        return
-      end
-    else
-      chat("the auction house is still throttled. Try the scan again in a moment.")
-      SL.CancelScan()
-      return
-    end
+    tryReplicate()
+    return
+  end
+  if C_AuctionHouse and (C_AuctionHouse.SendSearchQuery or C_AuctionHouse.SendBrowseQuery) then
+    startReagentSearch("This client has no full-scan call.")
+    return
   end
   if QueryAuctionItems and CanSendAuctionQuery then
     local ok, _, canAll = pcall(CanSendAuctionQuery)
     if ok and canAll then
-      local sent = pcall(QueryAuctionItems, "", nil, nil, 0, nil, nil, true)
+      scan.mode = "getall"
+      scan.path = "QueryAuctionItems"
+      scan.waiting = true
+      local sent, err = pcall(QueryAuctionItems, "", nil, nil, 0, nil, nil, true)
       if sent then
-        scan.mode = "getall"
-        scan.waiting = true
-        chat("full auction scan started.")
+        chat("Full scan started (classic QueryAuctionItems).")
+        showStatus()
         return
       end
+      chat("Classic full scan failed: " .. tostring(err))
     end
-  end
-  if not QueryAuctionItems then
-    chat("this client has no auction query API.")
-    SL.CancelScan()
+    scan.mode = "reagents"
+    scan.path = "QueryAuctionItems"
+    scan.queue = reagentQueue()
+    if #scan.queue == 0 then
+      SL.AbortScan("No reagent names are bundled, so there is nothing to search.")
+      return
+    end
+    chat("Querying " .. #scan.queue .. " reagent names with QueryAuctionItems.")
+    showStatus()
+    sendQuery()
     return
   end
-  scan.mode = "reagents"
-  scan.queue = reagentQueue()
-  chat("full scan is not available. Querying " .. #scan.queue .. " reagent names, slowly.")
-  sendQuery()
+  SL.AbortScan("This client has no auction scan API.")
 end

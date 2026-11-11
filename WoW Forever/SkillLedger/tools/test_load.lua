@@ -77,4 +77,19 @@ assert(SkillLedger.ready, "ready flag missing")
 assert(SkillLedger.EnsureAHTab, "auction tab missing")
 assert(not SkillLedger.AnchorScanButton, "old overlapping button is still defined")
 SlashCmdList.SKILLLEDGER("help")
+
+local said = {}
+function SkillLedger.Say(message) said[#said + 1] = message end
+C_AuctionHouse = {
+  ReplicateItems = function() end,
+  IsThrottledMessageSystemReady = function() return true end,
+}
+AuctionHouseFrame = {}
+function AuctionHouseFrame:IsShown() return true end
+SkillLedger.StartScan()
+local started = false
+for i = 1, #said do
+  if said[i]:find("ReplicateItems", 1, true) then started = true end
+end
+assert(started, "full scan did not announce C_AuctionHouse.ReplicateItems")
 print("load test passed")

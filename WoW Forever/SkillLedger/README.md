@@ -13,7 +13,7 @@ The zip has two folders. Only one of them goes in the game.
 3. `/reload`. The chat line `SkillLedger loaded. Type /skillledger.` means the slash commands are registered.
 4. `/skillledger` opens the window. `/sl` does the same when no other addon has claimed it. Escape does not close the window. Close is a button, or `/skillledger hide`.
 
-The window starts left of centre so it stays out of the rotation HUD. On the auction house, SkillLedger is a bottom tab after Browse, Bids, Auctions and any tabs other addons already added. The scan button is on that tab's page, not over Search.
+The window starts left of centre so it stays out of the rotation HUD. On Forever's auction house (the retail `AuctionHouseFrame`, with Buy, Sell, and Auctions), SkillLedger is a tab after the last tab already in that row, including Auctionator and TSM. It uses the same tab template those addons use, and it does not resize their tabs. The scan button is on that tab's page.
 
 ## Commands
 
@@ -37,7 +37,7 @@ Account-wide `SkillLedgerDB`, with a section per character:
 
 - Professions and secondary skills: name, rank, max rank. It tries `GetProfessions` / `GetProfessionInfo`, then the older skill-line API, and ignores a call that is missing.
 - Bags on a short delay, and the bank only while the bank is open.
-- Auction prices: one full scan when the client allows `C_AuctionHouse.ReplicateItems` or `QueryAuctionItems` with get-all. Otherwise it queries the reagent names, slowly, and only while a scan is running. Each item keeps the minimum buyout per unit, the quantity at that price, and the time.
+- Auction prices. On Forever this is the retail `C_AuctionHouse` API (present on 1.60.1): a full `ReplicateItems` scan when the throttle allows it, otherwise one `SendSearchQuery` per reagent, waiting on `AUCTION_HOUSE_THROTTLED_SYSTEM_READY`. The old `QueryAuctionItems` path runs only if `C_AuctionHouse` is missing. Each item keeps the minimum buyout per unit, the quantity at that price, and the time. Start, progress, completion, and every early exit are printed in chat.
 - Faction standings, from `GetFactionInfo` (headers expanded, then collapsed again) or `C_Reputation` if that is what the client has.
 - Merchant-window prices, when a vendor is open. The copper amount is what the client displayed, already discounted. The NPC id is matched to the bundled faction list when the id is known.
 
