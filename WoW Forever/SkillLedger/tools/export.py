@@ -195,7 +195,7 @@ NEG_COIN_FORMAT = '[<=-10000]-#"g "00"s "00"c";[<=-100]-0"s "00"c";-0"c"'
 MONEY_HEADERS = {
     "Min buyout / unit", "Copper", "Cost", "Running total", "Base unit",
     "Unit paid", "Line cost", "Base", "Reagent cost", "AH price", "Profit",
-    "Spend", "Cost to cap",
+    "Spend", "Cost to cap", "Vendor Sell", "AH Net",
 }
 
 
@@ -634,32 +634,84 @@ def learned_recipes(char):
     return found
 
 
-def cost_source_label(sources):
-    if not sources:
-        return ""
-    if sources == {"owned"}:
-        return "owned"
-    paid = sources - {"owned"}
-    vendorish = {"vendor", "merchant"}
-    if paid and paid <= vendorish and "owned" not in sources:
-        return "vendor"
-    if paid == {"AH"} and "owned" not in sources:
-        return "AH"
-    if "owned" in sources and paid:
-        return "mixed"
-    if len(paid) > 1:
-        return "mixed"
-    return "vendor" if paid <= vendorish else "AH"
+# 12-hour auction deposit is 15% of the vendor sell price. The 5% cut is not returned.
+AH_CUT_PERCENT = 5
+DEPOSIT_PERCENT = 15
+THIN_MARKET = 5
+SHUFFLE_HEADER = [
+    "Character", "Item", "Profession", "Reagents", "Cost", "Vendor Sell", "AH Net",
+    "Best Channel", "Profit", "Margin %", "AH Qty Listed", "Can Make Now",
+]
+
+
+def sell_price(data, item_id):
+    table = data.get("sell") or {}
+    raw = table.get(str(item_id), table.get(item_id))
+    if raw is None:
+        return 0
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 0
+
+
+def ah_proceeds(unit_buyout, produced, sell_each):
+    """Copper kept after the 5% cut and a 12-hour deposit. None when nothing is listed."""
+    if not unit_buyout or unit_buyout <= 0 or produced <= 0:
+        return None
+    gross = int(unit_buyout) * produced
+    cut = gross * AH_CUT_PERCENT // 100
+    deposit = int(sell_each) * produced * DEPOSIT_PERCENT // 100
+    return gross - cut - deposit
+
+
+def cheapest_reagent(state, item_id, owned, need):
+    """Cheapest of vendor, auction, or owned-at-auction opportunity cost.
+
+    Owned stock is not free: using it costs the auction price you could have sold
+    it for. Vendor wins a tie because that price is guaranteed. Owned wins a tie
+    with the auction house when the bags already hold enough.
+    """
+    vendor_unit, _info = plan.vendor_quote(state, item_id)
+    auction = state["prices"].get(item_id)
+    options = []
+    if vendor_unit is not None:
+        options.append((int(vendor_unit), 0, "vendor"))
+    if auction:
+        options.append((int(auction), 2, "AH"))
+    if owned >= need and auction:
+        options.append((int(auction), 1, "owned"))
+    if not options:
+        return None
+    _price, _rank, source = min(options)
+    unit = next(price for price, _rank, name in options if name == source)
+    return source, unit
+
+
+def can_make_now(recipe, inventory, vendor_available):
+    """How many crafts owned stacks plus vendor reagents can cover. 'any' if none are scarce."""
+    limit = None
+    for reagent_id, count in recipe.get("reagents") or []:
+        count = int(count or 0)
+        if count <= 0:
+            continue
+        if vendor_available(int(reagent_id)):
+            continue
+        owned = int(inventory.get(int(reagent_id), 0))
+        crafts = owned // count
+        limit = crafts if limit is None else min(limit, crafts)
+    if limit is None:
+        return "any"
+    return limit
 
 
 def craft_quotes(db, data):
-    """Learned crafts with a reagent cost, sale price, and profit. One list per character."""
+    """Learned crafts that sell for more than their cheapest reagents."""
     recipes_by_spell = {}
     for recipe in data.get("recipes") or []:
         recipes_by_spell[int(recipe["spell"])] = recipe
     skill_names = {int(row["id"]): row["name"] for row in data.get("professions") or [] if row.get("id")}
     quotes = []
-    missing_prices = False
     any_learned = False
     for char in character_rows(db):
         learned = learned_recipes(char)
@@ -679,81 +731,113 @@ def craft_quotes(db, data):
         )
         listing = price_index(db)
         inventory = inventory_of(char)
+
+        def vendor_available(item_id, state=state):
+            unit, _info = plan.vendor_quote(state, item_id)
+            return unit is not None
+
         for known in learned:
             spell = known.get("spell")
             recipe = recipes_by_spell.get(int(spell)) if spell else None
             if recipe is None or recipe.get("enchant") or not recipe.get("made"):
                 continue
-            sources = set()
+            bits = []
             cost = 0
-            unpriced = False
+            sources = []
+            priced = True
             for reagent_id, count in recipe.get("reagents") or []:
                 reagent_id = int(reagent_id)
                 count = int(count or 0)
                 if count <= 0:
                     continue
                 owned = int(inventory.get(reagent_id, 0))
-                if owned >= count:
-                    sources.add("owned")
+                choice = cheapest_reagent(state, reagent_id, owned, count)
+                name = (data.get("items") or {}).get(str(reagent_id)) or (data.get("items") or {}).get(reagent_id) or f"Item {reagent_id}"
+                if choice is None:
+                    priced = False
+                    bits.append(f"{name} x{count} unpriced (own {owned})")
                     continue
-                if owned > 0:
-                    sources.add("owned")
-                unit, info = plan.buy_quote(state, reagent_id)
-                if unit is None:
-                    unpriced = True
-                    break
-                cost += int(unit) * (count - owned)
-                source = (info or {}).get("source") or "ah"
-                if source in ("vendor", "vendor-assumed", "vendor-nofaction", "merchant"):
-                    sources.add("vendor")
-                else:
-                    sources.add("AH")
+                source, unit = choice
+                cost += unit * count
+                sources.append(source)
+                bits.append(f"{name} x{count} {source} {money(unit)} (own {owned})")
+            if not priced:
+                continue
             made = int(recipe.get("made") or known.get("item") or 0)
-            produced = int(recipe.get("count") or 1)
+            produced = int(recipe.get("count") or 1) or 1
+            sell_each = sell_price(data, made)
+            vendor_sell = sell_each * produced
             sale_row = listing.get(made) or {}
-            sale = int(sale_row.get("unit") or 0)
-            if not sale:
-                missing_prices = True
-            profit = None if unpriced or not sale else sale * produced - cost
-            margin = None
-            if profit is not None and sale * produced > 0:
-                margin = round(100.0 * profit / (sale * produced))
+            buyout = int(sale_row.get("unit") or 0)
+            auction_net = ah_proceeds(buyout, produced, sell_each)
+            listed = int(sale_row.get("total") or sale_row.get("qty") or 0) if buyout else None
+            channels = []
+            if vendor_sell > 0:
+                channels.append(("Vendor", vendor_sell))
+            if auction_net is not None:
+                channels.append(("AH", auction_net))
+            if not channels:
+                continue
+            best_name, best_net = max(channels, key=lambda pair: (pair[1], 0 if pair[0] == "Vendor" else 1))
+            profit = best_net - cost
+            if profit <= 0:
+                continue
+            vendor_profit = vendor_sell - cost
+            risk_free = bool(sources) and all(source == "vendor" for source in sources) and vendor_profit > 0 and best_name == "Vendor"
             profession = known.get("profession") or skill_names.get(int(recipe.get("skill") or 0)) or ""
             quotes.append({
                 "character": char.get("name") or char.get("key"),
+                "item": known.get("name") or recipe.get("name") or "",
                 "profession": profession,
-                "recipe": known.get("name") or recipe.get("name") or "",
-                "cost": None if unpriced else cost,
-                "source": "" if unpriced else cost_source_label(sources),
-                "sale": sale or None,
-                "quantity": int(sale_row.get("total") or sale_row.get("qty") or 0) if sale else None,
+                "reagents": "; ".join(bits),
+                "cost": cost,
+                "vendor_sell": vendor_sell,
+                "ah_net": auction_net,
+                "channel": best_name,
                 "profit": profit,
-                "margin": margin,
+                "margin": round(100 * profit / best_net) if best_net else 0,
+                "listed": listed,
+                "thin": listed is not None and 0 < listed < THIN_MARKET,
+                "can_make": can_make_now(recipe, inventory, vendor_available),
+                "risk_free": risk_free,
             })
-    quotes.sort(key=lambda row: (row["profit"] is None, -(row["profit"] or 0), row["recipe"]))
-    return quotes, any_learned, missing_prices
+    quotes.sort(key=lambda row: (-row["profit"], row["item"]))
+    return quotes, any_learned
+
+
+def quote_row(row):
+    return [
+        row["character"],
+        row["item"],
+        row["profession"],
+        row["reagents"],
+        row["cost"],
+        row["vendor_sell"],
+        "" if row["ah_net"] is None else row["ah_net"],
+        row["channel"],
+        row["profit"],
+        row["margin"],
+        "" if row["listed"] is None else row["listed"],
+        row["can_make"],
+    ]
 
 
 def profitable_rows(db, data):
-    header = ["Character", "Profession", "Recipe", "Reagent cost", "Cost from", "AH price", "AH quantity", "Profit", "Margin"]
-    quotes, any_learned, missing_prices = craft_quotes(db, data)
+    quotes, any_learned = craft_quotes(db, data)
     if not any_learned:
-        return [header, [LEARNED_NOTE, "", "", "", "", "", "", "", ""]]
-    rows = [header]
-    if missing_prices:
-        rows.append(["Some crafted items have no auction price. Rescan the auction house.", "", "", "", "", "", "", "", ""])
-    for row in quotes:
-        rows.append([
-            row["character"],
-            row["profession"],
-            row["recipe"],
-            coins(row["cost"]) if row["cost"] is not None else "",
-            row["source"],
-            coins(row["sale"]) if row["sale"] else "",
-            row["quantity"] if row["quantity"] else "",
-            coins(row["profit"]) if row["profit"] is not None else "",
-            f"{row['margin']}%" if row["margin"] is not None else "",
-        ])
+        return [SHUFFLE_HEADER, [LEARNED_NOTE] + [""] * (len(SHUFFLE_HEADER) - 1)]
+    guaranteed = [row for row in quotes if row["risk_free"]]
+    other = [row for row in quotes if not row["risk_free"]]
+    rows = [SHUFFLE_HEADER]
+    if not guaranteed and not other:
+        rows.append(["No learned recipe sells for more than its reagents. Open each profession once and rescan the auction house."] + [""] * (len(SHUFFLE_HEADER) - 1))
+        return rows
+    if guaranteed:
+        rows.append(["Risk-free: buy every reagent from a vendor, craft, and sell the item to a vendor."] + [""] * (len(SHUFFLE_HEADER) - 1))
+        rows.extend(quote_row(row) for row in guaranteed)
+    if other:
+        rows.append(["Auction: profitable after the 5% cut and the 12-hour deposit."] + [""] * (len(SHUFFLE_HEADER) - 1))
+        rows.extend(quote_row(row) for row in other)
     return rows
 
 
@@ -1117,60 +1201,92 @@ def write_xlsx(path, tables, db, report):
         sheet.print_title_rows = "1:2"
 
     def write_profit(sheet, rows):
-        paint_range(sheet, max(8, len(rows) + 3), 9)
-        sheet.merge_cells("A1:I1")
+        width = max(12, len(SHUFFLE_HEADER))
+        paint_range(sheet, max(12, len(rows) + 4), width)
+        sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=width)
         sheet["A1"] = "Profitable crafts"
         sheet["A1"].font = title_font
         sheet.row_dimensions[1].height = 36
-        sheet.merge_cells("A2:I2")
-        note = ""
-        body = rows
-        if len(rows) > 1 and isinstance(rows[1][0], str) and rows[1][0].startswith("Open each"):
-            note = rows[1][0]
-            body = [rows[0]]
-        elif len(rows) > 1 and isinstance(rows[1][0], str) and rows[1][0].startswith("Some crafted"):
-            note = rows[1][0]
-            body = [rows[0]] + rows[2:]
+        sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=width)
+        content = rows[1:] if rows else []
+        if len(content) == 1 and isinstance(content[0][0], str) and (
+            content[0][0].startswith("Open each") or content[0][0].startswith("No learned")
+        ):
+            note = content[0][0]
+            content = []
         else:
-            note = "Learned recipes sorted by profit. Green rows make money after reagents."
+            note = (
+                "Reagent cost is the cheaper of the discounted vendor price and the auction price. "
+                "Owned mats use that auction price, and the count you hold is in parentheses. "
+                "AH net subtracts the 5% cut and a 12-hour deposit. "
+                "The top block is risk-free: vendor in, vendor out."
+            )
         sheet["A2"] = note
         sheet["A2"].font = Font(color="C79B6E", name="Calibri", size=12)
         sheet["A2"].alignment = left
-        sheet.row_dimensions[2].height = 32
-        header = body[0] if body else []
-        profit_col = header.index("Profit") + 1 if "Profit" in header else 8
+        sheet.row_dimensions[2].height = 36
+        header = rows[0] if rows else SHUFFLE_HEADER
+        safe_fill = PatternFill("solid", fgColor="5C4328")
+        auction_fill = PatternFill("solid", fgColor="3A2A1C")
+        risk_fill = PatternFill("solid", fgColor="2F4A32")
+        thin_fill = PatternFill("solid", fgColor="C47A3A")
+        risk_zone = False
+        qty_col = header.index("AH Qty Listed") + 1 if "AH Qty Listed" in header else None
+        margin_col = header.index("Margin %") + 1 if "Margin %" in header else None
         for col, value in enumerate(header, start=1):
             cell = sheet.cell(3, col, value)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = left
             cell.border = thin
-        for offset, row in enumerate(body[1:], start=4):
-            profitable = profit_col - 1 < len(row) and positive_money(row[profit_col - 1])
+        for offset, row in enumerate(content, start=4):
+            label = row[0] if row else ""
+            kind = "data"
+            if isinstance(label, str) and label.startswith("Risk-free"):
+                kind = "section-safe"
+                risk_zone = True
+            elif isinstance(label, str) and label.startswith("Auction"):
+                kind = "section-ah"
+                risk_zone = False
+            elif isinstance(label, str) and (label.startswith("Open each") or label.startswith("No learned")):
+                kind = "note"
             for col, value in enumerate(row, start=1):
                 cell = sheet.cell(offset, col, value)
                 cell.alignment = left
                 cell.border = thin
-                if profitable:
+                if kind == "section-safe":
+                    cell.fill = safe_fill
+                    cell.font = Font(bold=True, color="F5C16C", name="Calibri", size=12)
+                elif kind == "section-ah":
+                    cell.fill = auction_fill
+                    cell.font = Font(bold=True, color="C79B6E", name="Calibri", size=12)
+                elif kind == "note":
+                    cell.fill = PatternFill("solid", fgColor="241910")
+                    cell.font = Font(color="C79B6E", name="Calibri", size=12)
+                elif risk_zone:
+                    cell.fill = risk_fill
+                    cell.font = Font(color="E7F6D8", name="Calibri", size=12, bold=True)
+                else:
                     cell.fill = good_fill
                     cell.font = good_font
-                else:
-                    cell.fill = PatternFill("solid", fgColor="241910")
-                    cell.font = cream
-                if header[col - 1] in MONEY_HEADERS:
+                if kind == "data" and col - 1 < len(header) and header[col - 1] in MONEY_HEADERS:
                     mark_money(cell)
-        if body:
-            last = 3 + len(body) - 1
-            for title in ("Reagent cost", "AH price", "Profit"):
-                if title in header:
-                    column = get_column_letter(header.index(title) + 1)
-                    red_losses(sheet, f"{column}4:{column}{last}")
-            sheet.row_dimensions[offset].height = 20
-        widths = [16, 18, 28, 16, 12, 14, 16, 16, 12]
-        for index, width in enumerate(widths, start=1):
-            sheet.column_dimensions[get_column_letter(index)].width = width
+                if kind == "data" and margin_col and col == margin_col and isinstance(value, int):
+                    cell.number_format = '0"%"'
+                if kind == "data" and qty_col and col == qty_col and isinstance(value, int) and 0 < value < THIN_MARKET:
+                    cell.fill = thin_fill
+                    cell.font = Font(color="1A120C", name="Calibri", size=12, bold=True)
+            sheet.row_dimensions[offset].height = 22 if kind == "data" else 24
+        last = 3 + max(1, len(content))
+        for title in ("Cost", "Vendor Sell", "AH Net", "Profit"):
+            if title in header:
+                column = get_column_letter(header.index(title) + 1)
+                red_losses(sheet, f"{column}4:{column}{last}")
+        widths = [16, 26, 16, 54, 14, 14, 14, 14, 14, 12, 16, 14]
+        for index, size in enumerate(widths, start=1):
+            sheet.column_dimensions[get_column_letter(index)].width = size
         sheet.freeze_panes = "A4"
-        sheet.auto_filter.ref = f"A3:I{max(3, 2 + len(body))}"
+        sheet.auto_filter.ref = f"A3:{get_column_letter(width)}{last}"
         page(sheet)
 
     def write_table(sheet, rows):

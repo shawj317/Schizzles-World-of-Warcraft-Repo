@@ -557,12 +557,27 @@ def build():
     if 3371 in vendors:
         print("empty vial factions", vendors[3371])
 
+    sell = load_sell_prices(item_ids)
     write_lua(recipes, names, vendors, npcs)
-    write_json(recipes, names, vendors, npcs)
+    write_json(recipes, names, vendors, npcs, sell)
     print("wrote Data.lua and recipes.json")
 
 
-def write_json(recipes, names, vendors, npcs):
+def load_sell_prices(item_ids):
+    """Vendor sell price from ItemSparse.SellPrice, in copper. Used by the shuffle sheet."""
+    prices = {}
+    for row in read_csv("ItemSparse"):
+        item_id = int(row["ID"])
+        if item_id not in item_ids:
+            continue
+        try:
+            prices[item_id] = int(row.get("SellPrice") or 0)
+        except ValueError:
+            continue
+    return prices
+
+
+def write_json(recipes, names, vendors, npcs, sell=None):
     payload = {
         "build": BUILD,
         "eraBuild": ERA_BUILD,
@@ -578,6 +593,7 @@ def write_json(recipes, names, vendors, npcs):
         "npcs": {
             str(npc_id): info for npc_id, info in sorted(npcs.items())
         },
+        "sell": {str(item_id): price for item_id, price in sorted((sell or {}).items())},
         "recipes": [
             {
                 "spell": recipe["spell"],

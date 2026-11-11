@@ -71,6 +71,35 @@ def test_newest_saved_file_is_chosen():
     )
 
 
+def test_vendor_flip_section():
+    data = {
+        "professions": [{"id": 171, "name": "Alchemy"}],
+        "items": {"1": "Empty Vial", "2": "Test Potion"},
+        "vendor": {"1": {"price": 20, "factions": [{"id": 76, "name": "Orgrimmar", "side": "Horde"}]}},
+        "sell": {"2": 100},
+        "recipes": [{
+            "spell": 9, "skill": 171, "name": "Test Potion", "made": 2, "count": 1,
+            "enchant": False, "reagents": [[1, 1]],
+        }],
+    }
+    db = {"chars": {"A": {
+        "name": "Grimjaw", "faction": "Horde", "classFile": "WARRIOR", "race": "Orc",
+        "bags": {"items": []}, "bank": {"items": []},
+        "standings": {"factions": [{"id": 76, "standing": 5}]},
+        "merchant": {"rows": []},
+        "learned": {"recipes": [{"spell": 9, "name": "Test Potion", "profession": "Alchemy"}]},
+    }}, "prices": {"items": []}}
+    rows = export.profitable_rows(db, data)
+    labels = [row[0] for row in rows]
+    assert any(str(label).startswith("Risk-free") for label in labels)
+    potion = next(row for row in rows if row[1] == "Test Potion")
+    assert potion[4] == 19  # Friendly 5% on a 20c vial
+    assert potion[5] == 100
+    assert potion[7] == "Vendor"
+    assert potion[8] == 81
+    assert potion[11] == "any"
+
+
 def main_test():
     test_bat_argument_is_not_parsed()
     test_parse_failure_names_the_file()
@@ -132,20 +161,28 @@ def main_test():
             assert row[3] == "Friendly" and row[4] == "5%"
             found = True
     assert found
+    header = [cell.value for cell in book["Profitable Crafts"][3]]
+    assert header[:8] == ["Character", "Item", "Profession", "Reagents", "Cost", "Vendor Sell", "AH Net", "Best Channel"]
     crafts = {}
     for row in book["Profitable Crafts"].iter_rows(min_row=4, values_only=True):
-        if row[2]:
-            crafts[row[2]] = row
-    assert crafts["Smelt Copper"][4] == "owned"
-    assert crafts["Smelt Copper"][7] == 400
-    assert crafts["Copper Bracers"][7] == -300
+        if row[1]:
+            crafts[row[1]] = row
+    assert "Copper Bracers" not in crafts
+    smelt = crafts["Smelt Copper"]
+    assert "owned" in smelt[3] and "own 20" in smelt[3]
+    assert smelt[4] == 30  # one copper ore at the 30c auction price
+    assert smelt[5] == 10  # vendor pays 10c for a copper bar
+    assert smelt[6] == 379  # 400c buyout, minus 5% and a 1c deposit
+    assert smelt[7] == "AH"
+    assert smelt[8] == 349
+    assert smelt[11] == 20
+    assert crafts["Linen Bandage"][8] == 109
     profit_cell = None
     for row in book["Profitable Crafts"].iter_rows(min_row=4):
-        if row[2].value == "Copper Bracers":
-            profit_cell = row[7]
+        if row[1].value == "Smelt Copper":
+            profit_cell = row[8]
     assert profit_cell is not None and profit_cell.number_format == export.COIN_FORMAT
-    smelt_fill = book["Profitable Crafts"]["C4"].fill.fgColor.rgb
-    assert smelt_fill in ("001E3A2A", "FF1E3A2A")
+    test_vendor_flip_section()
     bare = export.load_saved(SAMPLE)
     for char in bare["chars"].values():
         char.pop("learned", None)
