@@ -114,6 +114,58 @@ def test_windows_desktop_prefers_the_known_folder():
             os.environ["USERPROFILE"] = previous_profile
 
 
+def test_failing_known_folder_falls_through():
+    """shell32 missing SHGetKnownFolderPath must not crash. --out is forwarded by the bat."""
+    root = tempfile.mkdtemp()
+    profile = os.path.join(root, "Profile")
+    desktop = os.path.join(profile, "Desktop")
+    os.makedirs(desktop)
+    previous_name = os.name
+    previous_profile = os.environ.get("USERPROFILE")
+    os.environ["USERPROFILE"] = profile
+    import ctypes
+    had_windll = hasattr(ctypes, "windll")
+    previous_windll = getattr(ctypes, "windll", None)
+
+    class MissingExport:
+        def __getattr__(self, _name):
+            raise AttributeError("function 'SHGetKnownFolderPath' not found")
+
+    class Windll:
+        shell32 = MissingExport()
+        ole32 = MissingExport()
+
+    with open(os.path.join(HERE, "export.bat"), encoding="utf-8") as handle:
+        bat = handle.read()
+    assert '%PY% "%~dp0export.py" %*' in bat
+
+    try:
+        os.name = "nt"
+        ctypes.windll = Windll()
+        assert export.known_folder_desktop() is None
+        assert export.desktop_dir() == os.path.abspath(desktop)
+
+        def explode():
+            raise AttributeError("function 'SHGetKnownFolderPath' not found")
+
+        previous_known = export.known_folder_desktop
+        export.known_folder_desktop = explode
+        try:
+            assert export.desktop_dir() == os.path.abspath(desktop)
+        finally:
+            export.known_folder_desktop = previous_known
+    finally:
+        os.name = previous_name
+        if had_windll:
+            ctypes.windll = previous_windll
+        elif hasattr(ctypes, "windll"):
+            delattr(ctypes, "windll")
+        if previous_profile is None:
+            os.environ.pop("USERPROFILE", None)
+        else:
+            os.environ["USERPROFILE"] = previous_profile
+
+
 def test_locked_workbook_uses_the_next_name():
     folder = tempfile.mkdtemp()
     target = os.path.join(folder, "SkillLedger.xlsx")
@@ -253,6 +305,7 @@ def main_test():
     test_parse_failure_names_the_file()
     test_newest_saved_file_is_chosen()
     test_windows_desktop_prefers_the_known_folder()
+    test_failing_known_folder_falls_through()
     test_locked_workbook_uses_the_next_name()
     assert os.path.basename(export.default_output()) == "SkillLedger.xlsx"
     main([SAMPLE, "-o", OUT, "--csv"])

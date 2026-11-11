@@ -2,7 +2,7 @@
 
 Small World of Warcraft: Forever addon for **Jon Shaw (Schizzle)**. It records professions, bags, bank and auction prices, then shows the cheapest way to level each profession from the current rank to the trained cap. A Python script turns the SavedVariables file into an Excel workbook.
 
-Interface **16001**, the same TOC version as the other Forever addons. The addon folder must be named `SkillLedger`.
+Interface **16001**, version **1.3.1**, the same TOC version as the other Forever addons. The addon folder must be named `SkillLedger`.
 
 ## Install
 
@@ -79,7 +79,7 @@ Log out, or `/reload`, so WoW writes `WTF\Account\<ACCOUNT>\SavedVariables\Skill
 .\export.bat -o "$env:USERPROFILE\Desktop\SkillLedger.xlsx"
 ```
 
-With no `.lua` path, the script searches `Program Files (x86)`, `Program Files`, a Battle.net World of Warcraft install path from the registry when one is present, and a `_forever_` folder under those roots. It lists every `SkillLedger.lua` it finds and uses the newest. The workbook defaults to the real Desktop, including a Desktop that OneDrive has redirected. On Windows that folder comes from the Known Folder API, then the User Shell Folders `Desktop` registry value, then `%USERPROFILE%\Desktop`, and finally the `tools` folder. `--out` or `-o` overrides it. The script prints the full saved path when it finishes. If `SkillLedger.xlsx` is open in Excel, it is saved as `SkillLedger (1).xlsx` (then `(2)`, and so on) instead of crashing. A double-clicked `export.bat` waits for a key before the window closes. A file that is not `.lua` is rejected instead of being parsed.
+With no `.lua` path, the script searches `Program Files (x86)`, `Program Files`, a Battle.net World of Warcraft install path from the registry when one is present, and a `_forever_` folder under those roots. It lists every `SkillLedger.lua` it finds and uses the newest. The workbook defaults to the real Desktop, including a Desktop that OneDrive has redirected. On Windows that folder comes from `shell32.SHGetKnownFolderPath` (`FOLDERID_Desktop`), then the User Shell Folders `Desktop` registry value, then `%USERPROFILE%\Desktop`, and finally the `tools` folder. A failure in any of those lookups is skipped. `export.bat` forwards its extra arguments, so `--out` or `-o` overrides the path. The script prints the full saved path when it finishes. If `SkillLedger.xlsx` is open in Excel, it is saved as `SkillLedger (1).xlsx` (then `(2)`, and so on) instead of crashing. A double-clicked `export.bat` waits for a key before the window closes. A file that is not `.lua` is rejected instead of being parsed.
 
 `py -3 -m pip install openpyxl` once, for the workbook. If openpyxl is missing, the script offers to install it and, if you decline, writes one CSV per sheet. `--csv` writes those CSV files as well.
 

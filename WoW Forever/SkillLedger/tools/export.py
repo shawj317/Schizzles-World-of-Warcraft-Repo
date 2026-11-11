@@ -1529,81 +1529,91 @@ def existing_dir(path):
 
 
 def known_folder_desktop():
-    """SHGetKnownFolderPath(FOLDERID_Desktop). None when this is not Windows.
+    """SHGetKnownFolderPath(FOLDERID_Desktop) from shell32. None on any failure.
 
     This is the Desktop Explorer actually uses, including one OneDrive has taken over.
+    The function is exported by shell32, not ole32. ole32 is only used to free the string.
     """
     if os.name != "nt":
         return None
     try:
         import ctypes
         from ctypes import wintypes
-    except ImportError:
-        return None
 
-    class GUID(ctypes.Structure):
-        _fields_ = [
-            ("Data1", wintypes.DWORD),
-            ("Data2", wintypes.WORD),
-            ("Data3", wintypes.WORD),
-            ("Data4", ctypes.c_ubyte * 8),
+        class GUID(ctypes.Structure):
+            _fields_ = [
+                ("Data1", wintypes.DWORD),
+                ("Data2", wintypes.WORD),
+                ("Data3", wintypes.WORD),
+                ("Data4", ctypes.c_ubyte * 8),
+            ]
+
+        # FOLDERID_Desktop = {B4BFCC3A-DB2C-424C-B029-7FE99A87C641}
+        folder_id = GUID(
+            0xB4BFCC3A,
+            0xDB2C,
+            0x424C,
+            (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41),
+        )
+        shell32 = ctypes.windll.shell32
+        ole32 = ctypes.windll.ole32
+        shell32.SHGetKnownFolderPath.argtypes = [
+            ctypes.POINTER(GUID),
+            wintypes.DWORD,
+            wintypes.HANDLE,
+            ctypes.POINTER(ctypes.c_wchar_p),
         ]
-
-    # FOLDERID_Desktop = {B4BFCC3A-DB2C-424C-B029-7FE99A87C641}
-    folder_id = GUID(
-        0xB4BFCC3A,
-        0xDB2C,
-        0x424C,
-        (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41),
-    )
-    try:
-        ole32 = ctypes.OleDLL("ole32")
-    except (OSError, AttributeError):
-        return None
-    buf = ctypes.c_wchar_p()
-    try:
-        ole32.SHGetKnownFolderPath(ctypes.byref(folder_id), 0, None, ctypes.byref(buf))
-    except OSError:
-        return None
-    try:
-        return buf.value
-    finally:
-        if buf:
-            try:
+        shell32.SHGetKnownFolderPath.restype = ctypes.HRESULT
+        ole32.CoTaskMemFree.argtypes = [ctypes.c_void_p]
+        ole32.CoTaskMemFree.restype = None
+        buf = ctypes.c_wchar_p()
+        shell32.SHGetKnownFolderPath(ctypes.byref(folder_id), 0, None, ctypes.byref(buf))
+        try:
+            return buf.value or None
+        finally:
+            if buf:
                 ole32.CoTaskMemFree(buf)
-            except OSError:
-                pass
+    except Exception:
+        return None
 
 
 def windows_known_folder(name):
     """User Shell Folders value, with %USERPROFILE% and the like expanded."""
     try:
         import winreg
-    except ImportError:
-        return None
-    key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
-    try:
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
             value, _ = winreg.QueryValueEx(key, name)
-    except OSError:
+        if not isinstance(value, str) or not value:
+            return None
+        return expand_env(value)
+    except Exception:
         return None
-    if not isinstance(value, str) or not value:
+
+
+def _quiet(fn):
+    try:
+        return fn()
+    except Exception:
         return None
-    return expand_env(value)
 
 
 def desktop_dir():
-    """The real Desktop, then %USERPROFILE%\\Desktop, then this script's folder."""
+    """The real Desktop, then %USERPROFILE%\\Desktop, then this script's folder.
+
+    No lookup here raises. A failed Known Folder call falls through.
+    """
     candidates = []
     if os.name == "nt":
-        candidates.append(known_folder_desktop())
-        candidates.append(windows_known_folder("Desktop"))
-        profile = os.environ.get("USERPROFILE") or os.path.expanduser("~")
-        candidates.append(os.path.join(profile, "Desktop"))
+        candidates.append(_quiet(known_folder_desktop))
+        candidates.append(_quiet(lambda: windows_known_folder("Desktop")))
+        candidates.append(_quiet(lambda: os.path.join(
+            os.environ.get("USERPROFILE") or os.path.expanduser("~"), "Desktop"
+        )))
     else:
-        candidates.append(os.path.join(os.path.expanduser("~"), "Desktop"))
+        candidates.append(_quiet(lambda: os.path.join(os.path.expanduser("~"), "Desktop")))
     for path in candidates:
-        found = existing_dir(path)
+        found = _quiet(lambda path=path: existing_dir(path))
         if found:
             return found
     return os.path.abspath(HERE)
