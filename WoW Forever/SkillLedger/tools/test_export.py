@@ -93,7 +93,8 @@ def main_test():
     summary_text = " ".join(
         str(cell.value) for row in book["Summary"].iter_rows(max_row=8, max_col=10) for cell in row if cell.value
     )
-    assert "35g 43s 21c" in summary_text
+    assert 354321 in [cell.value for row in book["Summary"].iter_rows(max_row=8, max_col=10) for cell in row]
+    assert book["Summary"]["A5"].number_format == export.COIN_FORMAT
     assert "Gold on hand" in summary_text
     professions = [row[4] for row in book["Professions"].iter_rows(min_row=2, values_only=True)]
     assert "Mining" in professions and "Blacksmithing" in professions
@@ -115,7 +116,8 @@ def main_test():
     vial = shopping["Empty Vial"]
     assert vial[6].value == "5%"
     assert vial[7].value == "Orgrimmar"
-    assert vial[9].value == "19c"
+    assert vial[9].value == 19
+    assert vial[9].number_format == export.COIN_FORMAT
     assert vial[11].value == "merchant"
     assert "Item ID" not in [cell.value for cell in book["Shopping List"][1]]
     cloth = shopping["Linen Cloth"]
@@ -135,8 +137,13 @@ def main_test():
         if row[2]:
             crafts[row[2]] = row
     assert crafts["Smelt Copper"][4] == "owned"
-    assert crafts["Smelt Copper"][7] == "4s 00c"
-    assert crafts["Copper Bracers"][7].startswith("-")
+    assert crafts["Smelt Copper"][7] == 400
+    assert crafts["Copper Bracers"][7] == -300
+    profit_cell = None
+    for row in book["Profitable Crafts"].iter_rows(min_row=4):
+        if row[2].value == "Copper Bracers":
+            profit_cell = row[7]
+    assert profit_cell is not None and profit_cell.number_format == export.COIN_FORMAT
     smelt_fill = book["Profitable Crafts"]["C4"].fill.fgColor.rgb
     assert smelt_fill in ("001E3A2A", "FF1E3A2A")
     bare = export.load_saved(SAMPLE)

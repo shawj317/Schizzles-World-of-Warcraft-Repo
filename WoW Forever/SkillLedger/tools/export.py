@@ -185,8 +185,30 @@ class LuaParser:
         return array
 
 
+# Excel allows two conditions plus a fallback. Silver and copper are the last
+# two digits, so 1234567 is 123g 45s 67c, 1205 is 12s 05c, and 42 is 42c.
+# A negative number is also < 100, so it must not use that first section:
+# Excel would drop the minus and a loss would look like a profit. Losses use
+# a second format, applied by a conditional rule, with the same split in red.
+COIN_FORMAT = '[<100]0"c";[>9999]#"g "00"s "00"c";0"s "00"c"'
+NEG_COIN_FORMAT = '[<=-10000]-#"g "00"s "00"c";[<=-100]-0"s "00"c";-0"c"'
+MONEY_HEADERS = {
+    "Min buyout / unit", "Copper", "Cost", "Running total", "Base unit",
+    "Unit paid", "Line cost", "Base", "Reagent cost", "AH price", "Profit",
+    "Spend", "Cost to cap",
+}
+
+
+def coins(value):
+    """Copper as an int, so a sheet can sort, sum, and chart it. Blank if unknown."""
+    if value is None or value == "":
+        return ""
+    return int(plan.iround(value))
+
+
 def money(copper):
-    if copper is None:
+    """Text form, kept for notes. Sheet cells store coins() instead."""
+    if copper is None or copper == "":
         return ""
     copper = int(plan.iround(copper))
     sign = "-" if copper < 0 else ""
@@ -466,7 +488,7 @@ def price_rows(db):
         rows.append([
             item.get("id"),
             item.get("name") or "",
-            money(unit) if unit else "",
+            coins(unit) if unit else "",
             unit,
             item.get("qty") or 0,
             item.get("total") or 0,
@@ -484,7 +506,7 @@ def plan_rows(report):
     for entry in report:
         name = entry["char"].get("name") or entry["char"].get("key")
         for profession in entry["plans"]:
-            rows.append([name, profession["name"], "", "", "", "", "", "", "", money(profession["total"]), "", " | ".join(profession["notes"])])
+            rows.append([name, profession["name"], "", "", "", "", "", "", "", coins(profession["total"]), "", " | ".join(profession["notes"])])
             for step in profession["steps"]:
                 bits = []
                 for reagent in step["reagents"]:
@@ -504,8 +526,8 @@ def plan_rows(report):
                     round(step["crafts"], 2),
                     "; ".join(bits),
                     "; ".join(step["discounts"]),
-                    money(step["cost"]),
-                    money(step["running"]),
+                    coins(step["cost"]),
+                    coins(step["running"]),
                     "; ".join(step["notes"] + [f"no price: {item}" for item in step["unpriced"]]),
                 ])
     return rows
@@ -527,12 +549,12 @@ def shopping_rows(report):
                 round(row["need"], 2),
                 round(row["fromStock"], 2),
                 row["buyWhole"],
-                money(row["base"]) if row.get("base") else "",
+                coins(row["base"]) if row.get("base") else "",
                 f"{row['discount']}%" if row.get("discount") else "",
                 row.get("faction") or "",
                 row.get("standing") or "",
-                money(row["unit"]) if row.get("unit") else "",
-                money(row["cost"]) if row.get("cost") else "",
+                coins(row["unit"]) if row.get("unit") else "",
+                coins(row["cost"]) if row.get("cost") else "",
                 row.get("source") or "",
             ])
     return rows
@@ -563,7 +585,7 @@ def vendor_rows(db, report):
                 plan.standing_name(int(standing)) if standing else "",
                 f"{plan.discount_percent(int(standing))}%" if standing else "",
                 row.get("name") or "",
-                "", money(row.get("unit")), stamp(row.get("at")),
+                "", coins(row.get("unit")), stamp(row.get("at")),
                 "Captured from the merchant window. Used as-is while this standing is unchanged.",
             ])
     for entry in report:
@@ -581,8 +603,8 @@ def vendor_rows(db, report):
                 row.get("standing") or "",
                 f"{row['discount']}%" if row.get("discount") else "0%",
                 row["name"],
-                money(row.get("base")) if row.get("base") else "",
-                money(row.get("unit")) if row.get("unit") else "",
+                coins(row.get("base")) if row.get("base") else "",
+                coins(row.get("unit")) if row.get("unit") else "",
                 "",
                 "Standing was not saved, so Neutral was assumed." if row.get("assumed") else row.get("source") or "",
             ])
@@ -725,11 +747,11 @@ def profitable_rows(db, data):
             row["character"],
             row["profession"],
             row["recipe"],
-            money(row["cost"]) if row["cost"] is not None else "",
+            coins(row["cost"]) if row["cost"] is not None else "",
             row["source"],
-            money(row["sale"]) if row["sale"] else "",
+            coins(row["sale"]) if row["sale"] else "",
             row["quantity"] if row["quantity"] else "",
-            money(row["profit"]) if row["profit"] is not None else "",
+            coins(row["profit"]) if row["profit"] is not None else "",
             f"{row['margin']}%" if row["margin"] is not None else "",
         ])
     return rows
@@ -769,11 +791,13 @@ def summary_facts(db, report):
     for char in character_rows(db):
         if char.get("money") is not None:
             who = char.get("name") or char.get("key")
-            gold_bits.append((who, money(char.get("money"))))
+            gold_bits.append((who, coins(char.get("money"))))
     if len(gold_bits) == 1:
         gold = gold_bits[0][1]
+    elif gold_bits:
+        gold = sum(amount for _, amount in gold_bits)
     else:
-        gold = ", ".join(f"{who} {amount}" for who, amount in gold_bits)
+        gold = None
     total = 0
     progress = []
     shopping = []
@@ -810,8 +834,8 @@ def summary_facts(db, report):
             break
     bank_age, bank_when_text = age_phrase(bank_when)
     return {
-        "gold": gold or "not recorded",
-        "gold_caption": "From the last bag snapshot." if gold else "Open your bags once after updating.",
+        "gold": gold if gold is not None else "not recorded",
+        "gold_caption": "From the last bag snapshot." if gold is not None else "Open your bags once after updating.",
         "total": total,
         "priced": priced,
         "scanned": stamp(prices.get("updated") if isinstance(prices, dict) else None) or "no scan yet",
@@ -836,7 +860,7 @@ def summary_rows(db, report):
     rows = [
         ["Card", "Value", "Note"],
         ["Gold on hand", facts["gold"], facts["gold_caption"]],
-        ["Cost to cap", money(facts["total"]), "Every profession, including secondary skills."],
+        ["Cost to cap", coins(facts["total"]), "Every profession, including secondary skills."],
         ["AH prices", facts["priced"], "Listings with a buyout."],
         ["Last scan", facts["scanned"], ""],
         ["Bank snapshot", facts["bank_age"], facts["bank_when"]],
@@ -845,16 +869,16 @@ def summary_rows(db, report):
     ]
     for row in facts["progress"]:
         percent = round(100 * row["rank"] / row["cap"]) if row["cap"] else 0
-        rows.append([row["character"], row["profession"], row["rank"], row["cap"], f"{percent}%", money(row["cost"])])
+        rows.append([row["character"], row["profession"], row["rank"], row["cap"], f"{percent}%", coins(row["cost"])])
     rows.append([])
     rows.append(["Item", "Spend"])
     for row in facts["shopping"]:
-        rows.append([row["item"], money(row["cost"])])
+        rows.append([row["item"], coins(row["cost"])])
     return rows
 
 
 def positive_money(value):
-    return isinstance(value, str) and value not in ("", "0c") and not value.startswith("-")
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
 
 
 def write_csv_dir(directory, tables):
@@ -875,8 +899,10 @@ def write_xlsx(path, tables, db, report):
     from openpyxl.chart.label import DataLabelList
     from openpyxl.chart.series import DataPoint
     from openpyxl.chart.shapes import GraphicalProperties
-    from openpyxl.formatting.rule import DataBarRule
+    from openpyxl.formatting.rule import DataBarRule, Rule
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.styles.differential import DifferentialStyle
+    from openpyxl.styles.numbers import NumberFormat
     from openpyxl.utils import get_column_letter
     from openpyxl.chart.legend import Legend
 
@@ -919,6 +945,22 @@ def write_xlsx(path, tables, db, report):
         sheet.page_margins.bottom = 0.5
         sheet.sheet_properties.tabColor = "C47A3A"
 
+    def mark_money(cell):
+        if isinstance(cell.value, bool) or not isinstance(cell.value, (int, float)):
+            return
+        cell.number_format = COIN_FORMAT
+
+    def red_losses(sheet, span):
+        sheet.conditional_formatting.add(span, Rule(
+            type="cellIs",
+            operator="lessThan",
+            formula=["0"],
+            dxf=DifferentialStyle(
+                font=Font(color="FF6B6B", name="Calibri"),
+                numFmt=NumberFormat(numFmtId=180, formatCode=NEG_COIN_FORMAT),
+            ),
+        ))
+
     def paint_range(sheet, rows, cols):
         for row in sheet.iter_rows(min_row=1, max_row=rows, min_col=1, max_col=cols):
             for cell in row:
@@ -939,7 +981,7 @@ def write_xlsx(path, tables, db, report):
         sheet.row_dimensions[2].height = 22
         cards = [
             ("Gold on hand", facts["gold"], facts["gold_caption"]),
-            ("Cost to cap", money(facts["total"]), "All professions, secondary skills included."),
+            ("Cost to cap", coins(facts["total"]), "All professions, secondary skills included."),
             ("AH prices", str(facts["priced"]), "Listings with a buyout."),
             ("Last scan", facts["scanned"], "When the auction file was written."),
             ("Bank snapshot", facts["bank_age"], facts["bank_when"] or ""),
@@ -958,17 +1000,21 @@ def write_xlsx(path, tables, db, report):
                 cell.alignment = left
             label_cell.font = tan
             value_cell.font = gold
+            if index < 2:
+                mark_money(value_cell)
             caption_cell.font = Font(color="A89880", name="Calibri", size=10)
             sheet.cell(4, col + 1).fill = fill
             sheet.cell(5, col + 1).fill = fill
             sheet.cell(6, col).fill = fill
             sheet.cell(6, col + 1).fill = fill
             sheet.cell(7, col + 1).fill = fill
+        red_losses(sheet, "A5")
+        red_losses(sheet, "C5")
         sheet.row_dimensions[5].height = 28
         sheet.row_dimensions[6].height = 22
         sheet["A9"] = "Profession progress"
         sheet["A9"].font = Font(bold=True, color="F5C16C", name="Calibri", size=16)
-        headers = ["Profession", "Rank", "Progress", "Cost", "Silver", "Percent"]
+        headers = ["Profession", "Rank", "Progress", "Cost", "Percent"]
         for col, text in enumerate(headers, start=1):
             cell = sheet.cell(10, col, text)
             cell.fill = header_fill
@@ -981,8 +1027,7 @@ def write_xlsx(path, tables, db, report):
                 row["profession"],
                 f"{row['rank']} / {row['cap']}",
                 progress_bar(row["rank"], row["cap"]),
-                money(row["cost"]),
-                round(row["cost"] / 100, 1),
+                coins(row["cost"]),
                 percent,
             ]
             for col, value in enumerate(values, start=1):
@@ -990,21 +1035,24 @@ def write_xlsx(path, tables, db, report):
                 cell.font = Font(color="F4EDE4", name="Calibri", size=12)
                 cell.fill = PatternFill("solid", fgColor="241910")
                 cell.alignment = left
+                if col == 4:
+                    mark_money(cell)
             sheet.row_dimensions[excel_row].height = 20
         last_prof = 10 + max(1, len(facts["progress"]))
         if facts["progress"]:
             sheet.conditional_formatting.add(
-                f"F11:F{last_prof}",
+                f"E11:E{last_prof}",
                 DataBarRule(start_type="num", start_value=0, end_type="num", end_value=100, color="C47A3A", showValue=True),
             )
+            red_losses(sheet, f"D11:D{last_prof}")
             chart = BarChart()
             chart.type = "col"
             chart.title = "Cost to cap"
-            chart.y_axis.title = "silver"
+            chart.y_axis.title = "copper"
             chart.style = 10
             chart.legend = None
             chart.y_axis.majorGridlines = None
-            data = Reference(sheet, min_col=5, min_row=10, max_row=last_prof)
+            data = Reference(sheet, min_col=4, min_row=10, max_row=last_prof)
             cats = Reference(sheet, min_col=1, min_row=11, max_row=last_prof)
             chart.add_data(data, titles_from_data=True)
             chart.set_categories(cats)
@@ -1016,7 +1064,7 @@ def write_xlsx(path, tables, db, report):
             sheet.add_chart(chart, "A22")
         sheet["G9"] = "Top shopping"
         sheet["G9"].font = Font(bold=True, color="F5C16C", name="Calibri", size=16)
-        for col, text in enumerate(["Item", "Spend", "Copper"], start=7):
+        for col, text in enumerate(["Item", "Spend"], start=7):
             cell = sheet.cell(10, col, text)
             cell.fill = header_fill
             cell.font = header_font
@@ -1028,16 +1076,17 @@ def write_xlsx(path, tables, db, report):
         for offset, row in enumerate(pie_rows):
             excel_row = 11 + offset
             sheet.cell(excel_row, 7, row["item"]).font = cream
-            sheet.cell(excel_row, 8, money(row["cost"])).font = cream
-            sheet.cell(excel_row, 9, row["cost"]).font = cream
-            for col in (7, 8, 9):
+            spend = sheet.cell(excel_row, 8, coins(row["cost"]))
+            spend.font = cream
+            mark_money(spend)
+            for col in (7, 8):
                 sheet.cell(excel_row, col).fill = PatternFill("solid", fgColor="241910")
                 sheet.cell(excel_row, col).alignment = left
         if pie_rows:
             pie = PieChart()
             pie.title = "Shopping spend"
             labels = Reference(sheet, min_col=7, min_row=11, max_row=10 + len(pie_rows))
-            data = Reference(sheet, min_col=9, min_row=10, max_row=10 + len(pie_rows))
+            data = Reference(sheet, min_col=8, min_row=10, max_row=10 + len(pie_rows))
             pie.add_data(data, titles_from_data=True)
             pie.set_categories(labels)
             pie.dataLabels = DataLabelList()
@@ -1057,7 +1106,8 @@ def write_xlsx(path, tables, db, report):
                 pie.series[0].data_points = points
             pie.legend.position = "b"
             sheet.add_chart(pie, "G22")
-        widths = {"A": 24, "B": 14, "C": 22, "D": 16, "E": 12, "F": 12, "G": 22, "H": 14, "I": 12, "J": 16}
+            red_losses(sheet, f"H11:H{10 + len(pie_rows)}")
+        widths = {"A": 24, "B": 14, "C": 22, "D": 18, "E": 12, "F": 14, "G": 22, "H": 16, "I": 14, "J": 16}
         for letter, width in widths.items():
             sheet.column_dimensions[letter].width = width
         sheet.freeze_panes = "A11"
@@ -1107,6 +1157,14 @@ def write_xlsx(path, tables, db, report):
                 else:
                     cell.fill = PatternFill("solid", fgColor="241910")
                     cell.font = cream
+                if header[col - 1] in MONEY_HEADERS:
+                    mark_money(cell)
+        if body:
+            last = 3 + len(body) - 1
+            for title in ("Reagent cost", "AH price", "Profit"):
+                if title in header:
+                    column = get_column_letter(header.index(title) + 1)
+                    red_losses(sheet, f"{column}4:{column}{last}")
             sheet.row_dimensions[offset].height = 20
         widths = [16, 18, 28, 16, 12, 14, 16, 16, 12]
         for index, width in enumerate(widths, start=1):
@@ -1130,6 +1188,17 @@ def write_xlsx(path, tables, db, report):
                 for col_index in range(1, len(row) + 1):
                     sheet.cell(row_index, col_index).fill = section_fill
                     sheet.cell(row_index, col_index).font = section_font
+        money_columns = []
+        if rows and rows[0]:
+            for col_index, title in enumerate(rows[0], start=1):
+                if title in MONEY_HEADERS:
+                    money_columns.append(col_index)
+                    for row_index in range(2, len(rows) + 1):
+                        mark_money(sheet.cell(row_index, col_index))
+        if money_columns and len(rows) > 1:
+            for col_index in money_columns:
+                letter = get_column_letter(col_index)
+                red_losses(sheet, f"{letter}2:{letter}{len(rows)}")
         sheet.freeze_panes = "A2"
         if rows and rows[0]:
             sheet.auto_filter.ref = sheet.dimensions

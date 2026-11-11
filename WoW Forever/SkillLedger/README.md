@@ -87,7 +87,7 @@ Open each profession window once. SkillLedger reads the recipes that window list
 
 The workbook opens on Summary: headline cards, a progress bar per profession, a cost-to-cap chart, a shopping-spend chart, and the top items to buy. Profitable Crafts lists learned recipes that can be sold, with reagent cost (owned, a reputation-discounted vendor, or the auction house), the auction price, profit, margin, and how many are listed. Green rows make money. If no profession window has been opened, that sheet says to open each one and rescan.
 
-Professions drops the realm column. Secondary is a yes/no flag on each skill, so Cooking, First Aid, and Fishing are left off that sheet and the flag column goes with them. They stay on Summary and in the leveling plan. Inventory keeps crafting reagents and Trade Goods only, one row per item, with a location such as `Bags 12 / Bank 8`. Shopping List has no item id. Vendors has no faction id, item id, or NPC. Header rows stay frozen. Money is gold, silver, and copper.
+Professions drops the realm column. Secondary is a yes/no flag on each skill, so Cooking, First Aid, and Fishing are left off that sheet and the flag column goes with them. They stay on Summary and in the leveling plan. Inventory keeps crafting reagents and Trade Goods only, one row per item, with a location such as `Bags 12 / Bank 8`. Shopping List has no item id. Vendors has no faction id, item id, or NPC. Header rows stay frozen. Every coin column stores copper as a number. The display format is `[<100]0"c";[>9999]#"g "00"s "00"c";0"s "00"c"`, so 1234567 shows as 123g 45s 67c, 1205 as 12s 05c, and 42 as 42c. A loss uses a red format with the same split, so -300 shows as -3s 00c.
 
 ## Coverage
 
