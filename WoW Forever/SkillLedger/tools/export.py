@@ -5,10 +5,11 @@ Usage:
   export.py SavedVariables\\SkillLedger.lua
   export.py --account "C:\\World of Warcraft\\_forever_\\WTF\\Account\\NAME"
   export.py
-  export.bat -o "%USERPROFILE%\\Desktop\\SkillLedger.xlsx"
+  export.bat --out "%USERPROFILE%\\Desktop\\SkillLedger.xlsx"
 
 With no .lua path, the newest SkillLedger.lua under a _forever_ install is used.
-The workbook defaults to Desktop\\SkillLedger.xlsx. A non-.lua path is rejected.
+The workbook defaults to the real Desktop, including a OneDrive Desktop.
+--out (and -o) overrides that path. A non-.lua path is rejected.
 
 Log out of WoW, or /reload, before running this. The game writes
 SavedVariables on logout and reload. The addon cannot write the file itself.
@@ -23,6 +24,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -1491,7 +1493,7 @@ def write_xlsx(path, tables, db, report):
             write_profit(sheet, rows)
         else:
             write_table(sheet, rows)
-    book.save(path)
+    return save_workbook(book, path)
 
 
 def non_lua_message(path):
@@ -1504,24 +1506,77 @@ def non_lua_message(path):
     )
 
 
-def desktop_dir():
-    home = os.path.expanduser("~")
-    candidates = []
-    if os.name == "nt":
-        folder = windows_known_folder("Desktop")
-        if folder:
-            candidates.append(folder)
-        profile = os.environ.get("USERPROFILE") or home
-        candidates.append(os.path.join(profile, "Desktop"))
-        candidates.append(os.path.join(profile, "OneDrive", "Desktop"))
-    candidates.append(os.path.join(home, "Desktop"))
-    for path in candidates:
-        if path and os.path.isdir(os.path.expandvars(path)):
-            return os.path.abspath(os.path.expandvars(path))
-    return os.path.abspath(home)
+def expand_env(value):
+    """Expand %NAME% and $NAME, including a registry path read on any platform."""
+    if not value:
+        return ""
+    text = os.path.expandvars(str(value))
+
+    def repl(match):
+        return os.environ.get(match.group(1), match.group(0))
+
+    text = re.sub(r"%([^%]+)%", repl, text)
+    if os.name != "nt":
+        text = text.replace("\\", os.sep)
+    return text
+
+
+def existing_dir(path):
+    text = expand_env(path).strip().strip('"')
+    if text and os.path.isdir(text):
+        return os.path.abspath(text)
+    return None
+
+
+def known_folder_desktop():
+    """SHGetKnownFolderPath(FOLDERID_Desktop). None when this is not Windows.
+
+    This is the Desktop Explorer actually uses, including one OneDrive has taken over.
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except ImportError:
+        return None
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    # FOLDERID_Desktop = {B4BFCC3A-DB2C-424C-B029-7FE99A87C641}
+    folder_id = GUID(
+        0xB4BFCC3A,
+        0xDB2C,
+        0x424C,
+        (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41),
+    )
+    try:
+        ole32 = ctypes.OleDLL("ole32")
+    except (OSError, AttributeError):
+        return None
+    buf = ctypes.c_wchar_p()
+    try:
+        ole32.SHGetKnownFolderPath(ctypes.byref(folder_id), 0, None, ctypes.byref(buf))
+    except OSError:
+        return None
+    try:
+        return buf.value
+    finally:
+        if buf:
+            try:
+                ole32.CoTaskMemFree(buf)
+            except OSError:
+                pass
 
 
 def windows_known_folder(name):
+    """User Shell Folders value, with %USERPROFILE% and the like expanded."""
     try:
         import winreg
     except ImportError:
@@ -1534,11 +1589,51 @@ def windows_known_folder(name):
         return None
     if not isinstance(value, str) or not value:
         return None
-    return os.path.expandvars(value)
+    return expand_env(value)
+
+
+def desktop_dir():
+    """The real Desktop, then %USERPROFILE%\\Desktop, then this script's folder."""
+    candidates = []
+    if os.name == "nt":
+        candidates.append(known_folder_desktop())
+        candidates.append(windows_known_folder("Desktop"))
+        profile = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+        candidates.append(os.path.join(profile, "Desktop"))
+    else:
+        candidates.append(os.path.join(os.path.expanduser("~"), "Desktop"))
+    for path in candidates:
+        found = existing_dir(path)
+        if found:
+            return found
+    return os.path.abspath(HERE)
 
 
 def default_output():
     return os.path.join(desktop_dir(), "SkillLedger.xlsx")
+
+
+def save_workbook(book, path):
+    """Save path. If Excel has it open, use 'Name (1).xlsx', then (2), and so on."""
+    folder = os.path.dirname(os.path.abspath(path)) or "."
+    os.makedirs(folder, exist_ok=True)
+    stem, ext = os.path.splitext(os.path.basename(path))
+    ext = ext or ".xlsx"
+    locked = False
+    for index in range(0, 100):
+        candidate = path if index == 0 else os.path.join(folder, f"{stem} ({index}){ext}")
+        try:
+            book.save(candidate)
+        except PermissionError:
+            locked = True
+            continue
+        saved = os.path.abspath(candidate)
+        if locked:
+            print(f"{os.path.abspath(path)} is open in Excel. Saved as {saved} instead.")
+        return saved
+    raise SystemExit(
+        f"{os.path.abspath(path)} is open in Excel, and the next 99 names are locked too. Close it and run this again."
+    )
 
 
 def _unique(paths):
@@ -1771,13 +1866,21 @@ def openpyxl_ready():
         return False
 
 
-def main(argv):
+def argument_parser():
     parser = argparse.ArgumentParser(description="Export SkillLedger SavedVariables to Excel or CSV.")
     parser.add_argument("saved", nargs="?", help="SkillLedger.lua, or a WTF Account folder")
     parser.add_argument("--account", help="WTF\\Account folder, or one account's folder")
-    parser.add_argument("-o", "--output", help="xlsx path (default: Desktop\\SkillLedger.xlsx)")
+    parser.add_argument(
+        "-o", "--output", "--out",
+        dest="output",
+        help="xlsx path (default: the real Desktop\\SkillLedger.xlsx)",
+    )
     parser.add_argument("--csv", action="store_true", help="also write CSV files; used alone if openpyxl is missing")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv):
+    args = argument_parser().parse_args(argv)
     explicit = args.saved or args.account
     candidates, searched = collect_saved(explicit)
     if not candidates:
@@ -1813,9 +1916,9 @@ def main(argv):
     wrote = []
     use_xlsx = openpyxl_ready()
     if use_xlsx:
-        write_xlsx(output, tables, db, report)
-        wrote.append(output)
-        print(f"wrote {output}")
+        saved = write_xlsx(output, tables, db, report)
+        wrote.append(saved)
+        print(f"wrote {saved}")
     if args.csv or not use_xlsx:
         folder = os.path.splitext(output)[0] + "-csv"
         wrote.extend(write_csv_dir(folder, tables))

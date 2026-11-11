@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Export the sample SavedVariables and check the workbook."""
 
+import io
 import os
 import sys
 import tempfile
+from contextlib import redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -69,6 +71,70 @@ def test_newest_saved_file_is_chosen():
     assert export.default_output().endswith(os.path.join("Desktop", "SkillLedger.xlsx")) or export.default_output().endswith(
         "SkillLedger.xlsx"
     )
+
+
+def test_windows_desktop_prefers_the_known_folder():
+    """OneDrive's Desktop wins over %USERPROFILE%\\Desktop. The script folder is last."""
+    root = tempfile.mkdtemp()
+    known = os.path.join(root, "OneDrive", "Desktop")
+    profile = os.path.join(root, "Profile")
+    profile_desktop = os.path.join(profile, "Desktop")
+    os.makedirs(known)
+    os.makedirs(profile_desktop)
+    previous_name = os.name
+    previous_profile = os.environ.get("USERPROFILE")
+    previous_known = export.known_folder_desktop
+    previous_registry = export.windows_known_folder
+    os.environ["USERPROFILE"] = root
+    try:
+        expanded = export.expand_env("%USERPROFILE%\\OneDrive\\Desktop")
+        assert os.path.abspath(expanded) == os.path.abspath(known)
+        os.name = "nt"
+        export.known_folder_desktop = lambda: known
+        export.windows_known_folder = lambda _name: profile_desktop
+        assert export.desktop_dir() == os.path.abspath(known)
+
+        export.known_folder_desktop = lambda: os.path.join(root, "missing-known")
+        export.windows_known_folder = lambda _name: known
+        assert export.desktop_dir() == os.path.abspath(known)
+
+        export.windows_known_folder = lambda _name: None
+        os.environ["USERPROFILE"] = profile
+        assert export.desktop_dir() == os.path.abspath(profile_desktop)
+
+        os.environ["USERPROFILE"] = os.path.join(root, "no-such-user")
+        assert export.desktop_dir() == os.path.abspath(export.HERE)
+    finally:
+        os.name = previous_name
+        export.known_folder_desktop = previous_known
+        export.windows_known_folder = previous_registry
+        if previous_profile is None:
+            os.environ.pop("USERPROFILE", None)
+        else:
+            os.environ["USERPROFILE"] = previous_profile
+
+
+def test_locked_workbook_uses_the_next_name():
+    folder = tempfile.mkdtemp()
+    target = os.path.join(folder, "SkillLedger.xlsx")
+
+    class Book:
+        def save(self, path):
+            if os.path.basename(path) in ("SkillLedger.xlsx", "SkillLedger (1).xlsx"):
+                raise PermissionError(13, "used by Excel", path)
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("ok")
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        saved = export.save_workbook(Book(), target)
+    assert os.path.basename(saved) == "SkillLedger (2).xlsx"
+    assert os.path.isfile(saved)
+    text = buffer.getvalue()
+    assert "open in Excel" in text
+    assert os.path.abspath(saved) in text
+    args = export.argument_parser().parse_args(["--out", target])
+    assert args.output == target
 
 
 def test_vendor_flip_section():
@@ -186,6 +252,8 @@ def main_test():
     test_bat_argument_is_not_parsed()
     test_parse_failure_names_the_file()
     test_newest_saved_file_is_chosen()
+    test_windows_desktop_prefers_the_known_folder()
+    test_locked_workbook_uses_the_next_name()
     assert os.path.basename(export.default_output()) == "SkillLedger.xlsx"
     main([SAMPLE, "-o", OUT, "--csv"])
     from openpyxl import load_workbook
