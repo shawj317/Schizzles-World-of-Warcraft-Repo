@@ -1876,6 +1876,24 @@ def openpyxl_ready():
         return False
 
 
+def launcher_basename(token):
+    text = str(token).strip().strip('"').strip("'")
+    text = text.replace("/", "\\")
+    return text.rsplit("\\", 1)[-1].lower()
+
+
+def drop_launcher_args(argv):
+    """Ignore a leading export.bat or export.py. PowerShell prepends that name when an arg starts with a dash."""
+    kept = []
+    skipping = True
+    for token in argv:
+        if skipping and launcher_basename(token) in ("export.bat", "export.py"):
+            continue
+        skipping = False
+        kept.append(token)
+    return kept
+
+
 def argument_parser():
     parser = argparse.ArgumentParser(description="Export SkillLedger SavedVariables to Excel or CSV.")
     parser.add_argument("saved", nargs="?", help="SkillLedger.lua, or a WTF Account folder")
@@ -1890,7 +1908,7 @@ def argument_parser():
 
 
 def main(argv):
-    args = argument_parser().parse_args(argv)
+    args = argument_parser().parse_args(drop_launcher_args(argv))
     explicit = args.saved or args.account
     candidates, searched = collect_saved(explicit)
     if not candidates:

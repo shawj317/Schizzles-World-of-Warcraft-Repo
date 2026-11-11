@@ -16,22 +16,62 @@ SAMPLE = os.path.join(HERE, "sample", "SkillLedger.lua")
 OUT = os.path.join(HERE, "sample", "SkillLedger-test.xlsx")
 
 
+def bat_forwarded_args(argv):
+    """Replay export.bat: shift a leading launcher name, then copy %1.. with shift.
+
+    %* would still be the original list. The rebuilt list is what Python must see.
+    """
+    lines = open(os.path.join(HERE, "export.bat"), encoding="utf-8").read().splitlines()
+    code = [line for line in lines if line.strip() and not line.strip().lower().startswith("rem")]
+    text = "\n".join(code).lower()
+    assert 'if /i "%~nx1"=="export.bat" shift' in text
+    assert 'if /i "%~nx1"=="export.py" shift' in text
+    assert ":gather" in text and "goto gather" in text
+    assert 'set forwarded=%forwarded% "%~1"' in text
+    launch = [line for line in code if "export.py" in line.lower()][-1]
+    assert "%FORWARDED%" in launch
+    assert "%*" not in launch
+    args = list(argv)
+
+    def name(token):
+        return str(token).replace("/", "\\").rsplit("\\", 1)[-1].lower()
+
+    if args and name(args[0]) == "export.bat":
+        args = args[1:]
+    if args and name(args[0]) == "export.py":
+        args = args[1:]
+    forwarded = []
+    while args:
+        forwarded.append(args[0].strip('"'))
+        args = args[1:]
+    return forwarded
+
+
 def test_bat_argument_is_not_parsed():
-    """PowerShell can pass .\\export.bat as the first argument. That file is not SavedVariables."""
-    previous = os.getcwd()
-    os.chdir(HERE)
+    """PowerShell prepends .\\export.bat when an argument starts with a dash. Both layers drop it."""
+    powershell = [r".\export.bat", "--out", r"C:\Users\Jon\Desktop\SkillLedger.xlsx"]
+    assert bat_forwarded_args(powershell) == ["--out", r"C:\Users\Jon\Desktop\SkillLedger.xlsx"]
+    assert bat_forwarded_args([r"C:\tools\export.py", "SavedVariables\\SkillLedger.lua"]) == [
+        "SavedVariables\\SkillLedger.lua"
+    ]
+    assert bat_forwarded_args(["--out", "SkillLedger.xlsx"]) == ["--out", "SkillLedger.xlsx"]
+    assert export.drop_launcher_args(powershell) == ["--out", r"C:\Users\Jon\Desktop\SkillLedger.xlsx"]
+    assert export.drop_launcher_args([r"C:\Users\Jon\tools\export.py", SAMPLE]) == [SAMPLE]
+    folder = tempfile.mkdtemp()
+    out = os.path.join(folder, "from-bat.xlsx")
+    main([r".\export.bat", SAMPLE, "--out", out])
+    assert os.path.isfile(out)
+    out_py = os.path.join(folder, "from-py.xlsx")
+    main(["export.py", SAMPLE, "-o", out_py])
+    assert os.path.isfile(out_py)
     try:
-        main([".\\export.bat", "-o", OUT])
+        main(["notes.txt", "--out", out])
     except SystemExit as exc:
         text = str(exc)
-        assert "export.bat" in text, text
+        assert "notes.txt" in text, text
         assert "not a SavedVariables file" in text, text
-        assert "expected a name" not in text, text
     else:
-        raise AssertionError("export.bat was accepted as the SavedVariables source")
-    finally:
-        os.chdir(previous)
-    assert not os.path.exists(OUT)
+        raise AssertionError("a non-lua file was accepted as the SavedVariables source")
 
 
 def test_parse_failure_names_the_file():
@@ -137,7 +177,8 @@ def test_failing_known_folder_falls_through():
 
     with open(os.path.join(HERE, "export.bat"), encoding="utf-8") as handle:
         bat = handle.read()
-    assert '%PY% "%~dp0export.py" %*' in bat
+    assert '%PY% "%~dp0export.py" %FORWARDED%' in bat
+    assert "%*" not in bat.split("export.py", 1)[-1]
 
     try:
         os.name = "nt"
