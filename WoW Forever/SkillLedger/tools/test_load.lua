@@ -123,20 +123,25 @@ C_Timer = { After = function(_, fn) queued[#queued + 1] = fn end }
 TSM_API = {
   GetCustomPriceValue = function(source, item)
     if item ~= "i:2840" then return nil end
+    if item == "i:2770" or item == "i:2589" then error("tsm on reagent " .. item) end
+    if source == "dbmarket" or source == "dbminbuyout" then error("tsm price " .. source) end
+    if item ~= "i:2840" then return nil end
     if source == "dbregionsalerate" then return 0.25 end
     if source == "dbregionsoldperday" then return 3 end
-    if source == "dbmarket" then return 450 end
-    if source == "dbminbuyout" then error("region down") end
     return nil
   end,
 }
 Auctionator = { API = { v1 = {
   GetAuctionPriceByItemID = function(_, itemId)
     if itemId == 1251 then return 200 end
+    if itemId == 2840 then return 500 end
+    if itemId == 800001 then return 10 end
     return nil
   end,
   GetAuctionAgeByItemID = function(_, itemId)
     if itemId == 1251 then return 3600 end
+    if itemId == 2840 then return 10 end
+    if itemId == 800001 then return 5000 end
     return nil
   end,
 }}}
@@ -147,7 +152,12 @@ for i = 1, 14 do
 end
 learned[#learned + 1] = { spell = 3275, item = 1251, name = "Linen Bandage" }
 char.learned = { recipes = learned }
-assert(SkillLedger.SnapshotMarket() == 16)
+local now = SkillLedger.Now()
+SkillLedgerDB.prices.items = {
+  { id = 2840, unit = 400, at = now - 5000 },
+  { id = 800001, unit = 80, at = now - 10 },
+}
+assert(SkillLedger.SnapshotMarket() == 18)
 local function savedMarket()
   local out = {}
   for i = 1, #SkillLedgerDB.market.items do
@@ -156,11 +166,15 @@ local function savedMarket()
   return out
 end
 local saved = savedMarket()
-assert(saved[2840] and saved[2840].saleRate == 0.25 and saved[2840].soldPerDay == 3 and saved[2840].market == 450)
-assert(saved[2840].minBuyout == nil, "a failed TSM source should be skipped")
+assert(saved[2840] and saved[2840].saleRate == 0.25 and saved[2840].soldPerDay == 3)
+assert(saved[2840].market == nil and saved[2840].minBuyout == nil, "TSM market prices should not be stored")
+assert(saved[2840].price == 500 and saved[2840].priceSource == "auctionator" and saved[2840].priceAge == 10)
+assert(saved[800001] and saved[800001].price == 80 and saved[800001].priceSource == "scan")
 assert(saved[1251] == nil, "the item past the first batch should wait")
 assert(#queued == 1, "the rest of the market read should wait for a timer, not OnUpdate")
 queued[1]()
 saved = savedMarket()
 assert(saved[1251] and saved[1251].atrPrice == 200 and saved[1251].atrAge == 3600 and saved[1251].saleRate == nil)
+assert(saved[1251].price == 200 and saved[1251].priceSource == "auctionator" and saved[1251].priceAge == 3600)
+assert(saved[2770] == nil and saved[2589] == nil, "a reagent with no Auctionator price is not stored")
 print("load test passed", #SkillLedgerData.recipes, "recipes", plans[1].steps[1].recipe)

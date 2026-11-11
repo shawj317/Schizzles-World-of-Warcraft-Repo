@@ -98,13 +98,88 @@ def test_vendor_flip_section():
     assert potion[7] == "Vendor"
     assert potion[8] == 81
     assert potion[11] == "any"
-    atr = {"chars": db["chars"], "prices": {"items": [{"id": 2, "unit": 50, "total": 3}]}, "market": {"items": [
-        {"id": 2, "atrPrice": 50, "atrAge": 7200},
-    ]}}
-    atr_rows = export.profitable_rows(atr, data)
-    atr_potion = next(row for row in atr_rows if row[1] == "Test Potion")
-    assert atr_potion[12] == "n/a (Auctionator, 2h)"
-    assert atr_potion[15] == "Low"
+    assert potion[14] == "" and potion[15] == ""
+
+
+def test_price_source():
+    data = {
+        "professions": [{"id": 171, "name": "Alchemy"}],
+        "items": {"1": "Empty Vial", "2": "Test Potion", "3": "Copper Ore", "4": "Copper Bar"},
+        "vendor": {"1": {"price": 20, "factions": [{"id": 76, "name": "Orgrimmar", "side": "Horde"}]}},
+        "sell": {"2": 100, "4": 10},
+        "recipes": [
+            {
+                "spell": 9, "skill": 171, "name": "Test Potion", "made": 2, "count": 1,
+                "enchant": False, "reagents": [[1, 1]],
+            },
+            {
+                "spell": 10, "skill": 171, "name": "Smelted Bar", "made": 4, "count": 1,
+                "enchant": False, "reagents": [[3, 1]],
+            },
+        ],
+    }
+    char = {
+        "name": "Grimjaw", "faction": "Horde", "classFile": "WARRIOR", "race": "Orc",
+        "bags": {"items": []}, "bank": {"items": []},
+        "standings": {"factions": [{"id": 76, "standing": 5}]},
+        "merchant": {"rows": []},
+        "learned": {"recipes": [
+            {"spell": 9, "name": "Test Potion", "profession": "Alchemy"},
+            {"spell": 10, "name": "Smelted Bar", "profession": "Alchemy"},
+        ]},
+    }
+
+    def potion(prices, market):
+        db = {"chars": {"A": char}, "prices": {"items": prices}, "market": {"items": market}}
+        rows = export.profitable_rows(db, data)
+        found = {row[1]: row for row in rows if row[1]}
+        return found
+
+    missing = potion([], [{"id": 2, "atrPrice": 200, "atrAge": 7200}])
+    row = missing["Test Potion"]
+    assert row[6] == 175  # 200c, minus 5% and a 15c deposit
+    assert row[7] == "AH"
+    assert row[8] == 156
+    assert row[12] == ""
+    assert row[14] == "Auctionator"
+    assert row[15] == "2h"
+
+    fresher = potion(
+        [{"id": 2, "unit": 500, "total": 8, "at": 1000}],
+        [{"id": 2, "atrPrice": 200, "atrAge": 50, "at": 8000, "market": 99999, "minBuyout": 1}],
+    )
+    row = fresher["Test Potion"]
+    assert row[6] == 175
+    assert row[8] == 156
+    assert row[14] == "Auctionator"
+    assert row[15] == "50s"
+
+    own_scan = potion(
+        [{"id": 2, "unit": 200, "total": 8, "at": 7900}],
+        [{"id": 2, "atrPrice": 50, "atrAge": 5000, "at": 8000, "market": 99999, "minBuyout": 1}],
+    )
+    row = own_scan["Test Potion"]
+    assert row[6] == 175
+    assert row[14] == "Scan"
+    assert row[15] == "1m"
+
+    ignored = potion(
+        [{"id": 2, "unit": 200, "total": 8, "at": 8000}],
+        [{"id": 2, "market": 99999, "minBuyout": 1, "at": 8000}],
+    )
+    row = ignored["Test Potion"]
+    assert row[6] == 175
+    assert row[14] == "Scan"
+    assert row[15] == "just now"
+
+    reagent = potion(
+        [{"id": 3, "unit": 100, "at": 1000}, {"id": 4, "unit": 400, "total": 4, "at": 1000}],
+        [{"id": 3, "atrPrice": 30, "atrAge": 10, "at": 5000}],
+    )
+    bar = reagent["Smelted Bar"]
+    assert "AH Auctionator 30c" in bar[3]
+    assert bar[4] == 30
+    assert bar[14] == "Scan"
 
 
 def main_test():
@@ -185,10 +260,15 @@ def main_test():
     assert smelt[11] == 20
     assert crafts["Linen Bandage"][8] == 109
     assert crafts["Rough Sharpening Stone"][12] == 40
-    assert crafts["Rough Sharpening Stone"][15] == "High"
-    assert crafts["Linen Bandage"][15] == "Med"
-    assert crafts["Smelt Copper"][15] == "Low"
-    assert crafts["Rough Sharpening Stone"][16] == 123 * 8
+    assert crafts["Rough Sharpening Stone"][14] == "Scan"
+    assert crafts["Smelt Copper"][14] == "Scan"
+    assert crafts["Smelt Copper"][15] == "just now"
+    assert "Market Value" not in header
+    assert header[14:16] == ["Price Source", "Price Age"]
+    assert crafts["Rough Sharpening Stone"][16] == "High"
+    assert crafts["Linen Bandage"][16] == "Med"
+    assert crafts["Smelt Copper"][16] == "Low"
+    assert crafts["Rough Sharpening Stone"][17] == 123 * 8
     names = [row[1] for row in book["Profitable Crafts"].iter_rows(min_row=4, values_only=True) if row[1]]
     assert names[:3] == ["Rough Sharpening Stone", "Linen Bandage", "Smelt Copper"]
     profit_cell = None
@@ -197,6 +277,7 @@ def main_test():
             profit_cell = row[8]
     assert profit_cell is not None and profit_cell.number_format == export.COIN_FORMAT
     test_vendor_flip_section()
+    test_price_source()
     bare = export.load_saved(SAMPLE)
     for char in bare["chars"].values():
         char.pop("learned", None)

@@ -195,7 +195,7 @@ NEG_COIN_FORMAT = '[<=-10000]-#"g "00"s "00"c";[<=-100]-0"s "00"c";-0"c"'
 MONEY_HEADERS = {
     "Min buyout / unit", "Copper", "Cost", "Running total", "Base unit",
     "Unit paid", "Line cost", "Base", "Reagent cost", "AH price", "Profit",
-    "Spend", "Cost to cap", "Vendor Sell", "AH Net", "Market Value", "Expected / day",
+    "Spend", "Cost to cap", "Vendor Sell", "AH Net", "Expected / day",
 }
 
 
@@ -324,12 +324,11 @@ def inventory_of(char):
 
 
 def prices_of(db):
-    prices, sources = {}, {}
-    block = db.get("prices") or {}
-    for row in as_list(block.get("items") if isinstance(block, dict) else None):
-        if isinstance(row, dict) and row.get("id") and row.get("unit"):
-            prices[int(row["id"])] = int(row["unit"])
-            sources[int(row["id"])] = row.get("source") or "scan"
+    """Auction prices: our scan, or Auctionator when the scan is missing or older.
+
+    TSM market and min buyout are not prices. Sale rate stays on the market rows.
+    """
+    prices, sources, _meta = auction_book(db)
     return prices, sources
 
 
@@ -641,7 +640,7 @@ THIN_MARKET = 5
 SHUFFLE_HEADER = [
     "Character", "Item", "Profession", "Reagents", "Cost", "Vendor Sell", "AH Net",
     "Best Channel", "Profit", "Margin %", "AH Qty Listed", "Can Make Now",
-    "Sale Rate", "Sold/Day", "Market Value", "Confidence", "Expected / day",
+    "Sale Rate", "Sold/Day", "Price Source", "Price Age", "Confidence", "Expected / day",
 ]
 
 
@@ -708,6 +707,8 @@ def can_make_now(recipe, inventory, vendor_available):
 
 def craft_quotes(db, data):
     """Learned crafts that sell for more than their cheapest reagents."""
+    prices, sources, meta = auction_book(db)
+    scans = price_index(db)
     recipes_by_spell = {}
     for recipe in data.get("recipes") or []:
         recipes_by_spell[int(recipe["spell"])] = recipe
@@ -722,15 +723,14 @@ def craft_quotes(db, data):
         state = plan.prepare_state(
             data,
             inventory_of(char),
-            prices_of(db)[0],
+            prices,
             standings_of(char),
             captured_of(char),
             char.get("faction") or "",
             CLASS_BIT.get(char.get("classFile") or "", 0),
             RACE_BIT.get(char.get("race") or "", 0),
-            prices_of(db)[1],
+            sources,
         )
-        listing = price_index(db)
         inventory = inventory_of(char)
 
         def vendor_available(item_id, state=state):
@@ -744,7 +744,7 @@ def craft_quotes(db, data):
                 continue
             bits = []
             cost = 0
-            sources = []
+            sources_used = []
             priced = True
             for reagent_id, count in recipe.get("reagents") or []:
                 reagent_id = int(reagent_id)
@@ -760,18 +760,21 @@ def craft_quotes(db, data):
                     continue
                 source, unit = choice
                 cost += unit * count
-                sources.append(source)
-                bits.append(f"{name} x{count} {source} {money(unit)} (own {owned})")
+                sources_used.append(source)
+                origin = (meta.get(reagent_id) or {}).get("source")
+                shown = source if source == "vendor" or not origin else f"{source} {origin}"
+                bits.append(f"{name} x{count} {shown} {money(unit)} (own {owned})")
             if not priced:
                 continue
             made = int(recipe.get("made") or known.get("item") or 0)
             produced = int(recipe.get("count") or 1) or 1
             sell_each = sell_price(data, made)
             vendor_sell = sell_each * produced
-            sale_row = listing.get(made) or {}
-            buyout = int(sale_row.get("unit") or 0)
+            sale_row = scans.get(made) or {}
+            chosen = meta.get(made) or {}
+            buyout = int(prices.get(made) or 0)
             auction_net = ah_proceeds(buyout, produced, sell_each)
-            listed = int(sale_row.get("total") or sale_row.get("qty") or 0) if buyout else None
+            listed = int(sale_row.get("total") or sale_row.get("qty") or 0) if sale_row.get("unit") else None
             channels = []
             if vendor_sell > 0:
                 channels.append(("Vendor", vendor_sell))
@@ -784,7 +787,7 @@ def craft_quotes(db, data):
             if profit <= 0:
                 continue
             vendor_profit = vendor_sell - cost
-            risk_free = bool(sources) and all(source == "vendor" for source in sources) and vendor_profit > 0 and best_name == "Vendor"
+            risk_free = bool(sources_used) and all(source == "vendor" for source in sources_used) and vendor_profit > 0 and best_name == "Vendor"
             profession = known.get("profession") or skill_names.get(int(recipe.get("skill") or 0)) or ""
             quotes.append({
                 "character": char.get("name") or char.get("key"),
@@ -802,6 +805,8 @@ def craft_quotes(db, data):
                 "can_make": can_make_now(recipe, inventory, vendor_available),
                 "risk_free": risk_free,
                 "made": made,
+                "price_source": chosen.get("source") or "",
+                "price_age": chosen.get("age"),
             })
     attach_market(db, quotes)
     has_velocity = any(row.get("sold_per_day") is not None for row in quotes)
@@ -831,6 +836,10 @@ def age_text(seconds):
         seconds = int(seconds)
     except (TypeError, ValueError):
         return ""
+    if seconds <= 0:
+        return "just now"
+    if seconds < 60:
+        return f"{seconds}s"
     if seconds < 3600:
         return f"{max(1, seconds // 60)}m"
     if seconds < 86400:
@@ -870,6 +879,52 @@ def market_index(db):
     return out
 
 
+def choose_auction(scan, market):
+    """Scan price, unless Auctionator has one and the scan is missing or older.
+
+    `market` and `minBuyout` on a TSM row are ignored. Age is seconds at the
+    market snapshot (`market.at`), not at export time.
+    """
+    scan_unit = None
+    scan_at = None
+    if isinstance(scan, dict) and scan.get("unit"):
+        scan_unit = int(scan["unit"])
+        if scan.get("at") is not None:
+            scan_at = int(scan["at"])
+    atr = None
+    atr_age = None
+    ref = None
+    if isinstance(market, dict):
+        if market.get("atrPrice"):
+            atr = int(market["atrPrice"])
+        if market.get("atrAge") is not None and market.get("atrAge") != "":
+            atr_age = int(market["atrAge"])
+        if market.get("at") is not None:
+            ref = int(market["at"])
+    if ref is None:
+        ref = scan_at
+    scan_age = (ref - scan_at) if scan_at is not None and ref is not None and ref >= scan_at else None
+    if atr and atr > 0 and (not scan_unit or (atr_age is not None and scan_age is not None and atr_age < scan_age)):
+        return atr, "Auctionator", atr_age
+    if scan_unit:
+        return scan_unit, "Scan", scan_age
+    return None, None, None
+
+
+def auction_book(db):
+    scans = price_index(db)
+    markets = market_index(db)
+    prices, sources, meta = {}, {}, {}
+    for item_id in set(scans) | set(markets):
+        unit, source, age = choose_auction(scans.get(item_id), markets.get(item_id))
+        if not unit:
+            continue
+        prices[item_id] = int(unit)
+        sources[item_id] = "auctionator" if source == "Auctionator" else "scan"
+        meta[item_id] = {"source": source, "age": age}
+    return prices, sources, meta
+
+
 def attach_market(db, quotes):
     markets = market_index(db)
     for row in quotes:
@@ -880,15 +935,8 @@ def attach_market(db, quotes):
             sold = float(sold)
         else:
             sold = None
-        market = info.get("market")
-        atr = info.get("atrPrice") is not None or info.get("atrAge") is not None
-        if rate is None and atr and sold is None and market is None:
-            age = age_text(info.get("atrAge"))
-            row["sale_rate"] = "n/a (Auctionator" + (f", {age}" if age else "") + ")"
-        else:
-            row["sale_rate"] = "" if rate is None else round(rate)
+        row["sale_rate"] = "" if rate is None else round(rate)
         row["sold_per_day"] = sold
-        row["market"] = int(market) if isinstance(market, (int, float)) and not isinstance(market, bool) else None
         row["confidence"] = confidence_rating(rate, row.get("listed"))
         row["expected"] = expected_per_day(row["profit"], sold, row["can_make"])
 
@@ -909,7 +957,8 @@ def quote_row(row):
         row["can_make"],
         row.get("sale_rate", ""),
         "" if row.get("sold_per_day") is None else row["sold_per_day"],
-        "" if row.get("market") is None else row["market"],
+        row.get("price_source") or "",
+        age_text(row.get("price_age")),
         row.get("confidence", ""),
         "" if row.get("expected") is None else row["expected"],
     ]
@@ -1312,7 +1361,8 @@ def write_xlsx(path, tables, db, report):
                 "Reagent cost is the cheaper of the discounted vendor price and the auction price. "
                 "Owned mats use that auction price, and the count you hold is in parentheses. "
                 "AH net subtracts the 5% cut and a 12-hour deposit. "
-                "Sale rate and sold per day come from TSM. Auctionator has no sale rate; its price age is the freshness note. "
+                "The auction price is SkillLedger's scan, or Auctionator's when that scan is missing or older. "
+                "Price Source and Price Age say which. TSM supplies sale rate and sold per day only. "
                 "The top block is risk-free: vendor in, vendor out."
             )
         sheet["A2"] = note
@@ -1378,7 +1428,7 @@ def write_xlsx(path, tables, db, report):
             if title in header:
                 column = get_column_letter(header.index(title) + 1)
                 red_losses(sheet, f"{column}4:{column}{last}")
-        widths = [16, 26, 16, 54, 14, 14, 14, 14, 14, 12, 16, 14]
+        widths = [16, 26, 16, 54, 14, 14, 14, 14, 14, 12, 16, 14, 12, 12, 16, 14, 14, 16]
         for index, size in enumerate(widths, start=1):
             sheet.column_dimensions[get_column_letter(index)].width = size
         sheet.freeze_panes = "A4"

@@ -185,29 +185,70 @@ local function auctionatorApi()
   return api
 end
 
-function SL.ReadMarket(itemId)
+function SL.ReadMarket(itemId, wantTsm)
   if not itemId then return nil end
+  if wantTsm == nil then wantTsm = true end
   local row = { id = itemId, at = SL.Now() }
   local got = false
-  local saleRate = tsmNumber("dbregionsalerate", itemId)
-  local soldPerDay = tsmNumber("dbregionsoldperday", itemId)
-  local market = tsmNumber("dbmarket", itemId)
-  local minBuyout = tsmNumber("dbminbuyout", itemId)
+  -- TSM is sale rate and sold per day only. dbmarket and dbminbuyout are not prices.
+  local saleRate = wantTsm and tsmNumber("dbregionsalerate", itemId) or nil
+  local soldPerDay = wantTsm and tsmNumber("dbregionsoldperday", itemId) or nil
   if saleRate ~= nil then row.saleRate = saleRate; got = true end
   if soldPerDay ~= nil then row.soldPerDay = soldPerDay; got = true end
-  if market ~= nil then row.market = market; got = true end
-  if minBuyout ~= nil then row.minBuyout = minBuyout; got = true end
-  local api = auctionatorApi()
-  if api and api.GetAuctionPriceByItemID then
-    local ok, value = pcall(api.GetAuctionPriceByItemID, "SkillLedger", itemId)
-    if ok and type(value) == "number" then row.atrPrice = value; got = true end
-  end
-  if api and api.GetAuctionAgeByItemID then
-    local ok, age = pcall(api.GetAuctionAgeByItemID, "SkillLedger", itemId)
-    if ok and type(age) == "number" then row.atrAge = age; got = true end
+  local atrPrice, atrAge = SL.AuctionatorQuote(itemId)
+  if atrPrice ~= nil then row.atrPrice = atrPrice; got = true end
+  if atrAge ~= nil then row.atrAge = atrAge; got = true end
+  local unit, source, age = SL.ChoosePrice(itemId, atrPrice, atrAge)
+  if unit ~= nil then
+    row.price = unit
+    row.priceSource = source
+    if age ~= nil then row.priceAge = age end
+    got = true
   end
   if not got then return nil end
   return row
+end
+
+function SL.AuctionatorQuote(itemId)
+  local api = auctionatorApi()
+  if not api then return nil, nil end
+  local price, age
+  if api.GetAuctionPriceByItemID then
+    local ok, value = pcall(api.GetAuctionPriceByItemID, "SkillLedger", itemId)
+    if ok and type(value) == "number" and value > 0 then price = math.floor(value) end
+  end
+  if api.GetAuctionAgeByItemID then
+    local ok, value = pcall(api.GetAuctionAgeByItemID, "SkillLedger", itemId)
+    if ok and type(value) == "number" and value >= 0 then age = value end
+  end
+  return price, age
+end
+
+function SL.ChoosePrice(itemId, atrPrice, atrAge, scanRow)
+  local scanUnit, scanAt
+  if scanRow == nil then
+    local items = SL.DB().prices.items
+    for i = 1, #items do
+      local saved = items[i]
+      if saved.id == itemId and saved.unit and saved.unit > 0 then
+        scanUnit = saved.unit
+        scanAt = saved.at
+        break
+      end
+    end
+  elseif scanRow then
+    scanUnit = scanRow.unit
+    scanAt = scanRow.at
+  end
+  local now = SL.Now()
+  local scanAge = (scanAt and now and now >= scanAt) and (now - scanAt) or nil
+  if atrPrice and atrPrice > 0 then
+    if not scanUnit or (type(atrAge) == "number" and scanAge and atrAge < scanAge) then
+      return math.floor(atrPrice), "auctionator", atrAge
+    end
+  end
+  if scanUnit then return scanUnit, "scan", scanAge end
+  return nil, nil, nil
 end
 
 local function saveMarket(row)
@@ -247,12 +288,51 @@ local function learnedOutputs()
   return list
 end
 
+local function learnedQuoteItems()
+  local outputs = learnedOutputs()
+  local seen, list = {}, {}
+  for i = 1, #outputs do
+    seen[outputs[i]] = true
+    list[#list + 1] = { id = outputs[i], tsm = true }
+  end
+  local char = SL.Char()
+  local learned = char.learned and char.learned.recipes or {}
+  local recipes = SkillLedgerData and SkillLedgerData.recipes or {}
+  local bySpell = {}
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+    if recipe.spell then bySpell[recipe.spell] = recipe end
+  end
+  for i = 1, #learned do
+    local row = learned[i]
+    local recipe = row.spell and bySpell[row.spell]
+    local reagents = recipe and recipe.reagents
+    if reagents then
+      for r = 1, #reagents do
+        local item = reagents[r][1]
+        if item and item > 0 and not seen[item] then
+          seen[item] = true
+          list[#list + 1] = { id = item, tsm = false }
+        end
+      end
+    end
+  end
+  return list
+end
+
 local function pumpMarket(token)
   local queue = SL._marketQueue
   if not queue or queue.token ~= token then return end
   local last = math.min(queue.index + MARKET_BATCH - 1, #queue.ids)
   for i = queue.index, last do
-    local ok, row = pcall(SL.ReadMarket, queue.ids[i])
+    local entry = queue.ids[i]
+    local itemId = entry
+    local wantTsm = true
+    if type(entry) == "table" then
+      itemId = entry.id
+      wantTsm = entry.tsm and true or false
+    end
+    local ok, row = pcall(SL.ReadMarket, itemId, wantTsm)
     if ok and type(row) == "table" then saveMarket(row) end
   end
   queue.index = last + 1
@@ -273,7 +353,7 @@ function SL.SnapshotMarket()
     if SL.Say then SL.Say("market: TSM and Auctionator are not available.") end
     return 0
   end
-  local ids = learnedOutputs()
+  local ids = learnedQuoteItems()
   if #ids == 0 then return 0 end
   marketToken = marketToken + 1
   SL._marketQueue = { ids = ids, index = 1, token = marketToken }
@@ -282,15 +362,8 @@ function SL.SnapshotMarket()
 end
 
 function SL.ExternalPrice(itemId)
-  if TSM_API and TSM_API.GetCustomPriceValue then
-    local ok, value = pcall(TSM_API.GetCustomPriceValue, "first(DBMinBuyout, AtrValue)", "i:" .. itemId)
-    if ok and type(value) == "number" and value > 0 then return math.floor(value), "tsm" end
-  end
-  local api = Auctionator and Auctionator.API and Auctionator.API.v1
-  if api and api.GetAuctionPriceByItemID then
-    local ok, value = pcall(api.GetAuctionPriceByItemID, "SkillLedger", itemId)
-    if ok and type(value) == "number" and value > 0 then return math.floor(value), "auctionator" end
-  end
+  local price = SL.AuctionatorQuote(itemId)
+  if price then return price, "auctionator" end
   return nil, nil
 end
 
@@ -310,7 +383,14 @@ function SL.Plan()
     local row = db.prices.items[i]
     if row.id and row.unit and row.unit > 0 then
       prices[row.id] = row.unit
-      sources[row.id] = row.source or "scan"
+      sources[row.id] = "scan"
+    end
+  end
+  for i = 1, #(db.market.items or {}) do
+    local row = db.market.items[i]
+    if row.id and row.price and row.price > 0 and (row.priceSource == "scan" or row.priceSource == "auctionator") then
+      prices[row.id] = row.price
+      sources[row.id] = row.priceSource
     end
   end
   local reagents = {}
