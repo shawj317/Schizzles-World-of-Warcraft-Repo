@@ -3,16 +3,79 @@
 
 import os
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from export import main  # noqa: E402
+import export  # noqa: E402
+from export import collect_saved, load_saved, main  # noqa: E402
 
 SAMPLE = os.path.join(HERE, "sample", "SkillLedger.lua")
 OUT = os.path.join(HERE, "sample", "SkillLedger-test.xlsx")
 
 
+def test_bat_argument_is_not_parsed():
+    """PowerShell can pass .\\export.bat as the first argument. That file is not SavedVariables."""
+    previous = os.getcwd()
+    os.chdir(HERE)
+    try:
+        main([".\\export.bat", "-o", OUT])
+    except SystemExit as exc:
+        text = str(exc)
+        assert "export.bat" in text, text
+        assert "not a SavedVariables file" in text, text
+        assert "expected a name" not in text, text
+    else:
+        raise AssertionError("export.bat was accepted as the SavedVariables source")
+    finally:
+        os.chdir(previous)
+    assert not os.path.exists(OUT)
+
+
+def test_parse_failure_names_the_file():
+    folder = tempfile.mkdtemp()
+    path = os.path.join(folder, "SkillLedger.lua")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("@echo off\n")
+    try:
+        load_saved(path)
+    except SystemExit as exc:
+        text = str(exc)
+        assert path in text, text
+        assert "/reload" in text, text
+        assert "expected a name" in text, text
+    else:
+        raise AssertionError("a batch file renamed to .lua was parsed")
+
+
+def test_newest_saved_file_is_chosen():
+    root = tempfile.mkdtemp()
+    wow = os.path.join(root, "World of Warcraft", "_forever_", "WTF", "Account")
+    older = os.path.join(wow, "OLD", "SavedVariables")
+    newer = os.path.join(wow, "NEW", "SavedVariables")
+    os.makedirs(older)
+    os.makedirs(newer)
+    old_file = os.path.join(older, "SkillLedger.lua")
+    new_file = os.path.join(newer, "SkillLedger.lua")
+    with open(old_file, "w", encoding="utf-8") as handle:
+        handle.write("SkillLedgerDB = {}\n")
+    with open(new_file, "w", encoding="utf-8") as handle:
+        handle.write("SkillLedgerDB = {}\n")
+    os.utime(old_file, (1000, 1000))
+    os.utime(new_file, (2000, 2000))
+    found, _searched = collect_saved(os.path.join(root, "World of Warcraft"))
+    assert found[0] == os.path.abspath(new_file)
+    assert os.path.abspath(old_file) in found
+    assert export.default_output().endswith(os.path.join("Desktop", "SkillLedger.xlsx")) or export.default_output().endswith(
+        "SkillLedger.xlsx"
+    )
+
+
 def main_test():
+    test_bat_argument_is_not_parsed()
+    test_parse_failure_names_the_file()
+    test_newest_saved_file_is_chosen()
+    assert os.path.basename(export.default_output()) == "SkillLedger.xlsx"
     main([SAMPLE, "-o", OUT, "--csv"])
     from openpyxl import load_workbook
     book = load_workbook(OUT)

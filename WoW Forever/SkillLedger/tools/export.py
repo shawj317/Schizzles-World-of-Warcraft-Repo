@@ -4,7 +4,11 @@
 Usage:
   export.py SavedVariables\\SkillLedger.lua
   export.py --account "C:\\World of Warcraft\\_forever_\\WTF\\Account\\NAME"
-  export.py sample\\SkillLedger.lua -o SkillLedger.xlsx
+  export.py
+  export.bat -o "%USERPROFILE%\\Desktop\\SkillLedger.xlsx"
+
+With no .lua path, the newest SkillLedger.lua under a _forever_ install is used.
+The workbook defaults to Desktop\\SkillLedger.xlsx. A non-.lua path is rejected.
 
 Log out of WoW, or /reload, before running this. The game writes
 SavedVariables on logout and reload. The addon cannot write the file itself.
@@ -223,12 +227,28 @@ def as_list(value):
 
 
 def load_saved(path):
-    with open(path, encoding="utf-8") as handle:
-        text = handle.read()
-    parsed = LuaParser(text).parse_file()
+    if not str(path).lower().endswith(".lua"):
+        raise SystemExit(non_lua_message(path))
+    try:
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+    except OSError as exc:
+        raise SystemExit(f"Could not read {path}: {exc}")
+    try:
+        parsed = LuaParser(text).parse_file()
+    except LuaError as exc:
+        raise SystemExit(
+            f"Could not read {path}: {exc}. "
+            "Log out or type /reload in game so WoW finishes writing "
+            "SavedVariables\\SkillLedger.lua, then run this again."
+        )
     db = parsed.get("SkillLedgerDB")
     if not isinstance(db, dict):
-        raise SystemExit(f"{path} has no SkillLedgerDB table")
+        raise SystemExit(
+            f"{path} has no SkillLedgerDB table. "
+            "Log out or type /reload in game so WoW writes "
+            "SavedVariables\\SkillLedger.lua, then run this again."
+        )
     return db
 
 
@@ -594,53 +614,308 @@ def write_xlsx(path, tables):
     book.save(path)
 
 
-def find_saved(account):
-    if account and os.path.isfile(account):
-        return account
-    roots = []
-    if account:
-        roots.append(account)
-    for env in ("PROGRAMFILES", "PROGRAMFILES(X86)"):
-        base = os.environ.get(env)
-        if base:
-            roots.append(os.path.join(base, "World of Warcraft", "_forever_", "WTF", "Account"))
+def non_lua_message(path):
+    shown = path or ""
+    return (
+        f"{shown} is not a SavedVariables file. "
+        "Pass SkillLedger.lua from WTF\\Account\\<ACCOUNT>\\SavedVariables, "
+        "or run export.bat with no file name and it will search for that .lua file. "
+        "A .bat or other non-.lua file is never read as the source."
+    )
+
+
+def desktop_dir():
     home = os.path.expanduser("~")
-    roots.append(os.path.join(home, "World of Warcraft", "_forever_", "WTF", "Account"))
-    for drive in "CDEFGH":
-        roots.append(drive + ":\\World of Warcraft\\_forever_\\WTF\\Account")
-        roots.append(drive + ":\\Games\\World of Warcraft\\_forever_\\WTF\\Account")
-    found = []
-    for root in roots:
-        if not root or not os.path.isdir(root):
+    candidates = []
+    if os.name == "nt":
+        folder = windows_known_folder("Desktop")
+        if folder:
+            candidates.append(folder)
+        profile = os.environ.get("USERPROFILE") or home
+        candidates.append(os.path.join(profile, "Desktop"))
+        candidates.append(os.path.join(profile, "OneDrive", "Desktop"))
+    candidates.append(os.path.join(home, "Desktop"))
+    for path in candidates:
+        if path and os.path.isdir(os.path.expandvars(path)):
+            return os.path.abspath(os.path.expandvars(path))
+    return os.path.abspath(home)
+
+
+def windows_known_folder(name):
+    try:
+        import winreg
+    except ImportError:
+        return None
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            value, _ = winreg.QueryValueEx(key, name)
+    except OSError:
+        return None
+    if not isinstance(value, str) or not value:
+        return None
+    return os.path.expandvars(value)
+
+
+def default_output():
+    return os.path.join(desktop_dir(), "SkillLedger.xlsx")
+
+
+def _unique(paths):
+    seen = set()
+    out = []
+    for path in paths:
+        if not path:
             continue
-        direct = os.path.join(root, "SavedVariables", "SkillLedger.lua")
-        if os.path.isfile(direct):
-            found.append(direct)
+        normal = os.path.normpath(os.path.expandvars(str(path).strip().strip('"')))
+        key = os.path.normcase(normal)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(normal)
+    return out
+
+
+def _looks_like_wow_path(value):
+    if not isinstance(value, str):
+        return False
+    text = value.replace("/", "\\").strip().strip('"')
+    if len(text) < 3 or "\n" in text:
+        return False
+    lower = text.lower()
+    return "world of warcraft" in lower or lower.rstrip("\\").endswith("\\_forever_")
+
+
+def registry_wow_roots():
+    """Battle.net / World of Warcraft install paths from the registry, when present."""
+    try:
+        import winreg
+    except ImportError:
+        return []
+    found = []
+    parents = (
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Blizzard Entertainment"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Blizzard Entertainment"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Blizzard Entertainment"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\WOW6432Node\Blizzard Entertainment"),
+    )
+    uninstall = (
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+    )
+
+    def walk(hive, subkey, depth):
         try:
-            names = os.listdir(root)
+            key = winreg.OpenKey(hive, subkey)
+        except OSError:
+            return
+        with key:
+            index = 0
+            while True:
+                try:
+                    _name, value, _kind = winreg.EnumValue(key, index)
+                except OSError:
+                    break
+                index += 1
+                if _looks_like_wow_path(value):
+                    found.append(value)
+            if depth <= 0:
+                return
+            index = 0
+            while True:
+                try:
+                    child = winreg.EnumKey(key, index)
+                except OSError:
+                    break
+                index += 1
+                walk(hive, subkey + "\\" + child, depth - 1)
+
+    for hive, subkey in parents:
+        walk(hive, subkey, 3)
+    for hive, subkey in uninstall:
+        try:
+            key = winreg.OpenKey(hive, subkey)
         except OSError:
             continue
+        with key:
+            index = 0
+            while True:
+                try:
+                    child = winreg.EnumKey(key, index)
+                except OSError:
+                    break
+                index += 1
+                lowered = child.lower()
+                if "warcraft" in lowered or "battle.net" in lowered or "blizzard" in lowered:
+                    walk(hive, subkey + "\\" + child, 1)
+    return _unique(found)
+
+
+def common_install_roots():
+    roots = []
+    for env in ("PROGRAMFILES(X86)", "PROGRAMFILES", "ProgramFiles(x86)", "ProgramFiles", "PROGRAMW6432"):
+        base = os.environ.get(env)
+        if base:
+            roots.append(os.path.join(base, "World of Warcraft"))
+    roots.append(os.path.join(os.path.expanduser("~"), "World of Warcraft"))
+    roots.extend(registry_wow_roots())
+    for drive in "CDEFGH":
+        roots.append(drive + ":\\Program Files (x86)\\World of Warcraft")
+        roots.append(drive + ":\\Program Files\\World of Warcraft")
+        roots.append(drive + ":\\World of Warcraft")
+        roots.append(drive + ":\\Games\\World of Warcraft")
+    return _unique(roots)
+
+
+def forever_account_dirs(root):
+    """WTF\\Account folders for a WoW install, including a nested _forever_ directory."""
+    if not root or not os.path.isdir(root):
+        return []
+    bases = []
+    normal = os.path.normpath(root)
+    if os.path.basename(normal).lower() == "_forever_":
+        bases.append(normal)
+    else:
+        direct = os.path.join(normal, "_forever_")
+        if os.path.isdir(direct):
+            bases.append(direct)
+        try:
+            names = os.listdir(normal)
+        except OSError:
+            names = []
         for name in names:
-            path = os.path.join(root, name, "SavedVariables", "SkillLedger.lua")
-            if os.path.isfile(path):
-                found.append(path)
-    if not found:
-        return None
-    found.sort(key=lambda path: os.path.getmtime(path), reverse=True)
-    return found[0]
+            child = os.path.join(normal, name)
+            if not os.path.isdir(child):
+                continue
+            if name.lower() == "_forever_":
+                bases.append(child)
+            nested = os.path.join(child, "_forever_")
+            if os.path.isdir(nested):
+                bases.append(nested)
+    accounts = []
+    for base in _unique(bases):
+        account = os.path.join(base, "WTF", "Account")
+        if os.path.isdir(account):
+            accounts.append(account)
+    return accounts
+
+
+def saved_files_under(root):
+    found = []
+    if not root or not os.path.isdir(root):
+        return found
+    direct = os.path.join(root, "SavedVariables", "SkillLedger.lua")
+    if os.path.isfile(direct):
+        found.append(os.path.abspath(direct))
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return found
+    for name in names:
+        path = os.path.join(root, name, "SavedVariables", "SkillLedger.lua")
+        if os.path.isfile(path):
+            found.append(os.path.abspath(path))
+    return found
+
+
+def user_path(path):
+    text = os.path.expanduser(str(path))
+    if os.name != "nt" and ("\\" in text):
+        text = text.replace("\\", os.sep)
+    return text
+
+
+def collect_saved(explicit=None):
+    """Return (candidates, searched_roots). Candidates are SkillLedger.lua paths."""
+    searched = []
+    found = []
+    if explicit:
+        path = user_path(explicit)
+        if os.path.isdir(path):
+            searched.append(os.path.abspath(path))
+            found.extend(saved_files_under(path))
+            for account in forever_account_dirs(path):
+                searched.append(account)
+                found.extend(saved_files_under(account))
+        elif not path.lower().endswith(".lua"):
+            raise SystemExit(non_lua_message(path))
+        elif not os.path.isfile(path):
+            raise SystemExit(
+                f"Cannot find {path}. Pass SkillLedger.lua, or run export.bat with no file name to search for it."
+            )
+        else:
+            return [os.path.abspath(path)], []
+    else:
+        for root in common_install_roots():
+            searched.append(root)
+            for account in forever_account_dirs(root):
+                searched.append(account)
+                found.extend(saved_files_under(account))
+    unique = []
+    seen = set()
+    for path in found:
+        key = os.path.normcase(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    unique.sort(key=lambda item: os.path.getmtime(item), reverse=True)
+    return unique, searched
+
+
+def openpyxl_ready():
+    try:
+        import openpyxl  # noqa: F401
+        return True
+    except ImportError:
+        print("openpyxl is not installed, so an .xlsx workbook cannot be written yet.")
+        print("Install it with this command: py -3 -m pip install openpyxl")
+        if sys.stdin is not None and sys.stdin.isatty():
+            try:
+                answer = input("Install openpyxl now? [y/N] ")
+            except EOFError:
+                answer = ""
+            if answer.strip().lower() in ("y", "yes"):
+                import subprocess
+                command = [sys.executable, "-m", "pip", "install", "openpyxl"]
+                print("running " + " ".join(command))
+                result = subprocess.call(command)
+                if result == 0:
+                    try:
+                        import openpyxl  # noqa: F401
+                        return True
+                    except ImportError:
+                        pass
+                print("openpyxl is still not importable. This run will write CSV instead.")
+        return False
 
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Export SkillLedger SavedVariables to Excel or CSV.")
     parser.add_argument("saved", nargs="?", help="SkillLedger.lua, or a WTF Account folder")
     parser.add_argument("--account", help="WTF\\Account folder, or one account's folder")
-    parser.add_argument("-o", "--output", help="xlsx path (default: SkillLedger.xlsx next to the lua file)")
+    parser.add_argument("-o", "--output", help="xlsx path (default: Desktop\\SkillLedger.xlsx)")
     parser.add_argument("--csv", action="store_true", help="also write CSV files; used alone if openpyxl is missing")
     args = parser.parse_args(argv)
-    source = find_saved(args.saved or args.account)
-    if not source:
-        raise SystemExit("Pass the path to SavedVariables\\SkillLedger.lua. Log out or /reload first so WoW has written it.")
-    print(f"reading {source}")
+    explicit = args.saved or args.account
+    candidates, searched = collect_saved(explicit)
+    if not candidates:
+        print("No SkillLedger.lua was found. Looked under:")
+        for root in searched:
+            print(f"  {root}")
+        raise SystemExit(
+            "Pass SavedVariables\\SkillLedger.lua, or log out / type /reload so WoW writes it, then run this again."
+        )
+    if not explicit:
+        print("SavedVariables files found:")
+        for path in candidates:
+            print(f"  {path}")
+    source = candidates[0]
+    if len(candidates) > 1 or not explicit:
+        print(f"using {source}")
+    else:
+        print(f"reading {source}")
     db = load_saved(source)
     data = load_recipes()
     report = build_report(db, data)
@@ -652,14 +927,9 @@ def main(argv):
         ("Shopping List", shopping_rows(report)),
         ("Vendors", vendor_rows(db, report)),
     ]
-    output = args.output or os.path.join(os.path.dirname(os.path.abspath(source)), "SkillLedger.xlsx")
+    output = os.path.abspath(args.output or default_output())
     wrote = []
-    use_xlsx = True
-    try:
-        import openpyxl  # noqa: F401
-    except ImportError:
-        use_xlsx = False
-        print("openpyxl is not installed, so this run writes CSV. Install it with: py -3 -m pip install openpyxl")
+    use_xlsx = openpyxl_ready()
     if use_xlsx:
         write_xlsx(output, tables)
         wrote.append(output)
@@ -668,6 +938,8 @@ def main(argv):
         folder = os.path.splitext(output)[0] + "-csv"
         wrote.extend(write_csv_dir(folder, tables))
         print(f"wrote CSV files in {folder}")
+    if wrote:
+        print(f"output: {os.path.abspath(wrote[0])}")
     return wrote
 
 

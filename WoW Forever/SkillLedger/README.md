@@ -73,15 +73,15 @@ Not applied: the pre-2.3 flat 10% from Honored only, the Cataclysm goblin racial
 
 ## Excel
 
-Log out, or `/reload`, so WoW writes `WTF\Account\<ACCOUNT>\SavedVariables\SkillLedger.lua`. Then run `export.bat` from the `tools` folder (the folder you did not put in AddOns):
+Log out, or `/reload`, so WoW writes `WTF\Account\<ACCOUNT>\SavedVariables\SkillLedger.lua`. Then double-click `export.bat` in the `tools` folder (the folder you did not put in AddOns), or from PowerShell:
 
-```bat
-export.bat "C:\World of Warcraft\_forever_\WTF\Account\ACCOUNT\SavedVariables\SkillLedger.lua"
+```powershell
+.\export.bat -o "$env:USERPROFILE\Desktop\SkillLedger.xlsx"
 ```
 
-Or `py -3 export.py` with the same path. If the path is omitted, the script looks under `World of Warcraft\_forever_\WTF\Account` and uses the newest `SkillLedger.lua`.
+With no `.lua` path, the script searches `Program Files (x86)`, `Program Files`, a Battle.net World of Warcraft install path from the registry when one is present, and a `_forever_` folder under those roots. It lists every `SkillLedger.lua` it finds and uses the newest. The workbook defaults to `Desktop\SkillLedger.xlsx`, and the script prints that full path when it finishes. A double-clicked `export.bat` waits for a key before the window closes. A file that is not `.lua` is rejected instead of being parsed.
 
-`py -3 -m pip install openpyxl` once, for the workbook. Without openpyxl, or with `--csv`, it writes one CSV per sheet.
+`py -3 -m pip install openpyxl` once, for the workbook. If openpyxl is missing, the script offers to install it and, if you decline, writes one CSV per sheet. `--csv` writes those CSV files as well.
 
 Sheets: Professions, Inventory, AH Prices, Leveling Plan (one block per profession), Shopping List, and Vendors. Header rows are frozen. Money is gold, silver and copper. Vendors lists every saved standing and its discount, every captured merchant price, and the vendor price the plan actually used.
 
