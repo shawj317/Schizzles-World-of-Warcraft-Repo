@@ -6,22 +6,26 @@ Interface **16001**, the same TOC version as the other Forever addons. The addon
 
 ## Install
 
-1. Copy `AddOns/SkillLedger` to `World of Warcraft\_forever_\Interface\AddOns\SkillLedger`.
-2. `/reload`.
-3. `/sl` opens the window. Escape does not close it. Close is a button, or `/sl hide`.
+The zip has two folders. Only one of them goes in the game.
 
-The window starts left of centre so it stays out of the rotation HUD.
+1. Copy the `SkillLedger` folder (the one that contains `SkillLedger.toc`) to `World of Warcraft\_forever_\Interface\AddOns\SkillLedger`. WoW loads a folder only when the toc is directly inside it.
+2. Leave `tools\` on your desktop. **`tools\` does not go into `Interface\AddOns`.** It is the Excel converter, not an addon. Putting it in AddOns can stop the real addon from loading.
+3. `/reload`. The chat line `SkillLedger loaded. Type /skillledger.` means the slash commands are registered.
+4. `/skillledger` opens the window. `/sl` does the same when no other addon has claimed it. Escape does not close the window. Close is a button, or `/skillledger hide`.
+
+The window starts left of centre so it stays out of the rotation HUD. On the auction house, SkillLedger is a bottom tab after Browse, Bids, Auctions and any tabs other addons already added. The scan button is on that tab's page, not over Search.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/sl` or `/skillledger` | show or hide the window |
-| `/sl plan` | snapshot bags and reputation, print the plan, open the window |
-| `/sl scan` | auction scan while the auction house is open (there is also a button on the auction house) |
-| `/sl bags` | snapshot bags, including the reagent bag and keyring when the client has them |
-| `/sl bank` | snapshot the bank. The bank has to be open. The last snapshot is kept, with the time. |
-| `/sl help` | list the commands |
+| `/skillledger` | show or hide the window. This one is registered even if another addon owns `/sl`. |
+| `/sl` | the same, when `/sl` is still free |
+| `/skillledger plan` | snapshot bags and reputation, print the plan, open the window |
+| `/skillledger scan` | auction scan while the auction house is open. The scan button itself is on the SkillLedger auction-house tab. |
+| `/skillledger bags` | snapshot bags, including the reagent bag and keyring when the client has them |
+| `/skillledger bank` | snapshot the bank. The bank has to be open. The last snapshot is kept, with the time. |
+| `/skillledger help` | list the commands |
 
 Nothing runs on `OnUpdate`. Bag and reputation events only mark the data dirty and take one snapshot after a short pause. The plan is calculated when you ask for it.
 
@@ -69,7 +73,7 @@ Not applied: the pre-2.3 flat 10% from Honored only, the Cataclysm goblin racial
 
 ## Excel
 
-Log out, or `/reload`, so WoW writes `WTF\Account\<ACCOUNT>\SavedVariables\SkillLedger.lua`. Then, from this folder on Windows:
+Log out, or `/reload`, so WoW writes `WTF\Account\<ACCOUNT>\SavedVariables\SkillLedger.lua`. Then run `export.bat` from the `tools` folder (the folder you did not put in AddOns):
 
 ```bat
 export.bat "C:\World of Warcraft\_forever_\WTF\Account\ACCOUNT\SavedVariables\SkillLedger.lua"
@@ -108,12 +112,8 @@ The sample character in `tools/sample/SkillLedger.lua` is not a real character. 
 
 | Path | What it is |
 |---|---|
-| `AddOns/SkillLedger` | the addon |
-| `tools/export.py`, `tools/export.bat` | SavedVariables to Excel or CSV |
-| `tools/recipes.json` | the same recipe table the converter plans from |
-| `tools/build_data.py` | rebuilds `Data.lua` and `recipes.json` |
-| `tools/test_plan.py`, `tools/test_export.py` | planner and workbook checks |
-| `tools/sample/SkillLedger.lua` | a SavedVariables sample |
+| `SkillLedger/` in the zip, or `AddOns/SkillLedger` in the repo | the addon. This is the only folder that goes in `Interface\AddOns`. |
+| `tools/` | converter and tests. Does not go in `Interface\AddOns`. |
 
 ## License
 

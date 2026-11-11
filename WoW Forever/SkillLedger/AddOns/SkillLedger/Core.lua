@@ -257,7 +257,7 @@ function SL.PrintPlan(result)
   end
 end
 
-local function handleSlash(message)
+function SL.HandleSlash(message)
   message = string.lower(message or "")
   message = string.gsub(message, "^%s+", "")
   message = string.gsub(message, "%s+$", "")
@@ -270,17 +270,20 @@ local function handleSlash(message)
   elseif message == "bags" then
     if SL.SnapshotBags then
       local count = SL.SnapshotBags()
-      print("|cffe0b060SkillLedger|r bags: " .. tostring(count) .. " stacks.")
+      if SL.Say then SL.Say("bags: " .. tostring(count) .. " stacks.") end
     end
   elseif message == "bank" then
     if SL.SnapshotBank then SL.SnapshotBank(true) end
   elseif message == "plan" then
-    SL.PrintPlan(SL.Plan())
-    if SL.Show then SL.Show() end
+    local ok, err = pcall(function()
+      SL.PrintPlan(SL.Plan())
+      if SL.Show then SL.Show() end
+    end)
+    if not ok and SL.Say then SL.Say("plan failed: " .. tostring(err)) end
   elseif message == "help" then
-    print("|cffe0b060SkillLedger|r /sl show, hide, scan, bags, bank, plan, help")
+    if SL.Say then SL.Say("/skillledger or /sl: show, hide, scan, bags, bank, plan, help") end
   else
-    print("|cffe0b060SkillLedger|r /sl help")
+    if SL.Say then SL.Say("/skillledger help") end
   end
 end
 
@@ -325,30 +328,30 @@ events:SetScript("OnEvent", function(_, event, arg1)
       if SL.MerchantIsOpen and SL.MerchantIsOpen() and SL.SnapshotMerchant then SL.SnapshotMerchant() end
     end)
   elseif event == "AUCTION_HOUSE_SHOW" then
-    if SL.AnchorScanButton then SL.AnchorScanButton() end
+    if SL.EnsureAHTab then SL.EnsureAHTab() end
   elseif event == "AUCTION_HOUSE_CLOSED" then
     if SL.CancelScan then SL.CancelScan() end
+    if SL.HideAHPanel then SL.HideAHPanel() end
   elseif event == "AUCTION_ITEM_LIST_UPDATE" or event == "REPLICATE_ITEM_LIST_UPDATE" then
     if SL.OnAuctionEvent then SL.OnAuctionEvent(event) end
   end
 end)
-events:RegisterEvent("ADDON_LOADED")
-events:RegisterEvent("PLAYER_LOGIN")
-events:RegisterEvent("PLAYER_LOGOUT")
-events:RegisterEvent("SKILL_LINES_CHANGED")
-events:RegisterEvent("BAG_UPDATE")
-events:RegisterEvent("BANKFRAME_OPENED")
-events:RegisterEvent("BANKFRAME_CLOSED")
-events:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
-events:RegisterEvent("UPDATE_FACTION")
-events:RegisterEvent("MERCHANT_SHOW")
-events:RegisterEvent("MERCHANT_UPDATE")
-events:RegisterEvent("AUCTION_HOUSE_SHOW")
-events:RegisterEvent("AUCTION_HOUSE_CLOSED")
-events:RegisterEvent("AUCTION_ITEM_LIST_UPDATE")
-pcall(events.RegisterEvent, events, "PLAYERREAGENTBANKSLOTS_CHANGED")
-pcall(events.RegisterEvent, events, "REPLICATE_ITEM_LIST_UPDATE")
-
-SLASH_SKILLLEDGER1 = "/sl"
-SLASH_SKILLLEDGER2 = "/skillledger"
-SlashCmdList.SKILLLEDGER = handleSlash
+local function listen(eventName)
+  pcall(events.RegisterEvent, events, eventName)
+end
+listen("ADDON_LOADED")
+listen("PLAYER_LOGIN")
+listen("PLAYER_LOGOUT")
+listen("SKILL_LINES_CHANGED")
+listen("BAG_UPDATE")
+listen("BANKFRAME_OPENED")
+listen("BANKFRAME_CLOSED")
+listen("PLAYERBANKSLOTS_CHANGED")
+listen("PLAYERREAGENTBANKSLOTS_CHANGED")
+listen("UPDATE_FACTION")
+listen("MERCHANT_SHOW")
+listen("MERCHANT_UPDATE")
+listen("AUCTION_HOUSE_SHOW")
+listen("AUCTION_HOUSE_CLOSED")
+listen("AUCTION_ITEM_LIST_UPDATE")
+listen("REPLICATE_ITEM_LIST_UPDATE")

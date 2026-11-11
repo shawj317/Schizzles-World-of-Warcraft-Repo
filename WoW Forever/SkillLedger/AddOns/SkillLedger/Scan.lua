@@ -339,7 +339,36 @@ function SL.CancelScan()
   scan.token = scan.token + 1
   scan.active = false
   scan.mode = nil
-  if SL.scanButton and SL.scanButton.SetText then SL.scanButton:SetText("SkillLedger scan") end
+end
+
+function SL.ScanStatus()
+  if scan.active then
+    if scan.mode == "reagents" and scan.queue then
+      local at = (scan.query or 1) - 1
+      if at < 0 then at = 0 end
+      return "Scanning reagents " .. at .. " / " .. #scan.queue .. "."
+    end
+    if scan.total and scan.total > 0 and scan.index then
+      return "Reading auctions " .. scan.index .. " / " .. scan.total .. "."
+    end
+    return "Scan running."
+  end
+  local prices = SL.DB and SL.DB() and SL.DB().prices
+  local when = prices and prices.updated
+  if not when or when == 0 then
+    return "No scan yet."
+  end
+  local count = 0
+  for i = 1, #(prices.items or {}) do
+    if prices.items[i].unit and prices.items[i].unit > 0 then count = count + 1 end
+  end
+  local clock = when
+  if date then clock = date("%Y-%m-%d %H:%M", when) end
+  return "Last scan " .. clock .. " (" .. count .. " prices)."
+end
+
+local function showStatus()
+  if SL.RefreshAHPanel then SL.RefreshAHPanel() end
 end
 
 local function consider(working, itemId, name, buyout, count)
@@ -403,6 +432,7 @@ local function commitPrices(working, mode)
   for i = 1, #items do if items[i].unit and items[i].unit > 0 then priced = priced + 1 end end
   chat("auction scan saved " .. priced .. " prices.")
   SL.CancelScan()
+  showStatus()
   if SL.Refresh then SL.Refresh() end
 end
 
@@ -444,7 +474,8 @@ local function finishList(working, mode)
       consider(working, itemId, name, buyout, count)
     end
     if scan.index < total then
-      C_Timer.After(0.01, step)
+      showStatus()
+      if C_Timer and C_Timer.After then C_Timer.After(0.01, step) end
     else
       commitPrices(working, mode)
     end
@@ -489,7 +520,7 @@ local function sendQuery()
     if ok then can = allowed and true or false end
   end
   if not can then
-    C_Timer.After(0.4, sendQuery)
+    if C_Timer and C_Timer.After then C_Timer.After(0.4, sendQuery) end
     return
   end
   scan.waiting = true
@@ -528,7 +559,8 @@ local function onListUpdate()
   local page = scan.page or 0
   if total > (page + 1) * 50 and page < 20 then
     scan.page = page + 1
-    C_Timer.After(0.3, sendQuery)
+    showStatus()
+    if C_Timer and C_Timer.After then C_Timer.After(0.3, sendQuery) end
     return
   end
   scan.query = scan.query + 1
@@ -536,7 +568,8 @@ local function onListUpdate()
   if scan.query % 25 == 0 then
     chat("auction queries " .. (scan.query - 1) .. "/" .. #scan.queue)
   end
-  C_Timer.After(0.3, sendQuery)
+  showStatus()
+  if C_Timer and C_Timer.After then C_Timer.After(0.3, sendQuery) end
 end
 
 local function onReplicate()
@@ -548,6 +581,7 @@ local function onReplicate()
   end
   scan.pending = count
   local token = scan.token
+  if not C_Timer or not C_Timer.After then return end
   C_Timer.After(0.6, function()
     if not scan.active or scan.token ~= token or scan.mode ~= "replicate" then return end
     local now = scan.pending
@@ -582,7 +616,7 @@ function SL.StartScan()
   local open = (AuctionHouseFrame and AuctionHouseFrame.IsShown and AuctionHouseFrame:IsShown())
     or (AuctionFrame and AuctionFrame.IsShown and AuctionFrame:IsShown())
   if not open then
-    chat("open the auction house, then /sl scan or the SkillLedger button.")
+    chat("open the auction house, then use the SkillLedger tab or /skillledger scan.")
     return
   end
   if scan.active then
@@ -597,7 +631,7 @@ function SL.StartScan()
   scan.query = 1
   scan.waiting = false
   scan.replicate = false
-  if SL.scanButton then SL.scanButton:SetText("Scanning...") end
+  showStatus()
   if C_AuctionHouse and C_AuctionHouse.ReplicateItems then
     local ready = true
     if C_AuctionHouse.IsThrottledMessageSystemReady then
@@ -638,21 +672,4 @@ function SL.StartScan()
   scan.queue = reagentQueue()
   chat("full scan is not available. Querying " .. #scan.queue .. " reagent names, slowly.")
   sendQuery()
-end
-
-function SL.AnchorScanButton()
-  local parent = AuctionHouseFrame or AuctionFrame
-  if not parent or not parent.CreateFontString then return end
-  local button = SL.scanButton
-  if not button then
-    button = CreateFrame("Button", "SkillLedgerScanButton", parent, "UIPanelButtonTemplate")
-    button:SetSize(140, 22)
-    button:SetText("SkillLedger scan")
-    button:SetScript("OnClick", function() SL.StartScan() end)
-    SL.scanButton = button
-  end
-  button:SetParent(parent)
-  button:ClearAllPoints()
-  button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -40, -32)
-  button:Show()
 end

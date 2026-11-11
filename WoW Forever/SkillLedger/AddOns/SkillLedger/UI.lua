@@ -202,3 +202,5 @@ end
 function SL.Toggle()
   if frame and frame:IsShown() then SL.Hide() else SL.Show() end
 end
+
+SL.ready = true
