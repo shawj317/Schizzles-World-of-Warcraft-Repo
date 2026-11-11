@@ -1,8 +1,13 @@
--- Modern AuctionHouseFrame tab (Forever / Camelot). Anchored after the last
--- tab already in the row, using AuctionHouseFrameDisplayModeTabTemplate the
--- way LibAHTab (Auctionator) does. Not inserted into AuctionHouseFrame.Tabs
--- and not passed to PanelTemplates_SetNumTabs, so Buy/Sell/Auctions and the
--- TSM tabs keep their own widths. No OnUpdate.
+-- Modern AuctionHouseFrame tab (Forever / Camelot).
+-- AuctionHouseFrameDisplayModeTabTemplate has parentArray="Tabs", so creating
+-- the button on AuctionHouseFrame inserts it into AuctionHouseFrame.Tabs.
+-- LibAHTab (Auctionator, and TSM when it uses that library) anchors its row
+-- to AuctionHouseFrame.Tabs[#] once. If SkillLedger is that entry, the whole
+-- addon row detaches and follows SkillLedger. The button is removed from
+-- Tabs immediately and is never passed to PanelTemplates_SetNumTabs. After
+-- AUCTION_HOUSE_SHOW yields, it anchors TOPLEFT to the end of the row that
+-- starts at the real last Tabs entry. No OnUpdate, and no SetPoint on any
+-- other addon's tab.
 
 local SL = SkillLedger
 
@@ -23,55 +28,6 @@ local function camelotOffset()
   return 3
 end
 
-local function remember(list, button)
-  if not button or button == tab then return end
-  for i = 1, #list do
-    if list[i] == button then return end
-  end
-  list[#list + 1] = button
-end
-
-local function collect(parent, list, depth)
-  if not parent or not parent.GetChildren or depth > 4 then return end
-  local children = { parent:GetChildren() }
-  for i = 1, #children do
-    local child = children[i]
-    if child and child.GetObjectType and child:GetObjectType() == "Button" then
-      local text = child.GetText and child:GetText()
-      local bottom = child.GetBottom and child:GetBottom()
-      local parentBottom = parent.GetBottom and parent:GetBottom()
-      if text and text ~= "" and bottom and parentBottom then
-        local gap = bottom - parentBottom
-        if gap > -40 and gap < 70 then remember(list, child) end
-      end
-    end
-    if child then collect(child, list, depth + 1) end
-  end
-end
-
-local function tabButtons()
-  local list = {}
-  local frame = AuctionHouseFrame
-  if frame and frame.Tabs then
-    for i = 1, #frame.Tabs do remember(list, frame.Tabs[i]) end
-  end
-  if frame then collect(frame, list, 0) end
-  return list
-end
-
-local function rightmost(list)
-  local best, bestRight
-  for i = 1, #list do
-    local button = list[i]
-    local right = button.GetRight and button:GetRight()
-    if right and (not bestRight or right > bestRight + 0.5) then
-      best = button
-      bestRight = right
-    end
-  end
-  return best
-end
-
 local function hidePanel()
   if panel then panel:Hide() end
   if tab and PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, tab) end
@@ -83,14 +39,6 @@ end
 
 function SL.RefreshAHPanel()
   if statusText and SL.ScanStatus then statusText:SetText(SL.ScanStatus()) end
-end
-
-local function watch(button)
-  if not button or button == tab or button.skillLedgerHooked or not button.HookScript then return end
-  button.skillLedgerHooked = true
-  button:HookScript("OnClick", function(self)
-    if self ~= tab then hidePanel() end
-  end)
 end
 
 local function rememberSize()
@@ -110,34 +58,83 @@ local function restoreSize()
   restoring = false
 end
 
-local function reachesFrame(button)
-  local seen = {}
-  local current = button
-  for _ = 1, 16 do
-    if not current or seen[current] then return false end
-    seen[current] = true
-    if current == AuctionHouseFrame then return true end
-    if not current.GetPoint then return false end
-    local _, relativeTo = current:GetPoint(1)
-    current = relativeTo
+local function ejectFromTabs(button)
+  local tabs = AuctionHouseFrame and AuctionHouseFrame.Tabs
+  if type(tabs) ~= "table" or not button then return end
+  for i = #tabs, 1, -1 do
+    if tabs[i] == button then
+      table.remove(tabs, i)
+    end
   end
-  return false
+end
+
+local function safeAnchor(frame)
+  if not frame or frame == tab or frame == UIParent then return false end
+  return frame.GetPoint ~= nil
+end
+
+local function rightEdge(frame)
+  if frame and frame.GetRight then
+    local right = frame:GetRight()
+    if type(right) == "number" then return right end
+  end
+  return nil
+end
+
+local function followersOf(anchor)
+  local found = {}
+  local function scan(parent, depth)
+    if not parent or depth > 8 or not parent.GetChildren then return end
+    local children = { parent:GetChildren() }
+    for i = 1, #children do
+      local child = children[i]
+      if child and child ~= tab and child ~= parent and child.GetPoint then
+        local point, relativeTo = child:GetPoint(1)
+        if point == "TOPLEFT" and relativeTo == anchor and safeAnchor(child) then
+          found[#found + 1] = child
+        end
+        scan(child, depth + 1)
+      end
+    end
+  end
+  if AuctionHouseFrame then scan(AuctionHouseFrame, 0) end
+  return found
+end
+
+local function endOfRow(start)
+  local current = start
+  local seen = {}
+  for _ = 1, 40 do
+    if not current or seen[current] then break end
+    seen[current] = true
+    local nexts = followersOf(current)
+    local best, bestRight
+    for i = 1, #nexts do
+      if nexts[i] ~= tab then
+        local right = rightEdge(nexts[i])
+        if not best or (right and (not bestRight or right > bestRight)) then
+          best = nexts[i]
+          bestRight = right
+        end
+      end
+    end
+    if not best then break end
+    current = best
+  end
+  return current
 end
 
 local function selectUs()
   if not tab or not AuctionHouseFrame then return end
-  -- Do not call SetDisplayMode. An empty mode collapses AuctionHouseFrame,
-  -- and the addon tabs that were measured against the full width stay put.
+  -- Do not call SetDisplayMode. An empty mode collapses AuctionHouseFrame.
   rememberSize()
   restoreSize()
   if AuctionHouseFrame.Tabs and PanelTemplates_DeselectTab then
     for i = 1, #AuctionHouseFrame.Tabs do
-      pcall(PanelTemplates_DeselectTab, AuctionHouseFrame.Tabs[i])
+      if AuctionHouseFrame.Tabs[i] ~= tab then
+        pcall(PanelTemplates_DeselectTab, AuctionHouseFrame.Tabs[i])
+      end
     end
-  end
-  local others = tabButtons()
-  if PanelTemplates_DeselectTab then
-    for i = 1, #others do pcall(PanelTemplates_DeselectTab, others[i]) end
   end
   if PanelTemplates_SelectTab then pcall(PanelTemplates_SelectTab, tab) end
   if panel then
@@ -151,21 +148,28 @@ local function selectUs()
 end
 
 place = function()
-  if not tab or not AuctionHouseFrame then return end
-  local others = tabButtons()
-  local attached = {}
-  for i = 1, #others do
-    watch(others[i])
-    if reachesFrame(others[i]) then attached[#attached + 1] = others[i] end
+  if not tab or not AuctionHouseFrame or type(AuctionHouseFrame.Tabs) ~= "table" then return end
+  ejectFromTabs(tab)
+  if tab.GetParent and tab:GetParent() ~= AuctionHouseFrame and tab.SetParent then
+    tab:SetParent(AuctionHouseFrame)
   end
-  if #attached == 0 then attached = others end
-  local anchor = rightmost(attached)
+  local tabs = AuctionHouseFrame.Tabs
+  local anchor, bestRight
+  for i = 1, #tabs do
+    local origin = tabs[i]
+    if safeAnchor(origin) then
+      local finish = endOfRow(origin)
+      if not safeAnchor(finish) then finish = origin end
+      local right = rightEdge(finish)
+      if not anchor or (right and (not bestRight or right >= bestRight)) or (not right and not bestRight) then
+        anchor = finish
+        bestRight = right
+      end
+    end
+  end
+  if not safeAnchor(anchor) then return end
   tab:ClearAllPoints()
-  if anchor then
-    tab:SetPoint("TOPLEFT", anchor, "TOPRIGHT", camelotOffset(), 0)
-  elseif AuctionHouseFrame.Tabs and AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs] then
-    tab:SetPoint("TOPLEFT", AuctionHouseFrame.Tabs[#AuctionHouseFrame.Tabs], "TOPRIGHT", camelotOffset(), 0)
-  end
+  tab:SetPoint("TOPLEFT", anchor, "TOPRIGHT", camelotOffset(), 0)
 end
 
 local function paint(widget)
@@ -217,6 +221,10 @@ end
 
 local function makeTab()
   local button = CreateFrame("Button", "SkillLedgerAHTab", AuctionHouseFrame, "AuctionHouseFrameDisplayModeTabTemplate")
+  -- The template's parentArray inserts this button into AuctionHouseFrame.Tabs
+  -- before CreateFrame returns. Take it back out before any other addon reads
+  -- the end of that array.
+  ejectFromTabs(button)
   button:SetText("SkillLedger")
   if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, button, 20, nil, 70) end
   if PanelTemplates_DeselectTab then pcall(PanelTemplates_DeselectTab, button) end
@@ -242,9 +250,7 @@ function SL.EnsureAHTab()
   if not hookedMode and AuctionHouseFrame.HookScript then
     hookedMode = true
     if hooksecurefunc and AuctionHouseFrame.SetDisplayMode then
-      hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
-        if mode == nil then return end
-        if type(mode) == "table" and #mode == 0 then return end
+      hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function()
         hidePanel()
       end)
     end
@@ -261,15 +267,18 @@ function SL.EnsureAHTab()
   end
   layoutToken = layoutToken + 1
   local token = layoutToken
-  place()
+  -- Other AH addons add their tabs from this same AUCTION_HOUSE_SHOW, some
+  -- of them from C_Timer.After(0). Anchor only after that has run.
   if C_Timer and C_Timer.After then
     C_Timer.After(0, function()
       if token ~= layoutToken then return end
       place()
+      C_Timer.After(0, function()
+        if token ~= layoutToken then return end
+        place()
+      end)
     end)
-    C_Timer.After(0.3, function()
-      if token ~= layoutToken then return end
-      place()
-    end)
+  else
+    place()
   end
 end
