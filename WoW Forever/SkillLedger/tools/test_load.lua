@@ -54,7 +54,12 @@ function CreateFrame()
   return frame
 end
 
-local files = { "Init.lua", "Data.lua", "Plan.lua", "Core.lua", "Scan.lua", "AH.lua", "UI.lua" }
+local files = {}
+for line in io.lines(addon .. "SkillLedger.toc") do
+  local name = line:match("^%s*([^#%s].-%.lua)%s*$")
+  if name then files[#files + 1] = name end
+end
+assert(#files > 10, "TOC did not list the data files")
 for i = 1, #files do
   local chunk, err = loadfile(addon .. files[i])
   if not chunk then
@@ -92,4 +97,24 @@ for i = 1, #said do
   if said[i]:find("ReplicateItems", 1, true) then started = true end
 end
 assert(started, "full scan did not announce C_AuctionHouse.ReplicateItems")
-print("load test passed")
+
+assert(type(SkillLedgerData) == "table", "SkillLedgerData global missing")
+assert(type(SkillLedgerData.recipes) == "table" and #SkillLedgerData.recipes > 1000, "recipes missing")
+local plans = SkillLedgerPlan.PlanCharacter(
+  SkillLedgerData, {},
+  { { name = "First Aid", skillLine = 129, rank = 1, maxRank = 20 } },
+  { [2589] = 100 }, {}, {}, "Horde", 1, 2, {}
+)
+assert(plans and plans[1] and plans[1].steps and plans[1].steps[1], "plan produced no steps")
+assert(plans[1].steps[1].spell == 3275, "expected Linen Bandage, got " .. tostring(plans[1].steps[1] and plans[1].steps[1].recipe))
+
+local kept = SkillLedgerData
+SkillLedgerData = nil
+local missing = {}
+local previous = SkillLedger.Say
+SkillLedger.Say = function(message) missing[#missing + 1] = message end
+assert(SkillLedger.Plan() == nil, "plan should stop when data is missing")
+assert(missing[1] and missing[1]:find("not loaded", 1, true), "missing-data message not printed")
+SkillLedgerData = kept
+SkillLedger.Say = previous
+print("load test passed", #SkillLedgerData.recipes, "recipes", plans[1].steps[1].recipe)

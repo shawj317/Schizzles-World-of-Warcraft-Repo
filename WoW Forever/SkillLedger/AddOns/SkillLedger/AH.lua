@@ -11,6 +11,9 @@ local panel
 local statusText
 local layoutToken = 0
 local hookedMode = false
+local savedW, savedH
+local restoring = false
+local place
 
 local function camelotOffset()
   if WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_CAMELOT
@@ -90,11 +93,43 @@ local function watch(button)
   end)
 end
 
+local function rememberSize()
+  if restoring or not AuctionHouseFrame or not AuctionHouseFrame.GetSize then return end
+  local w, h = AuctionHouseFrame:GetSize()
+  if w and h and w > 400 and h > 300 then
+    savedW, savedH = w, h
+  end
+end
+
+local function restoreSize()
+  if not savedW or not AuctionHouseFrame or not AuctionHouseFrame.SetSize then return end
+  local w, h = AuctionHouseFrame:GetSize()
+  if not w or math.abs(w - savedW) < 2 and math.abs(h - savedH) < 2 then return end
+  restoring = true
+  AuctionHouseFrame:SetSize(savedW, savedH)
+  restoring = false
+end
+
+local function reachesFrame(button)
+  local seen = {}
+  local current = button
+  for _ = 1, 16 do
+    if not current or seen[current] then return false end
+    seen[current] = true
+    if current == AuctionHouseFrame then return true end
+    if not current.GetPoint then return false end
+    local _, relativeTo = current:GetPoint(1)
+    current = relativeTo
+  end
+  return false
+end
+
 local function selectUs()
   if not tab or not AuctionHouseFrame then return end
-  if AuctionHouseFrame.SetDisplayMode then
-    pcall(AuctionHouseFrame.SetDisplayMode, AuctionHouseFrame, {})
-  end
+  -- Do not call SetDisplayMode. An empty mode collapses AuctionHouseFrame,
+  -- and the addon tabs that were measured against the full width stay put.
+  rememberSize()
+  restoreSize()
   if AuctionHouseFrame.Tabs and PanelTemplates_DeselectTab then
     for i = 1, #AuctionHouseFrame.Tabs do
       pcall(PanelTemplates_DeselectTab, AuctionHouseFrame.Tabs[i])
@@ -105,18 +140,26 @@ local function selectUs()
     for i = 1, #others do pcall(PanelTemplates_DeselectTab, others[i]) end
   end
   if PanelTemplates_SelectTab then pcall(PanelTemplates_SelectTab, tab) end
-  if AuctionHouseFrame.SetTitle then pcall(AuctionHouseFrame.SetTitle, AuctionHouseFrame, "SkillLedger") end
   if panel then
+    if savedW and panel.SetSize then
+      panel:SetSize(savedW - 12, math.max(120, savedH - 70))
+    end
     panel:Show()
     SL.RefreshAHPanel()
   end
+  place()
 end
 
-local function place()
+place = function()
   if not tab or not AuctionHouseFrame then return end
   local others = tabButtons()
-  for i = 1, #others do watch(others[i]) end
-  local anchor = rightmost(others)
+  local attached = {}
+  for i = 1, #others do
+    watch(others[i])
+    if reachesFrame(others[i]) then attached[#attached + 1] = others[i] end
+  end
+  if #attached == 0 then attached = others end
+  local anchor = rightmost(attached)
   tab:ClearAllPoints()
   if anchor then
     tab:SetPoint("TOPLEFT", anchor, "TOPRIGHT", camelotOffset(), 0)
@@ -138,10 +181,16 @@ end
 
 local function makePanel()
   local frame = CreateFrame("Frame", "SkillLedgerAHPanel", AuctionHouseFrame)
+  local w, h = 780, 460
+  if AuctionHouseFrame.GetSize then
+    local fw, fh = AuctionHouseFrame:GetSize()
+    if fw and fw > 200 then w = fw - 12 end
+    if fh and fh > 200 then h = fh - 70 end
+  end
+  frame:SetSize(w, h)
   frame:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPLEFT", 6, -26)
-  frame:SetPoint("BOTTOMRIGHT", AuctionHouseFrame, "BOTTOMRIGHT", -6, 38)
   paint(frame)
-  frame:SetFrameLevel((AuctionHouseFrame:GetFrameLevel() or 1) + 10)
+  frame:SetFrameLevel((AuctionHouseFrame:GetFrameLevel() or 1) + 20)
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 16, -16)
   title:SetText("SkillLedger")
@@ -189,12 +238,25 @@ function SL.EnsureAHTab()
     local ok, created = pcall(makePanel)
     if ok then panel = created end
   end
-  if not hookedMode and hooksecurefunc and AuctionHouseFrame.SetDisplayMode then
+  rememberSize()
+  if not hookedMode and AuctionHouseFrame.HookScript then
     hookedMode = true
-    hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
-      if mode == nil then return end
-      if type(mode) == "table" and #mode == 0 then return end
-      hidePanel()
+    if hooksecurefunc and AuctionHouseFrame.SetDisplayMode then
+      hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", function(_, mode)
+        if mode == nil then return end
+        if type(mode) == "table" and #mode == 0 then return end
+        hidePanel()
+      end)
+    end
+    AuctionHouseFrame:HookScript("OnSizeChanged", function(_, w, h)
+      if restoring then return end
+      if panel and panel.IsShown and panel:IsShown() then
+        restoreSize()
+        return
+      end
+      if w and h and w > 400 and h > 300 then
+        savedW, savedH = w, h
+      end
     end)
   end
   layoutToken = layoutToken + 1

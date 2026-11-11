@@ -13,7 +13,7 @@ The zip has two folders. Only one of them goes in the game.
 3. `/reload`. The chat line `SkillLedger loaded. Type /skillledger.` means the slash commands are registered.
 4. `/skillledger` opens the window. `/sl` does the same when no other addon has claimed it. Escape does not close the window. Close is a button, or `/skillledger hide`.
 
-The window starts left of centre so it stays out of the rotation HUD. On Forever's auction house (the retail `AuctionHouseFrame`, with Buy, Sell, and Auctions), SkillLedger is a tab after the last tab already in that row, including Auctionator and TSM. It uses the same tab template those addons use, and it does not resize their tabs. The scan button is on that tab's page.
+The window starts left of centre so it stays out of the rotation HUD. On Forever's auction house (the retail `AuctionHouseFrame`, with Buy, Sell, and Auctions), SkillLedger is a tab after the last tab already in that row, including Auctionator and TSM. It uses the same tab template those addons use. Selecting it does not call `SetDisplayMode` and does not change the frame's size, so the tab row stays in one piece. The scan button is on that tab's page.
 
 ## Commands
 

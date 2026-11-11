@@ -181,6 +181,10 @@ function SL.ExternalPrice(itemId)
 end
 
 function SL.Plan()
+  if type(SkillLedgerData) ~= "table" or type(SkillLedgerData.recipes) ~= "table" or #SkillLedgerData.recipes < 1 then
+    if SL.Say then SL.Say("recipe data is not loaded, so there is no plan. /reload.") end
+    return nil
+  end
   SL.SnapshotProfessions()
   if SL.SnapshotBags then SL.SnapshotBags() end
   if SL.SnapshotRep then SL.SnapshotRep() end
@@ -276,8 +280,11 @@ function SL.HandleSlash(message)
     if SL.SnapshotBank then SL.SnapshotBank(true) end
   elseif message == "plan" then
     local ok, err = pcall(function()
-      SL.PrintPlan(SL.Plan())
-      if SL.Show then SL.Show() end
+      local result = SL.Plan()
+      if result then
+        SL.PrintPlan(result)
+        if SL.Show then SL.Show() end
+      end
     end)
     if not ok and SL.Say then SL.Say("plan failed: " .. tostring(err)) end
   elseif message == "help" then

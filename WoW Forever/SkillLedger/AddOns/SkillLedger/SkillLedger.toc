@@ -2,13 +2,34 @@
 ## Title: SkillLedger
 ## Notes: Professions, bags, bank and auction prices, and the cheapest way to level. Type /sl.
 ## Author: Jon Shaw (Schizzle)
-## Version: 1.2.0
+## Version: 1.2.1
 ## SavedVariables: SkillLedgerDB
 ## OptionalDeps: TradeSkillMaster, Auctionator
 ## DefaultState: Enabled
 
 Init.lua
+## DATA-BEGIN
 Data.lua
+DataItems01.lua
+DataItems02.lua
+DataItems03.lua
+DataItems04.lua
+DataItems05.lua
+DataItems06.lua
+DataVendor.lua
+DataNpcs01.lua
+DataNpcs02.lua
+DataNpcs03.lua
+DataRecipes01.lua
+DataRecipes02.lua
+DataRecipes03.lua
+DataRecipes04.lua
+DataRecipes05.lua
+DataRecipes06.lua
+DataRecipes07.lua
+DataRecipes08.lua
+DataRecipes09.lua
+## DATA-END
 Plan.lua
 Core.lua
 Scan.lua
