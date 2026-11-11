@@ -195,7 +195,7 @@ NEG_COIN_FORMAT = '[<=-10000]-#"g "00"s "00"c";[<=-100]-0"s "00"c";-0"c"'
 MONEY_HEADERS = {
     "Min buyout / unit", "Copper", "Cost", "Running total", "Base unit",
     "Unit paid", "Line cost", "Base", "Reagent cost", "AH price", "Profit",
-    "Spend", "Cost to cap", "Vendor Sell", "AH Net",
+    "Spend", "Cost to cap", "Vendor Sell", "AH Net", "Market Value", "Expected / day",
 }
 
 
@@ -641,6 +641,7 @@ THIN_MARKET = 5
 SHUFFLE_HEADER = [
     "Character", "Item", "Profession", "Reagents", "Cost", "Vendor Sell", "AH Net",
     "Best Channel", "Profit", "Margin %", "AH Qty Listed", "Can Make Now",
+    "Sale Rate", "Sold/Day", "Market Value", "Confidence", "Expected / day",
 ]
 
 
@@ -800,9 +801,96 @@ def craft_quotes(db, data):
                 "thin": listed is not None and 0 < listed < THIN_MARKET,
                 "can_make": can_make_now(recipe, inventory, vendor_available),
                 "risk_free": risk_free,
+                "made": made,
             })
-    quotes.sort(key=lambda row: (-row["profit"], row["item"]))
+    attach_market(db, quotes)
+    has_velocity = any(row.get("sold_per_day") is not None for row in quotes)
+    if has_velocity:
+        quotes.sort(key=lambda row: (-(row["expected"] or 0), -row["profit"], row["item"]))
+    else:
+        quotes.sort(key=lambda row: (-row["profit"], row["item"]))
     return quotes, any_learned
+
+
+def sale_rate_percent(raw):
+    if raw is None or raw == "":
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if 0 <= value <= 1:
+        return value * 100
+    return value
+
+
+def age_text(seconds):
+    if seconds is None or seconds == "":
+        return ""
+    try:
+        seconds = int(seconds)
+    except (TypeError, ValueError):
+        return ""
+    if seconds < 3600:
+        return f"{max(1, seconds // 60)}m"
+    if seconds < 86400:
+        return f"{max(1, seconds // 3600)}h"
+    return f"{max(1, seconds // 86400)}d"
+
+
+def confidence_rating(rate_percent, listed):
+    listed = listed or 0
+    if rate_percent is None and listed <= 0:
+        return ""
+    if rate_percent is None:
+        return "Med" if listed >= 10 else "Low"
+    if rate_percent >= 20 and listed >= 10:
+        return "High"
+    if (rate_percent >= 5 and listed >= 5) or (rate_percent >= 20 and listed >= 1):
+        return "Med"
+    return "Low"
+
+
+def expected_per_day(profit, sold_per_day, can_make):
+    if sold_per_day is None:
+        return None
+    if can_make == "any":
+        cap = float(sold_per_day)
+    else:
+        cap = min(float(sold_per_day), float(can_make or 0))
+    return int(round(profit * cap))
+
+
+def market_index(db):
+    out = {}
+    block = db.get("market") or {}
+    for row in as_list(block.get("items") if isinstance(block, dict) else None):
+        if isinstance(row, dict) and row.get("id") is not None:
+            out[int(row["id"])] = row
+    return out
+
+
+def attach_market(db, quotes):
+    markets = market_index(db)
+    for row in quotes:
+        info = markets.get(row.get("made")) or {}
+        rate = sale_rate_percent(info.get("saleRate"))
+        sold = info.get("soldPerDay")
+        if sold is not None and sold != "":
+            sold = float(sold)
+        else:
+            sold = None
+        market = info.get("market")
+        atr = info.get("atrPrice") is not None or info.get("atrAge") is not None
+        if rate is None and atr and sold is None and market is None:
+            age = age_text(info.get("atrAge"))
+            row["sale_rate"] = "n/a (Auctionator" + (f", {age}" if age else "") + ")"
+        else:
+            row["sale_rate"] = "" if rate is None else round(rate)
+        row["sold_per_day"] = sold
+        row["market"] = int(market) if isinstance(market, (int, float)) and not isinstance(market, bool) else None
+        row["confidence"] = confidence_rating(rate, row.get("listed"))
+        row["expected"] = expected_per_day(row["profit"], sold, row["can_make"])
 
 
 def quote_row(row):
@@ -819,6 +907,11 @@ def quote_row(row):
         row["margin"],
         "" if row["listed"] is None else row["listed"],
         row["can_make"],
+        row.get("sale_rate", ""),
+        "" if row.get("sold_per_day") is None else row["sold_per_day"],
+        "" if row.get("market") is None else row["market"],
+        row.get("confidence", ""),
+        "" if row.get("expected") is None else row["expected"],
     ]
 
 
@@ -1219,6 +1312,7 @@ def write_xlsx(path, tables, db, report):
                 "Reagent cost is the cheaper of the discounted vendor price and the auction price. "
                 "Owned mats use that auction price, and the count you hold is in parentheses. "
                 "AH net subtracts the 5% cut and a 12-hour deposit. "
+                "Sale rate and sold per day come from TSM. Auctionator has no sale rate; its price age is the freshness note. "
                 "The top block is risk-free: vendor in, vendor out."
             )
         sheet["A2"] = note
@@ -1272,6 +1366,8 @@ def write_xlsx(path, tables, db, report):
                 if kind == "data" and col - 1 < len(header) and header[col - 1] in MONEY_HEADERS:
                     mark_money(cell)
                 if kind == "data" and margin_col and col == margin_col and isinstance(value, int):
+                    cell.number_format = '0"%"'
+                if kind == "data" and col - 1 < len(header) and header[col - 1] == "Sale Rate" and isinstance(value, (int, float)):
                     cell.number_format = '0"%"'
                 if kind == "data" and qty_col and col == qty_col and isinstance(value, int) and 0 < value < THIN_MARKET:
                     cell.fill = thin_fill

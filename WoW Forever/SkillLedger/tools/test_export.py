@@ -98,6 +98,13 @@ def test_vendor_flip_section():
     assert potion[7] == "Vendor"
     assert potion[8] == 81
     assert potion[11] == "any"
+    atr = {"chars": db["chars"], "prices": {"items": [{"id": 2, "unit": 50, "total": 3}]}, "market": {"items": [
+        {"id": 2, "atrPrice": 50, "atrAge": 7200},
+    ]}}
+    atr_rows = export.profitable_rows(atr, data)
+    atr_potion = next(row for row in atr_rows if row[1] == "Test Potion")
+    assert atr_potion[12] == "n/a (Auctionator, 2h)"
+    assert atr_potion[15] == "Low"
 
 
 def main_test():
@@ -177,6 +184,13 @@ def main_test():
     assert smelt[8] == 349
     assert smelt[11] == 20
     assert crafts["Linen Bandage"][8] == 109
+    assert crafts["Rough Sharpening Stone"][12] == 40
+    assert crafts["Rough Sharpening Stone"][15] == "High"
+    assert crafts["Linen Bandage"][15] == "Med"
+    assert crafts["Smelt Copper"][15] == "Low"
+    assert crafts["Rough Sharpening Stone"][16] == 123 * 8
+    names = [row[1] for row in book["Profitable Crafts"].iter_rows(min_row=4, values_only=True) if row[1]]
+    assert names[:3] == ["Rough Sharpening Stone", "Linen Bandage", "Smelt Copper"]
     profit_cell = None
     for row in book["Profitable Crafts"].iter_rows(min_row=4):
         if row[1].value == "Smelt Copper":

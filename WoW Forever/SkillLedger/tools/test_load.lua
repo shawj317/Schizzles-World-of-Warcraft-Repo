@@ -117,4 +117,50 @@ assert(SkillLedger.Plan() == nil, "plan should stop when data is missing")
 assert(missing[1] and missing[1]:find("not loaded", 1, true), "missing-data message not printed")
 SkillLedgerData = kept
 SkillLedger.Say = previous
+
+local queued = {}
+C_Timer = { After = function(_, fn) queued[#queued + 1] = fn end }
+TSM_API = {
+  GetCustomPriceValue = function(source, item)
+    if item ~= "i:2840" then return nil end
+    if source == "dbregionsalerate" then return 0.25 end
+    if source == "dbregionsoldperday" then return 3 end
+    if source == "dbmarket" then return 450 end
+    if source == "dbminbuyout" then error("region down") end
+    return nil
+  end,
+}
+Auctionator = { API = { v1 = {
+  GetAuctionPriceByItemID = function(_, itemId)
+    if itemId == 1251 then return 200 end
+    return nil
+  end,
+  GetAuctionAgeByItemID = function(_, itemId)
+    if itemId == 1251 then return 3600 end
+    return nil
+  end,
+}}}
+local char = SkillLedger.Char()
+local learned = { { spell = 2657, item = 2840, name = "Smelt Copper" } }
+for i = 1, 14 do
+  learned[#learned + 1] = { item = 800000 + i, name = "Extra" }
+end
+learned[#learned + 1] = { spell = 3275, item = 1251, name = "Linen Bandage" }
+char.learned = { recipes = learned }
+assert(SkillLedger.SnapshotMarket() == 16)
+local function savedMarket()
+  local out = {}
+  for i = 1, #SkillLedgerDB.market.items do
+    out[SkillLedgerDB.market.items[i].id] = SkillLedgerDB.market.items[i]
+  end
+  return out
+end
+local saved = savedMarket()
+assert(saved[2840] and saved[2840].saleRate == 0.25 and saved[2840].soldPerDay == 3 and saved[2840].market == 450)
+assert(saved[2840].minBuyout == nil, "a failed TSM source should be skipped")
+assert(saved[1251] == nil, "the item past the first batch should wait")
+assert(#queued == 1, "the rest of the market read should wait for a timer, not OnUpdate")
+queued[1]()
+saved = savedMarket()
+assert(saved[1251] and saved[1251].atrPrice == 200 and saved[1251].atrAge == 3600 and saved[1251].saleRate == nil)
 print("load test passed", #SkillLedgerData.recipes, "recipes", plans[1].steps[1].recipe)

@@ -29,7 +29,7 @@ The window starts left of centre so it stays out of the rotation HUD. On Forever
 
 Nothing runs on `OnUpdate`. Bag and reputation events only mark the data dirty and take one snapshot after a short pause. The plan is calculated when you ask for it.
 
-TradeSkillMaster and Auctionator are optional. If a reagent has no SkillLedger scan price, the plan may use `first(DBMinBuyout, AtrValue)` or Auctionator's last price. The sheet marks that source. Neither addon is required.
+TradeSkillMaster and Auctionator are optional. If a reagent has no SkillLedger scan price, the plan may use `first(DBMinBuyout, AtrValue)` or Auctionator's last price. The sheet marks that source. When a plan is run, SkillLedger also asks TSM for `dbregionsalerate`, `dbregionsoldperday`, `dbmarket`, and `dbminbuyout` on each learned crafted item, and Auctionator for its price and how old that price is. A missing answer is skipped. Auctionator does not have a sale rate. The queries are a short batch after the plan, not an OnUpdate. Neither addon is required.
 
 ## What it records
 

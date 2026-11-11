@@ -38,6 +38,8 @@ function SL.DB()
   if type(db.chars) ~= "table" then db.chars = {} end
   if type(db.prices) ~= "table" then db.prices = {} end
   if type(db.prices.items) ~= "table" then db.prices.items = {} end
+  if type(db.market) ~= "table" then db.market = {} end
+  if type(db.market.items) ~= "table" then db.market.items = {} end
   if type(db.ui) ~= "table" then db.ui = {} end
   return db
 end
@@ -167,6 +169,118 @@ local function mapRows(rows, field)
   return out
 end
 
+local MARKET_BATCH = 15
+local marketToken = 0
+
+local function tsmNumber(source, itemId)
+  if not (TSM_API and TSM_API.GetCustomPriceValue) then return nil end
+  local ok, value = pcall(TSM_API.GetCustomPriceValue, source, "i:" .. itemId)
+  if not ok or type(value) ~= "number" then return nil end
+  return value
+end
+
+local function auctionatorApi()
+  local api = Auctionator and Auctionator.API and Auctionator.API.v1
+  if type(api) ~= "table" then return nil end
+  return api
+end
+
+function SL.ReadMarket(itemId)
+  if not itemId then return nil end
+  local row = { id = itemId, at = SL.Now() }
+  local got = false
+  local saleRate = tsmNumber("dbregionsalerate", itemId)
+  local soldPerDay = tsmNumber("dbregionsoldperday", itemId)
+  local market = tsmNumber("dbmarket", itemId)
+  local minBuyout = tsmNumber("dbminbuyout", itemId)
+  if saleRate ~= nil then row.saleRate = saleRate; got = true end
+  if soldPerDay ~= nil then row.soldPerDay = soldPerDay; got = true end
+  if market ~= nil then row.market = market; got = true end
+  if minBuyout ~= nil then row.minBuyout = minBuyout; got = true end
+  local api = auctionatorApi()
+  if api and api.GetAuctionPriceByItemID then
+    local ok, value = pcall(api.GetAuctionPriceByItemID, "SkillLedger", itemId)
+    if ok and type(value) == "number" then row.atrPrice = value; got = true end
+  end
+  if api and api.GetAuctionAgeByItemID then
+    local ok, age = pcall(api.GetAuctionAgeByItemID, "SkillLedger", itemId)
+    if ok and type(age) == "number" then row.atrAge = age; got = true end
+  end
+  if not got then return nil end
+  return row
+end
+
+local function saveMarket(row)
+  local items = SL.DB().market.items
+  for i = 1, #items do
+    if items[i].id == row.id then
+      items[i] = row
+      SL.DB().market.updated = SL.Now()
+      return
+    end
+  end
+  items[#items + 1] = row
+  SL.DB().market.updated = SL.Now()
+end
+
+local function learnedOutputs()
+  local char = SL.Char()
+  local learned = char.learned and char.learned.recipes or {}
+  local recipes = SkillLedgerData and SkillLedgerData.recipes or {}
+  local made = {}
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+    if recipe.spell and recipe.made and recipe.made > 0 and not recipe.enchant then
+      made[recipe.spell] = recipe.made
+    end
+  end
+  local seen, list = {}, {}
+  for i = 1, #learned do
+    local row = learned[i]
+    local item = row.item
+    if (not item or item == 0) and row.spell then item = made[row.spell] end
+    if item and item > 0 and not seen[item] then
+      seen[item] = true
+      list[#list + 1] = item
+    end
+  end
+  return list
+end
+
+local function pumpMarket(token)
+  local queue = SL._marketQueue
+  if not queue or queue.token ~= token then return end
+  local last = math.min(queue.index + MARKET_BATCH - 1, #queue.ids)
+  for i = queue.index, last do
+    local ok, row = pcall(SL.ReadMarket, queue.ids[i])
+    if ok and type(row) == "table" then saveMarket(row) end
+  end
+  queue.index = last + 1
+  if queue.index <= #queue.ids then
+    if C_Timer and C_Timer.After then
+      C_Timer.After(0, function() pumpMarket(token) end)
+      return
+    end
+  end
+  SL._marketQueue = nil
+end
+
+function SL.SnapshotMarket()
+  local tsm = TSM_API and TSM_API.GetCustomPriceValue and true or false
+  local api = auctionatorApi()
+  local atr = api and (api.GetAuctionPriceByItemID or api.GetAuctionAgeByItemID) and true or false
+  if not tsm and not atr then
+    if SL.Say then SL.Say("market: TSM and Auctionator are not available.") end
+    return 0
+  end
+  local ids = learnedOutputs()
+  if #ids == 0 then return 0 end
+  marketToken = marketToken + 1
+  SL._marketQueue = { ids = ids, index = 1, token = marketToken }
+  pumpMarket(marketToken)
+  return #ids
+end
+
 function SL.ExternalPrice(itemId)
   if TSM_API and TSM_API.GetCustomPriceValue then
     local ok, value = pcall(TSM_API.GetCustomPriceValue, "first(DBMinBuyout, AtrValue)", "i:" .. itemId)
@@ -244,6 +358,7 @@ function SL.Plan()
     char.faction or "", classMask, raceMask, sources
   )
   SL.lastPlan = { plans = plans, shopping = shopping, at = SL.Now() }
+  if SL.SnapshotMarket then SL.SnapshotMarket() end
   return SL.lastPlan
 end
 

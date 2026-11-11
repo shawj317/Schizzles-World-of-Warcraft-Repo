@@ -164,6 +164,14 @@ SkillLedgerDB = {
 			},
 		},
 	},
+	["market"] = {
+		["updated"] = 1762800000,
+		["items"] = {
+			{ ["id"] = 2840, ["saleRate"] = 0.02, ["soldPerDay"] = 0.4, ["market"] = 380, ["minBuyout"] = 400, ["at"] = 1762800000 },
+			{ ["id"] = 2862, ["saleRate"] = 0.4, ["soldPerDay"] = 8, ["market"] = 140, ["minBuyout"] = 150, ["at"] = 1762800000 },
+			{ ["id"] = 1251, ["saleRate"] = 0.1, ["soldPerDay"] = 2, ["market"] = 180, ["minBuyout"] = 200, ["at"] = 1762800000 },
+		},
+	},
 	["ui"] = {
 		["x"] = -480,
 		["y"] = 40,
