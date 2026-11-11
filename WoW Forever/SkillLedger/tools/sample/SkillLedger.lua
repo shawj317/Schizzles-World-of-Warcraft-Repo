@@ -42,6 +42,33 @@ SkillLedgerDB = {
 				["at"] = 1762800000,
 				["source"] = "scan",
 			}, -- [4]
+			{
+				["id"] = 2862,
+				["name"] = "Rough Sharpening Stone",
+				["unit"] = 150,
+				["qty"] = 20,
+				["total"] = 40,
+				["at"] = 1762800000,
+				["source"] = "scan",
+			}, -- [5]
+			{
+				["id"] = 2853,
+				["name"] = "Copper Bracers",
+				["unit"] = 500,
+				["qty"] = 2,
+				["total"] = 2,
+				["at"] = 1762800000,
+				["source"] = "scan",
+			}, -- [6]
+			{
+				["id"] = 1251,
+				["name"] = "Linen Bandage",
+				["unit"] = 200,
+				["qty"] = 15,
+				["total"] = 30,
+				["at"] = 1762800000,
+				["source"] = "scan",
+			}, -- [7]
 		},
 	},
 	["chars"] = {
@@ -54,6 +81,8 @@ SkillLedgerDB = {
 			["classFile"] = "WARRIOR",
 			["race"] = "Orc",
 			["level"] = 20,
+			["money"] = 354321,
+			["moneyAt"] = 1762800000,
 			["updated"] = 1762800000,
 			["professions"] = {
 				{
@@ -83,13 +112,25 @@ SkillLedgerDB = {
 				["items"] = {
 					{ ["id"] = 2770, ["name"] = "Copper Ore", ["count"] = 20, ["bag"] = 0, ["slot"] = 1, ["where"] = "bag" }, -- [1]
 					{ ["id"] = 2835, ["name"] = "Rough Stone", ["count"] = 10, ["bag"] = 0, ["slot"] = 2, ["where"] = "bag" }, -- [2]
-					{ ["id"] = 2589, ["name"] = "Linen Cloth", ["count"] = 8, ["bag"] = 0, ["slot"] = 3, ["where"] = "bag" }, -- [3]
+					{ ["id"] = 2589, ["name"] = "Linen Cloth", ["count"] = 8, ["bag"] = 0, ["slot"] = 3, ["where"] = "bag", ["classId"] = 7 }, -- [3]
+					{ ["id"] = 6948, ["name"] = "Hearthstone", ["count"] = 1, ["bag"] = 0, ["slot"] = 4, ["where"] = "bag" }, -- [4]
+					{ ["id"] = 25, ["name"] = "Worn Shortsword", ["count"] = 1, ["bag"] = 0, ["slot"] = 5, ["where"] = "bag", ["classId"] = 2 }, -- [5]
+					{ ["id"] = 888888, ["name"] = "Loose Thread", ["count"] = 3, ["bag"] = 0, ["slot"] = 6, ["where"] = "bag", ["classId"] = 7 }, -- [6]
 				},
 			},
 			["bank"] = {
 				["updated"] = 1762790000,
 				["items"] = {
-					{ ["id"] = 2589, ["name"] = "Linen Cloth", ["count"] = 5, ["bag"] = -1, ["slot"] = 1, ["where"] = "bank" }, -- [1]
+					{ ["id"] = 2589, ["name"] = "Linen Cloth", ["count"] = 5, ["bag"] = -1, ["slot"] = 1, ["where"] = "bank", ["classId"] = 7 }, -- [1]
+				},
+			},
+			["learned"] = {
+				["updated"] = 1762800000,
+				["recipes"] = {
+					{ ["spell"] = 2657, ["name"] = "Smelt Copper", ["item"] = 2840, ["skill"] = 186, ["profession"] = "Mining" }, -- [1]
+					{ ["spell"] = 2660, ["name"] = "Rough Sharpening Stone", ["item"] = 2862, ["skill"] = 164, ["profession"] = "Blacksmithing" }, -- [2]
+					{ ["spell"] = 2663, ["name"] = "Copper Bracers", ["item"] = 2853, ["skill"] = 164, ["profession"] = "Blacksmithing" }, -- [3]
+					{ ["spell"] = 3275, ["name"] = "Linen Bandage", ["item"] = 1251, ["skill"] = 129, ["profession"] = "First Aid" }, -- [4]
 				},
 			},
 			["standings"] = {

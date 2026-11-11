@@ -83,7 +83,11 @@ With no `.lua` path, the script searches `Program Files (x86)`, `Program Files`,
 
 `py -3 -m pip install openpyxl` once, for the workbook. If openpyxl is missing, the script offers to install it and, if you decline, writes one CSV per sheet. `--csv` writes those CSV files as well.
 
-Sheets: Professions, Inventory, AH Prices, Leveling Plan (one block per profession), Shopping List, and Vendors. Header rows are frozen. Money is gold, silver and copper. Vendors lists every saved standing and its discount, every captured merchant price, and the vendor price the plan actually used.
+Open each profession window once. SkillLedger reads the recipes that window lists and saves them. The auction scan prices reagents and the items those recipes make. Gold on hand is saved with the bag snapshot.
+
+The workbook opens on Summary: headline cards, a progress bar per profession, a cost-to-cap chart, a shopping-spend chart, and the top items to buy. Profitable Crafts lists learned recipes that can be sold, with reagent cost (owned, a reputation-discounted vendor, or the auction house), the auction price, profit, margin, and how many are listed. Green rows make money. If no profession window has been opened, that sheet says to open each one and rescan.
+
+Professions drops the realm column. Secondary is a yes/no flag on each skill, so Cooking, First Aid, and Fishing are left off that sheet and the flag column goes with them. They stay on Summary and in the leveling plan. Inventory keeps crafting reagents and Trade Goods only, one row per item, with a location such as `Bags 12 / Bank 8`. Shopping List has no item id. Vendors has no faction id, item id, or NPC. Header rows stay frozen. Money is gold, silver, and copper.
 
 ## Coverage
 

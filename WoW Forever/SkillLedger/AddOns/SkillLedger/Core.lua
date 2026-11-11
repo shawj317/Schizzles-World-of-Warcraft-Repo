@@ -300,13 +300,20 @@ events:SetScript("OnEvent", function(_, event, arg1)
     SL.DB()
   elseif event == "PLAYER_LOGIN" then
     SL.SnapshotProfessions()
+    if SL.SnapshotMoney then SL.SnapshotMoney() end
     if SL.SnapshotBags then SL.SnapshotBags() end
     if SL.SnapshotRep then SL.SnapshotRep() end
+  elseif event == "PLAYER_MONEY" then
+    if SL.SnapshotMoney then SL.SnapshotMoney() end
   elseif event == "PLAYER_LOGOUT" then
     if SL.bagsDirty and SL.SnapshotBags then SL.SnapshotBags() end
     if SL.SnapshotRep then SL.SnapshotRep() end
   elseif event == "SKILL_LINES_CHANGED" then
     SL.SnapshotProfessions()
+  elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" or event == "TRADE_SKILL_LIST_UPDATE" then
+    soon("tradeskill", 0.3, function()
+      if SL.SnapshotTradeSkill then SL.SnapshotTradeSkill() end
+    end)
   elseif event == "BAG_UPDATE" then
     SL.bagsDirty = true
     soon("bags", 2, function()
@@ -353,6 +360,10 @@ listen("ADDON_LOADED")
 listen("PLAYER_LOGIN")
 listen("PLAYER_LOGOUT")
 listen("SKILL_LINES_CHANGED")
+listen("PLAYER_MONEY")
+listen("TRADE_SKILL_SHOW")
+listen("TRADE_SKILL_UPDATE")
+listen("TRADE_SKILL_LIST_UPDATE")
 listen("BAG_UPDATE")
 listen("BANKFRAME_OPENED")
 listen("BANKFRAME_CLOSED")

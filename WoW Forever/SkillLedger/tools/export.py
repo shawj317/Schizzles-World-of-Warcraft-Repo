@@ -368,49 +368,91 @@ def build_report(db, data):
     return report
 
 
+TRADE_GOODS_CLASS = 7
+LEARNED_NOTE = (
+    "Open each profession window once so SkillLedger can record the recipes you have learned, "
+    "then rescan the auction house."
+)
+
+
+def reagent_ids(data):
+    found = set()
+    for recipe in data.get("recipes") or []:
+        for reagent in recipe.get("reagents") or []:
+            if reagent:
+                found.add(int(reagent[0]))
+    return found
+
+
+def is_crafting_item(item, reagents):
+    if not isinstance(item, dict) or not item.get("id"):
+        return False
+    if int(item["id"]) in reagents:
+        return True
+    class_id = item.get("classId")
+    if class_id is None:
+        class_id = item.get("classID")
+    if class_id is not None:
+        try:
+            if int(class_id) == TRADE_GOODS_CLASS:
+                return True
+        except (TypeError, ValueError):
+            pass
+    kind = str(item.get("class") or item.get("itemClass") or "").strip().lower()
+    return kind == "trade goods"
+
+
 def profession_rows(db):
-    rows = [["Character", "Realm", "Faction", "Class", "Level", "Profession", "Rank", "Max", "Secondary"]]
+    # Secondary is a yes/no flag on each row, so Cooking, First Aid and Fishing
+    # are left off this sheet. The flag column goes with them. Summary still
+    # shows those professions.
+    rows = [["Character", "Faction", "Class", "Level", "Profession", "Rank", "Max"]]
     for char in character_rows(db):
         profs = as_list(char.get("professions")) or [{}]
         for row in profs:
-            if not isinstance(row, dict):
+            if not isinstance(row, dict) or row.get("secondary"):
                 continue
             rows.append([
                 char.get("name") or char.get("key"),
-                char.get("realm") or "",
                 char.get("faction") or "",
                 char.get("classFile") or char.get("class") or "",
                 char.get("level") or "",
                 row.get("name") or "",
                 row.get("rank") or "",
                 row.get("maxRank") or "",
-                "yes" if row.get("secondary") else "",
             ])
     return rows
 
 
-def inventory_rows(db):
-    rows = [["Character", "Where", "Bag", "Slot", "Item ID", "Name", "Count", "Snapshot"]]
+def inventory_rows(db, data):
+    rows = [["Character", "Item ID", "Name", "Count", "Location"]]
+    reagents = reagent_ids(data)
     for char in character_rows(db):
-        for bucket, where in (("bags", "bag"), ("bank", "bank")):
+        totals = {}
+        for bucket, label in (("bags", "Bags"), ("bank", "Bank")):
             block = char.get(bucket) or {}
-            when = stamp(block.get("updated")) if isinstance(block, dict) else ""
-            items = as_list(block.get("items") if isinstance(block, dict) else None)
-            if not items and bucket == "bank":
-                rows.append([char.get("name"), "bank", "", "", "", "(bank not opened)", "", when])
-            for item in items:
-                if not isinstance(item, dict):
+            for item in as_list(block.get("items") if isinstance(block, dict) else None):
+                if not is_crafting_item(item, reagents):
                     continue
-                rows.append([
-                    char.get("name"),
-                    item.get("where") or where,
-                    item.get("bag", ""),
-                    item.get("slot", ""),
-                    item.get("id", ""),
-                    item.get("name") or "",
-                    item.get("count") or "",
-                    when,
-                ])
+                item_id = int(item["id"])
+                slot = totals.setdefault(item_id, {"name": item.get("name") or "", "bags": 0, "bank": 0})
+                if item.get("name"):
+                    slot["name"] = item["name"]
+                slot["bags" if bucket == "bags" else "bank"] += int(item.get("count") or 0)
+        ordered = sorted(totals.items(), key=lambda pair: (pair[1]["name"].lower(), pair[0]))
+        for item_id, slot in ordered:
+            parts = []
+            if slot["bags"]:
+                parts.append(f"Bags {slot['bags']}")
+            if slot["bank"]:
+                parts.append(f"Bank {slot['bank']}")
+            rows.append([
+                char.get("name") or char.get("key"),
+                item_id,
+                slot["name"],
+                slot["bags"] + slot["bank"],
+                " / ".join(parts),
+            ])
     return rows
 
 
@@ -471,7 +513,7 @@ def plan_rows(report):
 
 def shopping_rows(report):
     rows = [[
-        "Character", "Item ID", "Item", "Need", "From bags", "Buy",
+        "Character", "Item", "Need", "From bags", "Buy",
         "Base unit", "Discount", "Faction", "Standing", "Unit paid", "Line cost", "Source",
     ]]
     for entry in report:
@@ -481,7 +523,6 @@ def shopping_rows(report):
                 continue
             rows.append([
                 name,
-                row["id"],
                 row["name"],
                 round(row["need"], 2),
                 round(row["fromStock"], 2),
@@ -498,7 +539,7 @@ def shopping_rows(report):
 
 
 def vendor_rows(db, report):
-    rows = [["Section", "Character", "Faction", "Faction ID", "Standing", "Discount", "Item", "Item ID", "Base", "Unit paid", "NPC", "When", "Note"]]
+    rows = [["Section", "Character", "Faction", "Standing", "Discount", "Item", "Base", "Unit paid", "When", "Note"]]
     for char in character_rows(db):
         name = char.get("name") or char.get("key")
         block = char.get("standings") or {}
@@ -507,9 +548,9 @@ def vendor_rows(db, report):
                 continue
             standing = int(row.get("standing") or 0)
             rows.append([
-                "Standing", name, row.get("name") or "", row.get("id") or "",
+                "Standing", name, row.get("name") or "",
                 plan.standing_name(standing), f"{plan.discount_percent(standing)}%",
-                "", "", "", "", "", stamp(block.get("updated") if isinstance(block, dict) else None),
+                "", "", "", stamp(block.get("updated") if isinstance(block, dict) else None),
                 "Unfriendly and below cannot buy. Neutral pays the catalog price.",
             ])
         merchant = char.get("merchant") or {}
@@ -518,11 +559,11 @@ def vendor_rows(db, report):
                 continue
             standing = row.get("standing")
             rows.append([
-                "Merchant window", name, row.get("faction") or "", row.get("factionId") or "",
+                "Merchant window", name, row.get("faction") or "",
                 plan.standing_name(int(standing)) if standing else "",
                 f"{plan.discount_percent(int(standing))}%" if standing else "",
-                row.get("name") or "", row.get("id") or "",
-                "", money(row.get("unit")), row.get("npc") or "", stamp(row.get("at")),
+                row.get("name") or "",
+                "", money(row.get("unit")), stamp(row.get("at")),
                 "Captured from the merchant window. Used as-is while this standing is unchanged.",
             ])
     for entry in report:
@@ -536,26 +577,284 @@ def vendor_rows(db, report):
                 continue
             seen.add(key)
             rows.append([
-                "Plan price", name, row.get("faction") or "", "",
+                "Plan price", name, row.get("faction") or "",
                 row.get("standing") or "",
                 f"{row['discount']}%" if row.get("discount") else "0%",
-                row["name"], row["id"],
+                row["name"],
                 money(row.get("base")) if row.get("base") else "",
                 money(row.get("unit")) if row.get("unit") else "",
-                "", "",
+                "",
                 "Standing was not saved, so Neutral was assumed." if row.get("assumed") else row.get("source") or "",
             ])
     return rows
 
 
-SHEETS = [
-    ("Professions", profession_rows),
-    ("Inventory", inventory_rows),
-    ("AH Prices", price_rows),
-    ("Leveling Plan", None),
-    ("Shopping List", None),
-    ("Vendors", None),
-]
+def price_index(db):
+    out = {}
+    block = db.get("prices") or {}
+    for row in as_list(block.get("items") if isinstance(block, dict) else None):
+        if isinstance(row, dict) and row.get("id") is not None:
+            out[int(row["id"])] = row
+    return out
+
+
+def learned_recipes(char):
+    block = char.get("learned") or {}
+    rows = as_list(block.get("recipes") if isinstance(block, dict) else block)
+    if not rows and isinstance(block, dict):
+        rows = as_list(block.get("spells"))
+    found = []
+    for row in rows:
+        if isinstance(row, int):
+            found.append({"spell": row})
+        elif isinstance(row, dict) and (row.get("spell") or row.get("name")):
+            found.append(row)
+    return found
+
+
+def cost_source_label(sources):
+    if not sources:
+        return ""
+    if sources == {"owned"}:
+        return "owned"
+    paid = sources - {"owned"}
+    vendorish = {"vendor", "merchant"}
+    if paid and paid <= vendorish and "owned" not in sources:
+        return "vendor"
+    if paid == {"AH"} and "owned" not in sources:
+        return "AH"
+    if "owned" in sources and paid:
+        return "mixed"
+    if len(paid) > 1:
+        return "mixed"
+    return "vendor" if paid <= vendorish else "AH"
+
+
+def craft_quotes(db, data):
+    """Learned crafts with a reagent cost, sale price, and profit. One list per character."""
+    recipes_by_spell = {}
+    for recipe in data.get("recipes") or []:
+        recipes_by_spell[int(recipe["spell"])] = recipe
+    skill_names = {int(row["id"]): row["name"] for row in data.get("professions") or [] if row.get("id")}
+    quotes = []
+    missing_prices = False
+    any_learned = False
+    for char in character_rows(db):
+        learned = learned_recipes(char)
+        if not learned:
+            continue
+        any_learned = True
+        state = plan.prepare_state(
+            data,
+            inventory_of(char),
+            prices_of(db)[0],
+            standings_of(char),
+            captured_of(char),
+            char.get("faction") or "",
+            CLASS_BIT.get(char.get("classFile") or "", 0),
+            RACE_BIT.get(char.get("race") or "", 0),
+            prices_of(db)[1],
+        )
+        listing = price_index(db)
+        inventory = inventory_of(char)
+        for known in learned:
+            spell = known.get("spell")
+            recipe = recipes_by_spell.get(int(spell)) if spell else None
+            if recipe is None or recipe.get("enchant") or not recipe.get("made"):
+                continue
+            sources = set()
+            cost = 0
+            unpriced = False
+            for reagent_id, count in recipe.get("reagents") or []:
+                reagent_id = int(reagent_id)
+                count = int(count or 0)
+                if count <= 0:
+                    continue
+                owned = int(inventory.get(reagent_id, 0))
+                if owned >= count:
+                    sources.add("owned")
+                    continue
+                if owned > 0:
+                    sources.add("owned")
+                unit, info = plan.buy_quote(state, reagent_id)
+                if unit is None:
+                    unpriced = True
+                    break
+                cost += int(unit) * (count - owned)
+                source = (info or {}).get("source") or "ah"
+                if source in ("vendor", "vendor-assumed", "vendor-nofaction", "merchant"):
+                    sources.add("vendor")
+                else:
+                    sources.add("AH")
+            made = int(recipe.get("made") or known.get("item") or 0)
+            produced = int(recipe.get("count") or 1)
+            sale_row = listing.get(made) or {}
+            sale = int(sale_row.get("unit") or 0)
+            if not sale:
+                missing_prices = True
+            profit = None if unpriced or not sale else sale * produced - cost
+            margin = None
+            if profit is not None and sale * produced > 0:
+                margin = round(100.0 * profit / (sale * produced))
+            profession = known.get("profession") or skill_names.get(int(recipe.get("skill") or 0)) or ""
+            quotes.append({
+                "character": char.get("name") or char.get("key"),
+                "profession": profession,
+                "recipe": known.get("name") or recipe.get("name") or "",
+                "cost": None if unpriced else cost,
+                "source": "" if unpriced else cost_source_label(sources),
+                "sale": sale or None,
+                "quantity": int(sale_row.get("total") or sale_row.get("qty") or 0) if sale else None,
+                "profit": profit,
+                "margin": margin,
+            })
+    quotes.sort(key=lambda row: (row["profit"] is None, -(row["profit"] or 0), row["recipe"]))
+    return quotes, any_learned, missing_prices
+
+
+def profitable_rows(db, data):
+    header = ["Character", "Profession", "Recipe", "Reagent cost", "Cost from", "AH price", "AH quantity", "Profit", "Margin"]
+    quotes, any_learned, missing_prices = craft_quotes(db, data)
+    if not any_learned:
+        return [header, [LEARNED_NOTE, "", "", "", "", "", "", "", ""]]
+    rows = [header]
+    if missing_prices:
+        rows.append(["Some crafted items have no auction price. Rescan the auction house.", "", "", "", "", "", "", "", ""])
+    for row in quotes:
+        rows.append([
+            row["character"],
+            row["profession"],
+            row["recipe"],
+            money(row["cost"]) if row["cost"] is not None else "",
+            row["source"],
+            money(row["sale"]) if row["sale"] else "",
+            row["quantity"] if row["quantity"] else "",
+            money(row["profit"]) if row["profit"] is not None else "",
+            f"{row['margin']}%" if row["margin"] is not None else "",
+        ])
+    return rows
+
+
+def age_phrase(when):
+    if not when:
+        return "not opened", "Open the bank once so this can be dated."
+    try:
+        then = int(when)
+    except (TypeError, ValueError):
+        return "not opened", ""
+    seconds = max(0, int(datetime.now(timezone.utc).timestamp()) - then)
+    if seconds < 90:
+        text = "just now"
+    elif seconds < 3600:
+        minutes = max(1, seconds // 60)
+        text = f"{minutes} minute ago" if minutes == 1 else f"{minutes} minutes ago"
+    elif seconds < 86400:
+        hours = max(1, seconds // 3600)
+        text = f"{hours} hour ago" if hours == 1 else f"{hours} hours ago"
+    else:
+        days = seconds // 86400
+        text = f"{days} day ago" if days == 1 else f"{days} days ago"
+    return text, stamp(when)
+
+
+def progress_bar(rank, cap, width=16):
+    if not cap:
+        return ""
+    filled = int(round(width * max(0, min(1, rank / cap))))
+    return ("#" * filled) + ("-" * (width - filled))
+
+
+def summary_facts(db, report):
+    gold_bits = []
+    for char in character_rows(db):
+        if char.get("money") is not None:
+            who = char.get("name") or char.get("key")
+            gold_bits.append((who, money(char.get("money"))))
+    if len(gold_bits) == 1:
+        gold = gold_bits[0][1]
+    else:
+        gold = ", ".join(f"{who} {amount}" for who, amount in gold_bits)
+    total = 0
+    progress = []
+    shopping = []
+    for entry in report:
+        name = entry["char"].get("name") or entry["char"].get("key")
+        for profession in entry["plans"]:
+            cost = int(profession.get("total") or 0)
+            total += cost
+            rank = int(profession.get("rank") or 0)
+            cap = int(profession.get("cap") or 0)
+            progress.append({
+                "character": name,
+                "profession": profession.get("name") or "",
+                "rank": rank,
+                "cap": cap,
+                "cost": cost,
+            })
+        for row in entry["shopping"]:
+            cost = int(row.get("cost") or 0)
+            if cost <= 0:
+                continue
+            shopping.append({"character": name, "item": row.get("name") or "", "cost": cost})
+    shopping.sort(key=lambda row: -row["cost"])
+    prices = db.get("prices") or {}
+    priced = 0
+    for row in as_list(prices.get("items") if isinstance(prices, dict) else None):
+        if isinstance(row, dict) and row.get("unit"):
+            priced += 1
+    bank_when = None
+    for char in character_rows(db):
+        block = char.get("bank") or {}
+        if isinstance(block, dict) and block.get("updated"):
+            bank_when = block.get("updated")
+            break
+    bank_age, bank_when_text = age_phrase(bank_when)
+    return {
+        "gold": gold or "not recorded",
+        "gold_caption": "From the last bag snapshot." if gold else "Open your bags once after updating.",
+        "total": total,
+        "priced": priced,
+        "scanned": stamp(prices.get("updated") if isinstance(prices, dict) else None) or "no scan yet",
+        "bank_age": bank_age,
+        "bank_when": bank_when_text,
+        "progress": progress,
+        "shopping": shopping[:8],
+        "character": (character_rows(db)[0].get("name") if character_rows(db) else "") or "",
+        "detail": character_line(character_rows(db)[0]) if character_rows(db) else "",
+    }
+
+
+def character_line(char):
+    bits = [char.get("name") or "", char.get("faction") or "", char.get("class") or char.get("classFile") or ""]
+    if char.get("level"):
+        bits.append(f"level {char.get('level')}")
+    return " · ".join(bit for bit in bits if bit)
+
+
+def summary_rows(db, report):
+    facts = summary_facts(db, report)
+    rows = [
+        ["Card", "Value", "Note"],
+        ["Gold on hand", facts["gold"], facts["gold_caption"]],
+        ["Cost to cap", money(facts["total"]), "Every profession, including secondary skills."],
+        ["AH prices", facts["priced"], "Listings with a buyout."],
+        ["Last scan", facts["scanned"], ""],
+        ["Bank snapshot", facts["bank_age"], facts["bank_when"]],
+        [],
+        ["Character", "Profession", "Rank", "Max", "Progress", "Cost to cap"],
+    ]
+    for row in facts["progress"]:
+        percent = round(100 * row["rank"] / row["cap"]) if row["cap"] else 0
+        rows.append([row["character"], row["profession"], row["rank"], row["cap"], f"{percent}%", money(row["cost"])])
+    rows.append([])
+    rows.append(["Item", "Spend"])
+    for row in facts["shopping"]:
+        rows.append([row["item"], money(row["cost"])])
+    return rows
+
+
+def positive_money(value):
+    return isinstance(value, str) and value not in ("", "0c") and not value.startswith("-")
 
 
 def write_csv_dir(directory, tables):
@@ -570,24 +869,258 @@ def write_csv_dir(directory, tables):
     return paths
 
 
-def write_xlsx(path, tables):
+def write_xlsx(path, tables, db, report):
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.chart import BarChart, PieChart, Reference
+    from openpyxl.chart.label import DataLabelList
+    from openpyxl.chart.series import DataPoint
+    from openpyxl.chart.shapes import GraphicalProperties
+    from openpyxl.formatting.rule import DataBarRule
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
+    from openpyxl.chart.legend import Legend
 
-    book = Workbook()
+    ink = PatternFill("solid", fgColor="1A120C")
+    card_colors = ["3A2A1C", "2E261C", "3A2618", "243028", "2C2430"]
     header_fill = PatternFill("solid", fgColor="1A1A1A")
-    header_font = Font(bold=True, color="F5C16C", name="Calibri")
+    header_font = Font(bold=True, color="F5C16C", name="Calibri", size=12)
     section_fill = PatternFill("solid", fgColor="3A2A1C")
-    section_font = Font(bold=True, color="F5C16C", name="Calibri")
-    wrap = Alignment(wrap_text=True, vertical="top")
-    for index, (name, rows) in enumerate(tables):
-        sheet = book.active if index == 0 else book.create_sheet()
-        sheet.title = name[:31]
+    section_font = Font(bold=True, color="F5C16C", name="Calibri", size=12)
+    cream = Font(color="F4EDE4", name="Calibri", size=12)
+    gold = Font(bold=True, color="F5C16C", name="Calibri", size=22)
+    tan = Font(color="C79B6E", name="Calibri", size=11)
+    title_font = Font(bold=True, color="F5C16C", name="Calibri", size=28)
+    good_fill = PatternFill("solid", fgColor="1E3A2A")
+    good_font = Font(color="D5F5E3", name="Calibri", size=12, bold=True)
+    wrap = Alignment(wrap_text=True, vertical="center")
+    left = Alignment(vertical="center", wrap_text=True)
+    thin = Border(
+        left=Side(style="thin", color="3A2A1C"),
+        right=Side(style="thin", color="3A2A1C"),
+        top=Side(style="thin", color="3A2A1C"),
+        bottom=Side(style="thin", color="3A2A1C"),
+    )
+
+    def page(sheet):
+        sheet.page_setup.orientation = "landscape"
+        sheet.page_setup.fitToPage = True
+        sheet.page_setup.fitToWidth = 1
+        sheet.page_setup.fitToHeight = 1
+        sheet.page_setup.paperSize = sheet.PAPERSIZE_TABLOID
+        sheet.sheet_properties.pageSetUpPr.fitToPage = True
+        sheet.page_setup.horizontalCentered = True
+        sheet.sheet_view.showGridLines = False
+        sheet.sheet_view.zoomScale = 110
+        sheet.oddHeader.left.text = "SkillLedger"
+        sheet.oddFooter.right.text = "Jon Shaw (Schizzle)"
+        sheet.page_margins.left = 0.4
+        sheet.page_margins.right = 0.4
+        sheet.page_margins.top = 0.6
+        sheet.page_margins.bottom = 0.5
+        sheet.sheet_properties.tabColor = "C47A3A"
+
+    def paint_range(sheet, rows, cols):
+        for row in sheet.iter_rows(min_row=1, max_row=rows, min_col=1, max_col=cols):
+            for cell in row:
+                cell.fill = ink
+                cell.font = cream
+
+    def write_summary(sheet):
+        facts = summary_facts(db, report)
+        paint_range(sheet, 36, 10)
+        sheet.merge_cells("A1:J1")
+        sheet["A1"] = "SkillLedger"
+        sheet["A1"].font = title_font
+        sheet["A1"].alignment = Alignment(vertical="center")
+        sheet.row_dimensions[1].height = 38
+        sheet.merge_cells("A2:J2")
+        sheet["A2"] = facts["detail"] or facts["character"]
+        sheet["A2"].font = Font(color="C79B6E", name="Calibri", size=14)
+        sheet.row_dimensions[2].height = 22
+        cards = [
+            ("Gold on hand", facts["gold"], facts["gold_caption"]),
+            ("Cost to cap", money(facts["total"]), "All professions, secondary skills included."),
+            ("AH prices", str(facts["priced"]), "Listings with a buyout."),
+            ("Last scan", facts["scanned"], "When the auction file was written."),
+            ("Bank snapshot", facts["bank_age"], facts["bank_when"] or ""),
+        ]
+        for index, (label, value, caption) in enumerate(cards):
+            col = 1 + index * 2
+            fill = PatternFill("solid", fgColor=card_colors[index])
+            sheet.merge_cells(start_row=4, start_column=col, end_row=4, end_column=col + 1)
+            sheet.merge_cells(start_row=5, start_column=col, end_row=6, end_column=col + 1)
+            sheet.merge_cells(start_row=7, start_column=col, end_row=7, end_column=col + 1)
+            label_cell = sheet.cell(4, col, label)
+            value_cell = sheet.cell(5, col, value)
+            caption_cell = sheet.cell(7, col, caption)
+            for cell in (label_cell, value_cell, caption_cell):
+                cell.fill = fill
+                cell.alignment = left
+            label_cell.font = tan
+            value_cell.font = gold
+            caption_cell.font = Font(color="A89880", name="Calibri", size=10)
+            sheet.cell(4, col + 1).fill = fill
+            sheet.cell(5, col + 1).fill = fill
+            sheet.cell(6, col).fill = fill
+            sheet.cell(6, col + 1).fill = fill
+            sheet.cell(7, col + 1).fill = fill
+        sheet.row_dimensions[5].height = 28
+        sheet.row_dimensions[6].height = 22
+        sheet["A9"] = "Profession progress"
+        sheet["A9"].font = Font(bold=True, color="F5C16C", name="Calibri", size=16)
+        headers = ["Profession", "Rank", "Progress", "Cost", "Silver", "Percent"]
+        for col, text in enumerate(headers, start=1):
+            cell = sheet.cell(10, col, text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = left
+        for offset, row in enumerate(facts["progress"]):
+            excel_row = 11 + offset
+            percent = round(100 * row["rank"] / row["cap"]) if row["cap"] else 0
+            values = [
+                row["profession"],
+                f"{row['rank']} / {row['cap']}",
+                progress_bar(row["rank"], row["cap"]),
+                money(row["cost"]),
+                round(row["cost"] / 100, 1),
+                percent,
+            ]
+            for col, value in enumerate(values, start=1):
+                cell = sheet.cell(excel_row, col, value)
+                cell.font = Font(color="F4EDE4", name="Calibri", size=12)
+                cell.fill = PatternFill("solid", fgColor="241910")
+                cell.alignment = left
+            sheet.row_dimensions[excel_row].height = 20
+        last_prof = 10 + max(1, len(facts["progress"]))
+        if facts["progress"]:
+            sheet.conditional_formatting.add(
+                f"F11:F{last_prof}",
+                DataBarRule(start_type="num", start_value=0, end_type="num", end_value=100, color="C47A3A", showValue=True),
+            )
+            chart = BarChart()
+            chart.type = "col"
+            chart.title = "Cost to cap"
+            chart.y_axis.title = "silver"
+            chart.style = 10
+            chart.legend = None
+            chart.y_axis.majorGridlines = None
+            data = Reference(sheet, min_col=5, min_row=10, max_row=last_prof)
+            cats = Reference(sheet, min_col=1, min_row=11, max_row=last_prof)
+            chart.add_data(data, titles_from_data=True)
+            chart.set_categories(cats)
+            chart.shape = 4
+            chart.width = 15
+            chart.height = 7
+            if chart.series:
+                chart.series[0].graphicalProperties.solidFill = "C47A3A"
+            sheet.add_chart(chart, "A22")
+        sheet["G9"] = "Top shopping"
+        sheet["G9"].font = Font(bold=True, color="F5C16C", name="Calibri", size=16)
+        for col, text in enumerate(["Item", "Spend", "Copper"], start=7):
+            cell = sheet.cell(10, col, text)
+            cell.fill = header_fill
+            cell.font = header_font
+        top = facts["shopping"][:6]
+        rest = sum(row["cost"] for row in facts["shopping"][6:])
+        pie_rows = list(top)
+        if rest:
+            pie_rows.append({"item": "Other", "cost": rest})
+        for offset, row in enumerate(pie_rows):
+            excel_row = 11 + offset
+            sheet.cell(excel_row, 7, row["item"]).font = cream
+            sheet.cell(excel_row, 8, money(row["cost"])).font = cream
+            sheet.cell(excel_row, 9, row["cost"]).font = cream
+            for col in (7, 8, 9):
+                sheet.cell(excel_row, col).fill = PatternFill("solid", fgColor="241910")
+                sheet.cell(excel_row, col).alignment = left
+        if pie_rows:
+            pie = PieChart()
+            pie.title = "Shopping spend"
+            labels = Reference(sheet, min_col=7, min_row=11, max_row=10 + len(pie_rows))
+            data = Reference(sheet, min_col=9, min_row=10, max_row=10 + len(pie_rows))
+            pie.add_data(data, titles_from_data=True)
+            pie.set_categories(labels)
+            pie.dataLabels = DataLabelList()
+            pie.dataLabels.showPercent = True
+            pie.dataLabels.showVal = False
+            pie.dataLabels.showCatName = False
+            pie.dataLabels.showSerName = False
+            pie.width = 14
+            pie.height = 8
+            palette = ["C47A3A", "F5C16C", "E07A3D", "8C5A3C", "C79B6E", "6B8F71", "A89880"]
+            if pie.series:
+                points = []
+                for index, color in enumerate(palette[:len(pie_rows)]):
+                    point = DataPoint(idx=index)
+                    point.graphicalProperties = GraphicalProperties(solidFill=color)
+                    points.append(point)
+                pie.series[0].data_points = points
+            pie.legend.position = "b"
+            sheet.add_chart(pie, "G22")
+        widths = {"A": 24, "B": 14, "C": 22, "D": 16, "E": 12, "F": 12, "G": 22, "H": 14, "I": 12, "J": 16}
+        for letter, width in widths.items():
+            sheet.column_dimensions[letter].width = width
+        sheet.freeze_panes = "A11"
+        sheet.auto_filter.ref = None
+        sheet.oddHeader.center.text = facts["character"]
+        page(sheet)
+        sheet.print_title_rows = "1:2"
+
+    def write_profit(sheet, rows):
+        paint_range(sheet, max(8, len(rows) + 3), 9)
+        sheet.merge_cells("A1:I1")
+        sheet["A1"] = "Profitable crafts"
+        sheet["A1"].font = title_font
+        sheet.row_dimensions[1].height = 36
+        sheet.merge_cells("A2:I2")
+        note = ""
+        body = rows
+        if len(rows) > 1 and isinstance(rows[1][0], str) and rows[1][0].startswith("Open each"):
+            note = rows[1][0]
+            body = [rows[0]]
+        elif len(rows) > 1 and isinstance(rows[1][0], str) and rows[1][0].startswith("Some crafted"):
+            note = rows[1][0]
+            body = [rows[0]] + rows[2:]
+        else:
+            note = "Learned recipes sorted by profit. Green rows make money after reagents."
+        sheet["A2"] = note
+        sheet["A2"].font = Font(color="C79B6E", name="Calibri", size=12)
+        sheet["A2"].alignment = left
+        sheet.row_dimensions[2].height = 32
+        header = body[0] if body else []
+        profit_col = header.index("Profit") + 1 if "Profit" in header else 8
+        for col, value in enumerate(header, start=1):
+            cell = sheet.cell(3, col, value)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = left
+            cell.border = thin
+        for offset, row in enumerate(body[1:], start=4):
+            profitable = profit_col - 1 < len(row) and positive_money(row[profit_col - 1])
+            for col, value in enumerate(row, start=1):
+                cell = sheet.cell(offset, col, value)
+                cell.alignment = left
+                cell.border = thin
+                if profitable:
+                    cell.fill = good_fill
+                    cell.font = good_font
+                else:
+                    cell.fill = PatternFill("solid", fgColor="241910")
+                    cell.font = cream
+            sheet.row_dimensions[offset].height = 20
+        widths = [16, 18, 28, 16, 12, 14, 16, 16, 12]
+        for index, width in enumerate(widths, start=1):
+            sheet.column_dimensions[get_column_letter(index)].width = width
+        sheet.freeze_panes = "A4"
+        sheet.auto_filter.ref = f"A3:I{max(3, 2 + len(body))}"
+        page(sheet)
+
+    def write_table(sheet, rows):
         for row_index, row in enumerate(rows, start=1):
             for col_index, value in enumerate(row, start=1):
                 cell = sheet.cell(row_index, col_index, value)
                 cell.alignment = wrap
+                cell.font = Font(name="Calibri", size=11, color="1A120C")
             if row_index == 1:
                 for col_index in range(1, len(row) + 1):
                     cell = sheet.cell(row_index, col_index)
@@ -598,7 +1131,8 @@ def write_xlsx(path, tables):
                     sheet.cell(row_index, col_index).fill = section_fill
                     sheet.cell(row_index, col_index).font = section_font
         sheet.freeze_panes = "A2"
-        sheet.auto_filter.ref = sheet.dimensions
+        if rows and rows[0]:
+            sheet.auto_filter.ref = sheet.dimensions
         for col_index in range(1, (len(rows[0]) if rows else 1) + 1):
             width = 14
             for row in rows[:80]:
@@ -609,8 +1143,23 @@ def write_xlsx(path, tables):
         sheet.page_setup.fitToPage = True
         sheet.page_setup.fitToWidth = 1
         sheet.page_setup.fitToHeight = 0
+        sheet.sheet_properties.pageSetUpPr.fitToPage = True
         sheet.oddHeader.left.text = "SkillLedger"
         sheet.oddFooter.right.text = "Jon Shaw (Schizzle)"
+        sheet.sheet_properties.tabColor = "8C5A3C"
+        sheet.auto_filter.ref = sheet.dimensions
+        sheet.freeze_panes = "A2"
+
+    book = Workbook()
+    for index, (name, rows) in enumerate(tables):
+        sheet = book.active if index == 0 else book.create_sheet()
+        sheet.title = name[:31]
+        if name == "Summary":
+            write_summary(sheet)
+        elif name == "Profitable Crafts":
+            write_profit(sheet, rows)
+        else:
+            write_table(sheet, rows)
     book.save(path)
 
 
@@ -920,8 +1469,10 @@ def main(argv):
     data = load_recipes()
     report = build_report(db, data)
     tables = [
+        ("Summary", summary_rows(db, report)),
+        ("Profitable Crafts", profitable_rows(db, data)),
         ("Professions", profession_rows(db)),
-        ("Inventory", inventory_rows(db)),
+        ("Inventory", inventory_rows(db, data)),
         ("AH Prices", price_rows(db)),
         ("Leveling Plan", plan_rows(report)),
         ("Shopping List", shopping_rows(report)),
@@ -931,7 +1482,7 @@ def main(argv):
     wrote = []
     use_xlsx = openpyxl_ready()
     if use_xlsx:
-        write_xlsx(output, tables)
+        write_xlsx(output, tables, db, report)
         wrote.append(output)
         print(f"wrote {output}")
     if args.csv or not use_xlsx:

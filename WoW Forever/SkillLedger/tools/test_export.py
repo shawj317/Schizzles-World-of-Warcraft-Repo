@@ -80,28 +80,70 @@ def main_test():
     from openpyxl import load_workbook
     book = load_workbook(OUT)
     assert book.sheetnames == [
-        "Professions", "Inventory", "AH Prices", "Leveling Plan", "Shopping List", "Vendors",
+        "Summary", "Profitable Crafts", "Professions", "Inventory", "AH Prices",
+        "Leveling Plan", "Shopping List", "Vendors",
     ]
+    assert book["Summary"].freeze_panes == "A11"
+    assert book["Profitable Crafts"].freeze_panes == "A4"
     for name in book.sheetnames:
-        assert book[name].freeze_panes == "A2"
+        if name not in ("Summary", "Profitable Crafts"):
+            assert book[name].freeze_panes == "A2"
+    assert book["Summary"].sheet_view.showGridLines is False
+    assert len(book["Summary"]._charts) >= 2
+    summary_text = " ".join(
+        str(cell.value) for row in book["Summary"].iter_rows(max_row=8, max_col=10) for cell in row if cell.value
+    )
+    assert "35g 43s 21c" in summary_text
+    assert "Gold on hand" in summary_text
+    professions = [row[4] for row in book["Professions"].iter_rows(min_row=2, values_only=True)]
+    assert "Mining" in professions and "Blacksmithing" in professions
+    assert "First Aid" not in professions
+    assert "Realm" not in [cell.value for cell in book["Professions"][1]]
+    assert "Secondary" not in [cell.value for cell in book["Professions"][1]]
+    inventory = {row[2]: row for row in book["Inventory"].iter_rows(min_row=2, values_only=True)}
+    assert inventory["Linen Cloth"][3] == 13
+    assert inventory["Linen Cloth"][4] == "Bags 8 / Bank 5"
+    assert "Hearthstone" not in inventory
+    assert "Worn Shortsword" not in inventory
+    assert inventory["Loose Thread"][3] == 3
+    assert "Bag" not in [cell.value for cell in book["Inventory"][1]]
+    assert "Snapshot" not in [cell.value for cell in book["Inventory"][1]]
     plan_sheet = book["Leveling Plan"]
     recipes = [row[4].value for row in plan_sheet.iter_rows(min_row=2)]
     assert "Smelt Copper" in recipes
-    shopping = {row[2].value: row for row in book["Shopping List"].iter_rows(min_row=2)}
+    shopping = {row[1].value: row for row in book["Shopping List"].iter_rows(min_row=2)}
     vial = shopping["Empty Vial"]
-    assert vial[7].value == "5%"
-    assert vial[8].value == "Orgrimmar"
-    assert vial[10].value == "19c"
-    assert vial[12].value == "merchant"
+    assert vial[6].value == "5%"
+    assert vial[7].value == "Orgrimmar"
+    assert vial[9].value == "19c"
+    assert vial[11].value == "merchant"
+    assert "Item ID" not in [cell.value for cell in book["Shopping List"][1]]
     cloth = shopping["Linen Cloth"]
-    assert cloth[4].value == 13  # 8 in bags + 5 in the bank, subtracted once
+    assert cloth[3].value == 13  # 8 in bags + 5 in the bank, subtracted once
     vendors = book["Vendors"]
+    assert "Faction ID" not in [cell.value for cell in vendors[1]]
+    assert "NPC" not in [cell.value for cell in vendors[1]]
+    assert "Item ID" not in [cell.value for cell in vendors[1]]
     found = False
     for row in vendors.iter_rows(min_row=2, values_only=True):
         if row[0] == "Standing" and row[2] == "Orgrimmar":
-            assert row[4] == "Friendly" and row[5] == "5%"
+            assert row[3] == "Friendly" and row[4] == "5%"
             found = True
     assert found
+    crafts = {}
+    for row in book["Profitable Crafts"].iter_rows(min_row=4, values_only=True):
+        if row[2]:
+            crafts[row[2]] = row
+    assert crafts["Smelt Copper"][4] == "owned"
+    assert crafts["Smelt Copper"][7] == "4s 00c"
+    assert crafts["Copper Bracers"][7].startswith("-")
+    smelt_fill = book["Profitable Crafts"]["C4"].fill.fgColor.rgb
+    assert smelt_fill in ("001E3A2A", "FF1E3A2A")
+    bare = export.load_saved(SAMPLE)
+    for char in bare["chars"].values():
+        char.pop("learned", None)
+    note_rows = export.profitable_rows(bare, export.load_recipes())
+    assert any("Open each profession" in str(cell) for row in note_rows for cell in row)
     csv_dir = os.path.join(HERE, "sample", "SkillLedger-test-csv")
     assert os.path.isfile(os.path.join(csv_dir, "Vendors.csv"))
     os.remove(OUT)

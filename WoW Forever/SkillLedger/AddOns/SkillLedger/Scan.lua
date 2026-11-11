@@ -13,7 +13,153 @@ function SL.MerchantIsOpen()
   return MerchantFrame and MerchantFrame.IsShown and MerchantFrame:IsShown() and true or false
 end
 
-local function itemIdFromLink(link)
+local function classIdOf(itemId)
+  if GetItemInfoInstant then
+    local ok, _, _, _, _, _, classId = pcall(GetItemInfoInstant, itemId)
+    if ok and type(classId) == "number" then return classId end
+  end
+  if C_Item and C_Item.GetItemInfoInstant then
+    local ok, _, _, _, _, _, classId = pcall(C_Item.GetItemInfoInstant, itemId)
+    if ok and type(classId) == "number" then return classId end
+  end
+  return nil
+end
+
+function SL.SnapshotMoney()
+  if not GetMoney then return end
+  local ok, copper = pcall(GetMoney)
+  if not ok or type(copper) ~= "number" then return end
+  local char = SL.Char()
+  char.money = copper
+  char.moneyAt = SL.Now()
+end
+
+local itemIdFromLink
+
+local function spellFromRecipeLink(link)
+  if type(link) ~= "string" then return nil end
+  local id = link:match("enchant:(%d+)") or link:match("spell:(%d+)")
+  return id and tonumber(id) or nil
+end
+
+local function bundledRecipe(spell)
+  if not spell or not SkillLedgerData or not SkillLedgerData.recipes then return nil end
+  local recipes = SkillLedgerData.recipes
+  for i = 1, #recipes do
+    if recipes[i].spell == spell then return recipes[i] end
+  end
+  return nil
+end
+
+local function rememberLearned(char, fresh)
+  local replacedProfession, replacedSkill = {}, {}
+  for i = 1, #fresh do
+    if fresh[i].profession then replacedProfession[fresh[i].profession] = true end
+    if fresh[i].skill then replacedSkill[fresh[i].skill] = true end
+  end
+  local kept, seen = {}, {}
+  local function put(row)
+    if not row or not (row.spell or row.name) then return end
+    local key = row.spell or ((row.profession or "") .. "\0" .. (row.name or ""))
+    if seen[key] then return end
+    seen[key] = true
+    kept[#kept + 1] = row
+  end
+  local previous = char.learned and char.learned.recipes or {}
+  for i = 1, #previous do
+    local row = previous[i]
+    local drop = (row.profession and replacedProfession[row.profession]) or (row.skill and replacedSkill[row.skill])
+    if not drop then put(row) end
+  end
+  for i = 1, #fresh do put(fresh[i]) end
+  char.learned = { updated = SL.Now(), recipes = kept }
+  return #fresh
+end
+
+local function learnedRow(spell, name, item, skill, profession)
+  local bundled = bundledRecipe(spell)
+  if bundled then
+    name = name or bundled.name
+    if (not item or item == 0) and bundled.made and bundled.made > 0 then item = bundled.made end
+    skill = skill or bundled.skill
+  end
+  if not name or name == "" then return nil end
+  return {
+    spell = spell,
+    name = name,
+    item = item,
+    skill = skill,
+    profession = profession,
+  }
+end
+
+function SL.SnapshotTradeSkill()
+  local char = SL.Char()
+  local fresh = {}
+  local profession, skillLine
+  if C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo then
+    local ok, info = pcall(C_TradeSkillUI.GetBaseProfessionInfo)
+    if ok and type(info) == "table" then
+      profession = info.professionName or info.profession
+      skillLine = info.professionID or info.skillLine
+    end
+  end
+  if (not profession or profession == "") and GetTradeSkillLine then
+    local ok, name, _, _, _, line = pcall(GetTradeSkillLine)
+    if ok and type(name) == "string" and name ~= "" then
+      profession = name
+      if type(line) == "number" then skillLine = line end
+    end
+  end
+  if C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs and C_TradeSkillUI.GetRecipeInfo then
+    local ok, ids = pcall(C_TradeSkillUI.GetAllRecipeIDs)
+    if ok and type(ids) == "table" then
+      for i = 1, #ids do
+        local spell = ids[i]
+        local okInfo, info = pcall(C_TradeSkillUI.GetRecipeInfo, spell)
+        if okInfo and type(info) == "table" and info.learned ~= false and not info.isDummyRecipe then
+          local item
+          if C_TradeSkillUI.GetRecipeOutputItemData then
+            local okOut, output = pcall(C_TradeSkillUI.GetRecipeOutputItemData, spell)
+            if okOut and type(output) == "table" then item = output.itemID end
+          end
+          if not item and C_TradeSkillUI.GetRecipeItemLink then
+            local okLink, link = pcall(C_TradeSkillUI.GetRecipeItemLink, spell)
+            if okLink then item = itemIdFromLink(link) end
+          end
+          local row = learnedRow(spell, info.name, item, skillLine, profession)
+          if row then fresh[#fresh + 1] = row end
+        end
+      end
+    end
+  end
+  if #fresh == 0 and GetNumTradeSkills and GetTradeSkillInfo then
+    local ok, count = pcall(GetNumTradeSkills)
+    if ok and type(count) == "number" then
+      for i = 1, count do
+        local okInfo, name, skillType = pcall(GetTradeSkillInfo, i)
+        if okInfo and name and name ~= "" and skillType ~= "header" then
+          local spell
+          if GetTradeSkillRecipeLink then
+            local okLink, link = pcall(GetTradeSkillRecipeLink, i)
+            if okLink then spell = spellFromRecipeLink(link) end
+          end
+          local item
+          if GetTradeSkillItemLink then
+            local okLink, link = pcall(GetTradeSkillItemLink, i)
+            if okLink then item = itemIdFromLink(link) end
+          end
+          local row = learnedRow(spell, name, item, skillLine, profession)
+          if row then fresh[#fresh + 1] = row end
+        end
+      end
+    end
+  end
+  if #fresh == 0 then return 0 end
+  return rememberLearned(char, fresh)
+end
+
+itemIdFromLink = function(link)
   if type(link) ~= "string" then return nil end
   local id = link:match("item:(%d+)")
   return id and tonumber(id) or nil
@@ -117,6 +263,7 @@ local function readBags(bagIds, where)
           bag = bag,
           slot = slot,
           where = where,
+          classId = classIdOf(id),
         }
       end
     end
@@ -130,6 +277,7 @@ function SL.SnapshotBags()
   char.bags.items = rows
   char.bags.updated = SL.Now()
   SL.bagsDirty = nil
+  if SL.SnapshotMoney then SL.SnapshotMoney() end
   return #rows
 end
 
@@ -521,17 +669,19 @@ end
 
 local function reagentQueue()
   local wanted, seen = {}, {}
+  local function add(id)
+    if not id or id <= 0 or seen[id] then return end
+    seen[id] = true
+    local name = SkillLedgerData and SkillLedgerData.items and SkillLedgerData.items[id]
+    if name and name ~= "" then wanted[#wanted + 1] = { id = id, name = name } end
+  end
   local recipes = SkillLedgerData and SkillLedgerData.recipes or {}
   for i = 1, #recipes do
     local reagents = recipes[i].reagents
-    for r = 1, #reagents do
-      local id = reagents[r][1]
-      if not seen[id] then
-        seen[id] = true
-        local name = SkillLedgerData.items and SkillLedgerData.items[id]
-        if name then wanted[#wanted + 1] = { id = id, name = name } end
-      end
+    if reagents then
+      for r = 1, #reagents do add(reagents[r][1]) end
     end
+    add(recipes[i].made)
   end
   table.sort(wanted, function(a, b) return a.name < b.name end)
   return wanted
@@ -794,7 +944,7 @@ sendNextSearch = function()
     return
   end
   if index == 1 or index % 25 == 0 then
-    chat("Reagent search " .. index .. "/" .. #queue .. " (" .. entry.name .. ").")
+    chat("Auction search " .. index .. "/" .. #queue .. " (" .. entry.name .. ").")
   end
   showStatus()
   armSearchTimeout()
@@ -812,10 +962,10 @@ local function startReagentSearch(why)
   scan.waitingResult = false
   scan.waitingThrottle = false
   if #scan.queue == 0 then
-    SL.AbortScan("No reagent names are bundled, so there is nothing to search.")
+    SL.AbortScan("No reagent or crafted-item names are bundled, so there is nothing to search.")
     return
   end
-  chat((why or "Full scan is not available.") .. " Searching " .. #scan.queue .. " reagents with C_AuctionHouse.SendSearchQuery.")
+  chat((why or "Full scan is not available.") .. " Searching " .. #scan.queue .. " reagents and crafted items with C_AuctionHouse.SendSearchQuery.")
   showStatus()
   sendNextSearch()
 end
@@ -848,7 +998,7 @@ local function tryReplicate()
   if C_Timer and C_Timer.After then
     C_Timer.After(20, function()
       if scan.active and scan.token == token and scan.mode == "replicate" and (scan.index or 0) == 0 and not scan.replicateSawEvent then
-        chat("Full scan returned nothing. Switching to a reagent search.")
+        chat("Full scan returned nothing. Switching to a reagent and crafted-item search.")
         startReagentSearch("Full scan returned nothing.")
       end
     end)
